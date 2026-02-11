@@ -179,6 +179,28 @@ const player = await ForkArcade.getPlayer();
 // { login: 'username', sub: 12345 }
 \`\`\`
 
+### ForkArcade.updateNarrative(data)
+Reports narrative state to the platform. Fire-and-forget (no Promise). The platform displays a real-time narrative panel with graph, variables, and event log.
+\`\`\`js
+ForkArcade.updateNarrative({
+  variables: { karma: 3, has_key: true },
+  currentNode: 'dark-cellar',
+  graph: {
+    nodes: [
+      { id: 'intro', label: 'Start', type: 'scene' },
+      { id: 'choice-1', label: 'Help NPC?', type: 'choice' },
+      { id: 'dark-cellar', label: 'Dark Cellar', type: 'scene' },
+    ],
+    edges: [
+      { from: 'intro', to: 'choice-1' },
+      { from: 'choice-1', to: 'dark-cellar', label: 'Yes' },
+    ]
+  },
+  event: 'Entered dark cellar'
+});
+\`\`\`
+Node types: \`scene\` (rectangle), \`choice\` (diamond), \`condition\` (triangle).
+
 ## PostMessage Protocol
 ${sdkSource}
 `

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams } from 'react-router-dom'
 import { apiFetch } from '../api'
 import Leaderboard from '../components/Leaderboard'
+import NarrativePanel from '../components/NarrativePanel'
 
 const GITHUB_ORG = 'ForkArcade'
 
@@ -9,6 +10,8 @@ export default function GamePage({ user }) {
   const { slug } = useParams()
   const [game, setGame] = useState(null)
   const [leaderboard, setLeaderboard] = useState([])
+  const [tab, setTab] = useState('leaderboard')
+  const [narrativeState, setNarrativeState] = useState({ variables: {}, currentNode: null, graph: null, events: [] })
   const iframeRef = useRef(null)
 
   const loadLeaderboard = useCallback(() => {
@@ -73,6 +76,17 @@ export default function GamePage({ user }) {
             )
           }
           break
+
+        case 'FA_NARRATIVE_UPDATE':
+          setNarrativeState(prev => ({
+            variables: data.variables || prev.variables,
+            currentNode: data.currentNode || prev.currentNode,
+            graph: data.graph || prev.graph,
+            events: data.event
+              ? [...prev.events, data.event].slice(-20)
+              : prev.events,
+          }))
+          break
       }
     }
 
@@ -100,7 +114,30 @@ export default function GamePage({ user }) {
           style={{ width: '100%', maxWidth: 800, height: 600, border: '1px solid #ccc' }}
           title={game.title}
         />
-        <Leaderboard rows={leaderboard} />
+        <div>
+          <div style={{ display: 'flex', gap: 0, marginBottom: 12 }}>
+            {['leaderboard', 'narrative'].map(t => (
+              <button
+                key={t}
+                onClick={() => setTab(t)}
+                style={{
+                  padding: '6px 16px',
+                  background: tab === t ? '#333' : 'transparent',
+                  color: tab === t ? '#fff' : '#888',
+                  border: '1px solid #444',
+                  borderBottom: tab === t ? '1px solid #333' : '1px solid #444',
+                  cursor: 'pointer',
+                  fontSize: 13,
+                  textTransform: 'capitalize',
+                }}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+          {tab === 'leaderboard' && <Leaderboard rows={leaderboard} />}
+          {tab === 'narrative' && <NarrativePanel narrativeState={narrativeState} />}
+        </div>
       </div>
     </div>
   )

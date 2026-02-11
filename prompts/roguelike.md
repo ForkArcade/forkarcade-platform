@@ -149,3 +149,101 @@ function generateDungeon(width, height) {
 - Nie rób wielu klas postaci na start — jedna postać, dobrze zbalansowana
 - Nie rób animacji między turami — instant movement, szybki feedback
 - Skup się na core loop: explore → fight → loot → descend → die → score
+
+## Warstwa narracji
+
+Platforma ForkArcade wyświetla w czasie rzeczywistym panel narracyjny obok gry — graf scenariusza, zmienne fabularne, log zdarzeń. Gra raportuje stan narracji przez SDK.
+
+### Zmienne fabularne
+Roguelike'i mogą mieć zmienne wpływające na świat i narrację:
+```js
+const narrative = {
+  variables: { corruption: 0, npcs_saved: 0, cursed: false },
+  currentNode: 'surface',
+  graph: { nodes: [], edges: [] },
+};
+```
+
+Zmienne numeryczne (0-10) są wyświetlane jako paski postępu. Boolean jako checkmarks.
+
+### Graf narracyjny
+Graf odzwierciedla odkrywanie warstw dungeonu i kluczowe zdarzenia:
+```js
+graph: {
+  nodes: [
+    { id: 'surface', label: 'Powierzchnia', type: 'scene' },
+    { id: 'dungeon-1', label: 'Płytki dungeon', type: 'scene' },
+    { id: 'npc-encounter', label: 'Uwięziony NPC', type: 'choice' },
+    { id: 'deep-dungeon', label: 'Głębiny', type: 'scene' },
+    { id: 'cond-corruption', label: 'Corruption < 5?', type: 'condition' },
+    { id: 'boss-lair', label: 'Legowisko bossa', type: 'scene' },
+  ],
+  edges: [
+    { from: 'surface', to: 'dungeon-1' },
+    { from: 'dungeon-1', to: 'npc-encounter' },
+    { from: 'npc-encounter', to: 'deep-dungeon', label: 'Uratuj' },
+    { from: 'deep-dungeon', to: 'cond-corruption' },
+    { from: 'cond-corruption', to: 'boss-lair', label: 'Tak' },
+  ]
+}
+```
+
+Typy nodów: `scene` (prostokąt), `choice` (romb), `condition` (trójkąt).
+
+### Raportowanie stanu
+Wywołuj `ForkArcade.updateNarrative()` przy kluczowych momentach:
+```js
+// Wejście na nowy poziom
+narrative.currentNode = 'dungeon-' + depth;
+ForkArcade.updateNarrative({
+  variables: narrative.variables,
+  currentNode: narrative.currentNode,
+  graph: narrative.graph,
+  event: 'Zszedł na poziom ' + depth
+});
+
+// Zdarzenie fabularne
+narrative.variables.npcs_saved++;
+ForkArcade.updateNarrative({
+  variables: narrative.variables,
+  currentNode: narrative.currentNode,
+  graph: narrative.graph,
+  event: 'Uratowano NPC na poziomie ' + depth
+});
+```
+
+### Wiązanie mechaniki z narracją
+- Wejście na schody w dół → zmiana node'a w grafie
+- Spotkanie z NPC → node typu choice (uratuj / zignoruj)
+- Podniesienie przeklętego przedmiotu → corruption++
+- Pokonanie bossa → odblokowanie ścieżki
+- Śmierć → zakończenie narracji (event: jak daleko zaszedł)
+
+### Wzorzec narrative engine
+```js
+const narrative = {
+  variables: { corruption: 0, npcs_saved: 0, cursed: false },
+  currentNode: 'surface',
+  graph: { nodes: [...], edges: [...] },
+
+  transition(nodeId, event) {
+    this.currentNode = nodeId;
+    ForkArcade.updateNarrative({
+      variables: this.variables,
+      currentNode: this.currentNode,
+      graph: this.graph,
+      event: event
+    });
+  },
+
+  setVar(name, value, reason) {
+    this.variables[name] = value;
+    ForkArcade.updateNarrative({
+      variables: this.variables,
+      currentNode: this.currentNode,
+      graph: this.graph,
+      event: reason || (name + ' = ' + value)
+    });
+  }
+};
+```

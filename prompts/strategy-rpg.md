@@ -95,3 +95,98 @@ function calcDamage(attacker, defender, terrain) {
 - Nie rób inventory z drag&drop — prosty equip z listy
 - Nie rób cutscenes — krótkie teksty przed bitwą
 - Skup się na core loop: wybierz unit → rusz → atakuj → następna tura
+
+## Warstwa narracji
+
+Platforma ForkArcade wyświetla w czasie rzeczywistym panel narracyjny obok gry — graf scenariusza, zmienne fabularne, log zdarzeń. Gra raportuje stan narracji przez SDK.
+
+### Zmienne fabularne
+Definiuj zmienne które wpływają na fabułę i są widoczne dla gracza:
+```js
+const narrative = {
+  variables: { morale: 5, betrayals: 0, alliance_formed: false },
+  currentNode: 'chapter-1',
+  graph: { nodes: [], edges: [] },
+};
+```
+
+Zmienne numeryczne (0-10) są wyświetlane jako paski postępu. Boolean jako checkmarks.
+
+### Graf narracyjny
+Graf to state machine — nodes to sceny/rozdziały, edges to przejścia:
+```js
+graph: {
+  nodes: [
+    { id: 'chapter-1', label: 'Obrona wioski', type: 'scene' },
+    { id: 'choice-ally', label: 'Sojusz czy zdrada?', type: 'choice' },
+    { id: 'path-loyal', label: 'Lojalny sojusznik', type: 'scene' },
+    { id: 'path-betray', label: 'Zdrada', type: 'scene' },
+    { id: 'cond-morale', label: 'Morale > 5?', type: 'condition' },
+  ],
+  edges: [
+    { from: 'chapter-1', to: 'choice-ally' },
+    { from: 'choice-ally', to: 'path-loyal', label: 'Sojusz' },
+    { from: 'choice-ally', to: 'path-betray', label: 'Zdrada' },
+    { from: 'path-loyal', to: 'cond-morale' },
+  ]
+}
+```
+
+Typy nodów: `scene` (prostokąt), `choice` (romb), `condition` (trójkąt).
+
+### Raportowanie stanu
+Wywołuj `ForkArcade.updateNarrative()` przy zmianie sceny, zmiennej lub ważnym zdarzeniu:
+```js
+// Przejście do nowego rozdziału
+narrative.currentNode = 'chapter-2';
+ForkArcade.updateNarrative({
+  variables: narrative.variables,
+  currentNode: narrative.currentNode,
+  graph: narrative.graph,
+  event: 'Rozpoczęto Rozdział 2: Oblężenie'
+});
+
+// Zmiana zmiennej po decyzji gracza
+narrative.variables.morale += 2;
+ForkArcade.updateNarrative({
+  variables: narrative.variables,
+  currentNode: narrative.currentNode,
+  graph: narrative.graph,
+  event: 'morale +2 (gracz obronił cywili)'
+});
+```
+
+### Wiązanie mechaniki z narracją
+- Wynik bitwy → zmiana node'a (wygrana → path A, przegrana → path B)
+- Decyzje przed bitwą (np. kogo wysłać) → zmiana zmiennych
+- Utrata kluczowej jednostki → zdarzenie fabularne
+- Znalezienie artefaktu → odblokowanie ścieżki w grafie
+
+### Wzorzec narrative engine
+```js
+const narrative = {
+  variables: { morale: 5, betrayals: 0, has_artifact: false },
+  currentNode: 'chapter-1',
+  graph: { nodes: [...], edges: [...] },
+
+  transition(nodeId, event) {
+    this.currentNode = nodeId;
+    ForkArcade.updateNarrative({
+      variables: this.variables,
+      currentNode: this.currentNode,
+      graph: this.graph,
+      event: event
+    });
+  },
+
+  setVar(name, value, reason) {
+    this.variables[name] = value;
+    ForkArcade.updateNarrative({
+      variables: this.variables,
+      currentNode: this.currentNode,
+      graph: this.graph,
+      event: reason || (name + ' = ' + value)
+    });
+  }
+};
+```

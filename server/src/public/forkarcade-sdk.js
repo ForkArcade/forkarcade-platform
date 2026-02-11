@@ -58,6 +58,15 @@
     getPlayer: function() {
       return request('FA_GET_PLAYER');
     },
+    updateNarrative: function(data) {
+      sendToParent({
+        type: 'FA_NARRATIVE_UPDATE',
+        variables: data.variables,
+        currentNode: data.currentNode,
+        graph: data.graph,
+        event: data.event
+      });
+    },
     onReady: function(callback) {
       if (_ready) { callback({ slug: _slug }); return; }
       var interval = setInterval(function() {
