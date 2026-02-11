@@ -47,10 +47,30 @@ Claude ma dostęp do narzędzi ForkArcade:
 - **list_templates** — pokaże dostępne typy gier
 - **init_game** — stworzy repo z template'u w org ForkArcade
 - **get_game_prompt** — pobierze wiedzę o mechanikach danego typu gry
-- **get_sdk_docs** — dokumentacja SDK
+- **get_sdk_docs** — dokumentacja SDK (scoring, narracja, auth)
 - **validate_game** — sprawdzi czy gra jest poprawna
-- **publish_game** — opublikuje grę (GitHub Pages + rejestracja w platformie)
+- **publish_game** — opublikuje grę (GitHub Pages + katalog platformy)
 
 ### 4. Graj
 
 Otwórz http://localhost:5173 — gra pojawi się w katalogu.
+
+## Warstwa narracji
+
+Platforma wyświetla w czasie rzeczywistym panel narracyjny obok gry (tab "Narrative" na stronie gry):
+
+- **Graf scenariusza** — wizualizacja ścieżek fabularnych (sceny, decyzje, warunki)
+- **Zmienne fabularne** — paski postępu dla wartości liczbowych, checkmarki dla boolean
+- **Log zdarzeń** — ostatnie 20 zdarzeń narracyjnych
+
+Gra raportuje stan narracji przez SDK:
+```js
+ForkArcade.updateNarrative({
+  variables: { karma: 3, has_key: true },
+  currentNode: 'dark-cellar',
+  graph: { nodes: [...], edges: [...] },
+  event: 'Entered dark cellar'
+});
+```
+
+Template'y mają wbudowany narrative engine — obiekt `narrative` w `game.js` z metodami `transition()` i `setVar()`.
