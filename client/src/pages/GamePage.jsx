@@ -3,6 +3,8 @@ import { useParams } from 'react-router-dom'
 import { apiFetch } from '../api'
 import Leaderboard from '../components/Leaderboard'
 
+const GITHUB_ORG = 'ForkArcade'
+
 export default function GamePage({ user }) {
   const { slug } = useParams()
   const [game, setGame] = useState(null)
@@ -14,7 +16,18 @@ export default function GamePage({ user }) {
   }, [slug])
 
   useEffect(() => {
-    apiFetch(`/api/games/${slug}`).then(setGame)
+    fetch(`https://api.github.com/repos/${GITHUB_ORG}/${slug}`, {
+      headers: { Accept: 'application/vnd.github+json' },
+    })
+      .then(r => r.json())
+      .then(repo => {
+        setGame({
+          slug: repo.name,
+          title: repo.description || repo.name,
+          topics: repo.topics || [],
+          github_pages_url: `https://${GITHUB_ORG.toLowerCase()}.github.io/${repo.name}/`,
+        })
+      })
     loadLeaderboard()
   }, [slug, loadLeaderboard])
 
@@ -72,7 +85,13 @@ export default function GamePage({ user }) {
   return (
     <div>
       <h2>{game.title}</h2>
-      <p>{game.description}</p>
+      {game.topics.length > 0 && (
+        <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
+          {game.topics.map(t => (
+            <span key={t} style={{ background: '#eee', borderRadius: 4, padding: '2px 8px', fontSize: 12 }}>{t}</span>
+          ))}
+        </div>
+      )}
       <div style={{ display: 'flex', gap: 20 }}>
         <iframe
           ref={iframeRef}

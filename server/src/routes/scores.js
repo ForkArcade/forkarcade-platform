@@ -8,50 +8,23 @@ router.post('/api/games/:slug/score', auth, (req, res) => {
   const { score } = req.body
   if (typeof score !== 'number') return res.status(400).json({ error: 'invalid_score' })
 
-  const game = db.prepare('SELECT id FROM games WHERE slug = ?').get(req.params.slug)
-  if (!game) return res.status(404).json({ error: 'game_not_found' })
-
   db.prepare(`
-    INSERT INTO scores (github_user_id, score, game_id, created_at)
+    INSERT INTO scores (github_user_id, game_slug, score, created_at)
     VALUES (?, ?, ?, ?)
-  `).run(req.user.sub, score, game.id, new Date().toISOString())
+  `).run(req.user.sub, req.params.slug, score, new Date().toISOString())
   res.json({ ok: true })
 })
 
 router.get('/api/games/:slug/leaderboard', (req, res) => {
-  const game = db.prepare('SELECT id FROM games WHERE slug = ?').get(req.params.slug)
-  if (!game) return res.status(404).json({ error: 'game_not_found' })
-
   const rows = db.prepare(`
     SELECT u.login, u.avatar, MAX(s.score) as best
     FROM scores s
     JOIN users u ON u.github_user_id = s.github_user_id
-    WHERE s.game_id = ?
+    WHERE s.game_slug = ?
     GROUP BY s.github_user_id
     ORDER BY best DESC
     LIMIT 50
-  `).all(game.id)
-  res.json(rows)
-})
-
-router.post('/api/score', auth, (req, res) => {
-  const { score } = req.body
-  db.prepare(`
-    INSERT INTO scores (github_user_id, score, created_at)
-    VALUES (?, ?, ?)
-  `).run(req.user.sub, score, new Date().toISOString())
-  res.json({ ok: true })
-})
-
-router.get('/api/leaderboard', (req, res) => {
-  const rows = db.prepare(`
-    SELECT u.login, u.avatar, MAX(s.score) as best
-    FROM scores s
-    JOIN users u ON u.github_user_id = s.github_user_id
-    GROUP BY s.github_user_id
-    ORDER BY best DESC
-    LIMIT 50
-  `).all()
+  `).all(req.params.slug)
   res.json(rows)
 })
 

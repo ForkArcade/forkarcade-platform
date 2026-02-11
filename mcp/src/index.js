@@ -114,6 +114,15 @@ async function handleTool(name, args) {
       try {
         // Create repo from template
         exec(`gh repo create ${ORG}/${slug} --template ${tmpl.repo} --public --clone`, { cwd: process.cwd() })
+
+        // Set description
+        if (description) {
+          exec(`gh repo edit ${ORG}/${slug} --description "${description.replace(/"/g, '\\"')}"`)
+        }
+
+        // Set topics: forkarcade-game + template type
+        exec(`gh repo edit ${ORG}/${slug} --add-topic forkarcade-game --add-topic ${template}`)
+
         return JSON.stringify({
           ok: true,
           message: `Game "${title}" created from template ${tmpl.name}`,
@@ -229,6 +238,18 @@ ${sdkSource}
         exec('git push -u origin main', { cwd: absPath })
         results.push('Pushed to GitHub')
 
+        // Set description if provided
+        if (description) {
+          exec(`gh repo edit ${ORG}/${slug} --description "${description.replace(/"/g, '\\"')}"`)
+        }
+
+        // Ensure topic forkarcade-game is set (makes it visible in platform catalog)
+        try {
+          exec(`gh repo edit ${ORG}/${slug} --add-topic forkarcade-game`)
+        } catch (e) {
+          // Topic may already exist
+        }
+
         // Enable GitHub Pages
         try {
           exec(`gh api repos/${ORG}/${slug}/pages -X POST -f build_type=legacy -f source='{"branch":"main","path":"/"}'`)
@@ -241,29 +262,7 @@ ${sdkSource}
           }
         }
 
-        // Register in platform
         const pagesUrl = `https://${ORG.toLowerCase()}.github.io/${slug}/`
-        try {
-          const res = await fetch(`${PLATFORM_API}/api/games`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              slug,
-              title,
-              description: description || '',
-              github_repo: `${ORG}/${slug}`,
-              github_pages_url: pagesUrl,
-            }),
-          })
-          const data = await res.json()
-          if (data.ok) {
-            results.push('Registered in ForkArcade platform')
-          } else {
-            results.push(`Platform registration: ${JSON.stringify(data)}`)
-          }
-        } catch (e) {
-          results.push(`Platform registration failed: ${e.message}. Register manually or ensure platform server is running.`)
-        }
 
         return JSON.stringify({
           ok: true,

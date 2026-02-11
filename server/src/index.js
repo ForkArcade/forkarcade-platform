@@ -6,7 +6,6 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 
 import authRouter from './auth.js'
-import gamesRouter from './routes/games.js'
 import scoresRouter from './routes/scores.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -20,7 +19,6 @@ app.use(cors({ origin: process.env.CLIENT_ORIGIN, credentials: true }))
 app.use('/sdk', express.static(path.join(__dirname, 'public')))
 
 app.use(authRouter)
-app.use(gamesRouter)
 app.use(scoresRouter)
 
 app.listen(process.env.PORT, () => console.log('API running'))
