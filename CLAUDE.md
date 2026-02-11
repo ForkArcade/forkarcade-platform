@@ -53,7 +53,35 @@ Dwie tabele: `users` (github_user_id, login, avatar) i `scores` (game_slug, scor
 
 ## MCP (mcp/src/index.js)
 
-6 narzędzi: `list_templates`, `init_game`, `get_sdk_docs`, `get_game_prompt`, `validate_game`, `publish_game`. Publish ustawia topic `forkarcade-game` i włącza GitHub Pages.
+11 narzędzi:
+- **Workflow**: `list_templates`, `init_game`, `get_sdk_docs`, `get_game_prompt`, `validate_game`, `publish_game`
+- **Assets**: `get_asset_guide`, `create_sprite`, `validate_assets`, `preview_assets`
+- **Wersje**: `get_versions`
+
+Publish ustawia topic `forkarcade-game`, włącza GitHub Pages i tworzy version snapshot (`/versions/v{N}/`). Asset tools tworzą pixel art sprite'y w formacie `_sprites.json` → generowany `sprites.js`.
+
+## Wersjonowanie gier
+
+Gry ewoluują przez GitHub issues. Każda wersja jest grywalna.
+
+### Flow
+1. User tworzy issue z labelem `evolve` → GitHub Actions odpala Claude Code
+2. Claude Code implementuje → otwiera PR
+3. PR merge → workflow tworzy snapshot w `/versions/v{N}/`
+4. Platforma wyświetla version selector + changelog
+
+### Struktura wersji w repo gry
+```
+/index.html          ← latest
+/game.js
+/versions/v1/        ← snapshot v1
+/versions/v2/        ← snapshot v2
+/.forkarcade.json    ← metadata z versions array
+/.github/workflows/  ← evolve.yml + version.yml
+```
+
+### Scores
+Scores mają kolumnę `version` — SDK automatycznie dołącza wersję. Leaderboard filtrowany per wersja (`?version=N`).
 
 ## Konwencje
 

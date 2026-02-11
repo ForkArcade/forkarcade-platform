@@ -5,6 +5,7 @@ import cors from 'cors'
 import path from 'path'
 import { fileURLToPath } from 'url'
 
+import { initDb } from './db.js'
 import authRouter from './auth.js'
 import scoresRouter from './routes/scores.js'
 
@@ -15,10 +16,32 @@ app.use(express.json())
 app.use(cookieParser())
 app.use(cors({ origin: process.env.CLIENT_ORIGIN, credentials: true }))
 
-// Serve SDK as static file
-app.use('/sdk', express.static(path.join(__dirname, 'public')))
+// Serve SDK as static file (canonical copy in /sdk at project root)
+app.use('/sdk', express.static(path.join(__dirname, '../../sdk')))
 
 app.use(authRouter)
 app.use(scoresRouter)
 
-app.listen(process.env.PORT, () => console.log('API running'))
+const C = '\x1b[36m', Y = '\x1b[33m', D = '\x1b[2m', R = '\x1b[0m'
+const banner = [
+  '',
+  C + '  █▀▀ █▀█ █▀█ █▄▀',
+  '  █▀  █▄█ █▀▄ █ █',
+  '',
+  '      ▄▀█ █▀█ █▀▀ ▄▀█ █▀▄ █▀▀',
+  '      █▀█ █▀▄ █▄▄ █▀█ █▄▀ ██▄' + R,
+  '',
+  `  ${Y}API${R}  http://localhost:${process.env.PORT}`,
+  `  ${Y}SDK${R}  http://localhost:${process.env.PORT}/sdk/forkarcade-sdk.js`,
+  '',
+  `  ${D}New game:${R}  claude ${D}then${R} /new-game`,
+  `  ${D}Edit game:${R} cd games/<slug> ${D}then${R} claude`,
+  '',
+]
+
+initDb().then(() => {
+  app.listen(process.env.PORT, () => console.log(banner.join('\n')))
+}).catch(err => {
+  console.error('Failed to initialize database:', err)
+  process.exit(1)
+})

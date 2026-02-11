@@ -90,8 +90,49 @@ function calcDamage(attacker, defender, terrain) {
 - Animacje: proste tweeny (unit przesuwa się z pola A do B)
 - HP bar: mały pasek nad jednostką
 
+## System sprite'ów (pixel art)
+
+Gra może używać pixel art sprite'ów zamiast geometrii. Sprite'y trzymane w `_sprites.json`, wygenerowany `sprites.js` udostępnia `drawSprite()` i `getSprite()`.
+
+### Tworzenie sprite'ów
+Użyj narzędzia `get_asset_guide` aby poznać wymagane sprite'y i paletę kolorów.
+Użyj narzędzia `create_sprite` aby tworzyć sprite'y — waliduje grid i generuje sprites.js.
+
+### Format
+```json
+{
+  "w": 8, "h": 8,
+  "palette": { "1": "#4a4", "2": "#286028" },
+  "pixels": [
+    ".11..11.",
+    "11111111",
+    "12211221",
+    "12211221",
+    "11111111",
+    ".111111.",
+    "..1111..",
+    "..1..1.."
+  ]
+}
+```
+
+### Wzorzec integracji (fallback na geometrię)
+```js
+// W renderze — sprite z fallbackiem na geometrię
+var sprite = typeof getSprite === 'function' && getSprite('units', unit.className)
+if (sprite) {
+  drawSprite(ctx, sprite, sx, sy, tileSize)
+} else {
+  ctx.fillStyle = unit.team === 'player' ? '#44c' : '#c44'
+  ctx.fillRect(sx + 2, sy + 2, tileSize - 4, tileSize - 4)
+  ctx.fillStyle = '#fff'
+  ctx.fillText(unit.char, sx + tileSize/2, sy + tileSize/2)
+}
+```
+
+Pamiętaj dodać `<script src="sprites.js"></script>` w index.html przed game.js.
+
 ## Czego unikać
-- Nie rób skomplikowanego sprite systemu — geometria i kolory wystarczą
 - Nie rób inventory z drag&drop — prosty equip z listy
 - Nie rób cutscenes — krótkie teksty przed bitwą
 - Skup się na core loop: wybierz unit → rusz → atakuj → następna tura

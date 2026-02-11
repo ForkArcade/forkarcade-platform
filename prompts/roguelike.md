@@ -138,6 +138,45 @@ function generateDungeon(width, height) {
 - UI: HP bar na górze, message log na dole (ostatnie 5 wiadomości)
 - Minimap opcjonalna: mały widok całego poziomu w rogu
 
+## System sprite'ów (pixel art)
+
+Gra może używać pixel art sprite'ów zamiast tekstu/geometrii. Sprite'y trzymane w `_sprites.json`, wygenerowany `sprites.js` udostępnia `drawSprite()` i `getSprite()`.
+
+### Tworzenie sprite'ów
+Użyj narzędzia `get_asset_guide` aby poznać wymagane sprite'y i paletę kolorów.
+Użyj narzędzia `create_sprite` aby tworzyć sprite'y — waliduje grid i generuje sprites.js.
+
+### Format
+```json
+{
+  "w": 8, "h": 8,
+  "palette": { "1": "#a86", "2": "#d9a", "3": "#fff" },
+  "pixels": [
+    "..1..1..",
+    ".11..11.",
+    ".122221.",
+    "11233211",
+    "11222211",
+    ".112211.",
+    ".1....1.",
+    ".1....1."
+  ]
+}
+```
+
+### Wzorzec integracji (fallback na tekst)
+```js
+// W renderze — sprite z fallbackiem na tekst
+var sprite = typeof getSprite === 'function' && getSprite('enemies', e.type)
+if (sprite) {
+  drawSprite(ctx, sprite, sx, sy, T)
+} else {
+  ctx.fillText(e.char, sx + T/2, sy + T/2)
+}
+```
+
+Pamiętaj dodać `<script src="sprites.js"></script>` w index.html przed game.js.
+
 ## Input
 - Klawiatura: strzałki/WASD = ruch, I = inventory, G = grab, Q = quaff potion
 - Mouse/touch: klik na sąsiedni tile = ruch/atak

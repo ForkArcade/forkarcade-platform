@@ -1,0 +1,17 @@
+export const T = {
+  bg: '#0d0d0d',
+  surface: '#1a1a1a',
+  elevated: '#252525',
+  border: '#2a2a2a',
+  borderLight: '#333',
+  text: '#bbb',
+  textDim: '#666',
+  textBright: '#eee',
+  accent: '#0af',
+  gold: '#fd4',
+  danger: '#f44',
+  success: '#4f4',
+  font: "system-ui, -apple-system, sans-serif",
+  mono: "'JetBrains Mono', 'Fira Code', monospace",
+  radius: 4,
+}

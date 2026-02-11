@@ -4,6 +4,7 @@
   var _pending = {};
   var _ready = false;
   var _slug = null;
+  var _version = null;
 
   function generateId() {
     return Math.random().toString(36).substr(2, 9);
@@ -35,6 +36,7 @@
 
     if (data.type === 'FA_INIT') {
       _slug = data.slug;
+      _version = data.version || null;
       _ready = true;
       sendToParent({ type: 'FA_READY' });
       return;
@@ -53,7 +55,7 @@
 
   window.ForkArcade = {
     submitScore: function(score) {
-      return request('FA_SUBMIT_SCORE', { score: score });
+      return request('FA_SUBMIT_SCORE', { score: score, version: _version });
     },
     getPlayer: function() {
       return request('FA_GET_PLAYER');
@@ -68,9 +70,9 @@
       });
     },
     onReady: function(callback) {
-      if (_ready) { callback({ slug: _slug }); return; }
+      if (_ready) { callback({ slug: _slug, version: _version }); return; }
       var interval = setInterval(function() {
-        if (_ready) { clearInterval(interval); callback({ slug: _slug }); }
+        if (_ready) { clearInterval(interval); callback({ slug: _slug, version: _version }); }
       }, 50);
     }
   };

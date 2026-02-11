@@ -72,11 +72,12 @@ router.get('/auth/github/callback', async (req, res) => {
     })
     const ghUser = await userRes.json()
 
-    db.prepare(`
-      INSERT INTO users (github_user_id, login, avatar)
-      VALUES (?, ?, ?)
-      ON CONFLICT(github_user_id) DO UPDATE SET login = excluded.login, avatar = excluded.avatar
-    `).run(ghUser.id, ghUser.login, ghUser.avatar_url)
+    await db.execute({
+      sql: `INSERT INTO users (github_user_id, login, avatar)
+            VALUES (?, ?, ?)
+            ON CONFLICT(github_user_id) DO UPDATE SET login = excluded.login, avatar = excluded.avatar`,
+      args: [ghUser.id, ghUser.login, ghUser.avatar_url],
+    })
 
     const token = sign({ github_user_id: ghUser.id, login: ghUser.login })
     res.cookie(process.env.COOKIE_NAME, token, cookieOptions())
@@ -95,9 +96,12 @@ router.post('/auth/logout', (_req, res) => {
 
 // Mock login (development only)
 if (process.env.NODE_ENV !== 'production') {
-  router.post('/auth/github/mock', (req, res) => {
+  router.post('/auth/github/mock', async (req, res) => {
     const { id, login } = req.body
-    db.prepare(`INSERT OR REPLACE INTO users (github_user_id, login) VALUES (?,?)`).run(id, login)
+    await db.execute({
+      sql: 'INSERT OR REPLACE INTO users (github_user_id, login) VALUES (?, ?)',
+      args: [id, login],
+    })
     const token = sign({ github_user_id: id, login })
     res.cookie(process.env.COOKIE_NAME, token, cookieOptions())
     res.json({ ok: true })
