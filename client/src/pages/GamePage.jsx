@@ -15,7 +15,9 @@ export default function GamePage({ user }) {
   const iframeRef = useRef(null)
 
   const loadLeaderboard = useCallback(() => {
-    apiFetch(`/api/games/${slug}/leaderboard`).then(setLeaderboard)
+    apiFetch(`/api/games/${slug}/leaderboard`)
+      .then(data => setLeaderboard(Array.isArray(data) ? data : []))
+      .catch(() => setLeaderboard([]))
   }, [slug])
 
   useEffect(() => {

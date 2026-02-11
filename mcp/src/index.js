@@ -2,12 +2,13 @@ import { Server } from '@modelcontextprotocol/sdk/server/index.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js'
 import { execSync } from 'child_process'
-import { readFileSync, existsSync } from 'fs'
+import { readFileSync, writeFileSync, existsSync } from 'fs'
 import { resolve, dirname } from 'path'
 import { fileURLToPath } from 'url'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const PLATFORM_ROOT = resolve(__dirname, '../..')
+const GAMES_DIR = resolve(PLATFORM_ROOT, '..', 'games')
 const PROMPTS_DIR = resolve(PLATFORM_ROOT, 'prompts')
 const SDK_PATH = resolve(PLATFORM_ROOT, 'server/src/public/forkarcade-sdk.js')
 const ORG = 'ForkArcade'
@@ -112,8 +113,11 @@ async function handleTool(name, args) {
       if (!/^[a-z0-9-]+$/.test(slug)) return JSON.stringify({ error: 'Slug must be lowercase alphanumeric with hyphens' })
 
       try {
+        // Ensure games directory exists
+        exec(`mkdir -p "${GAMES_DIR}"`)
+
         // Create repo from template
-        exec(`gh repo create ${ORG}/${slug} --template ${tmpl.repo} --public --clone`, { cwd: process.cwd() })
+        exec(`gh repo create ${ORG}/${slug} --template ${tmpl.repo} --public --clone`, { cwd: GAMES_DIR })
 
         // Set description
         if (description) {
@@ -123,11 +127,25 @@ async function handleTool(name, args) {
         // Set topics: forkarcade-game + template type
         exec(`gh repo edit ${ORG}/${slug} --add-topic forkarcade-game --add-topic ${template}`)
 
+        // Create .mcp.json so Claude Code sessions in game dir have access to ForkArcade tools
+        const gamePath = resolve(GAMES_DIR, slug)
+        const mcpConfig = {
+          mcpServers: {
+            forkarcade: {
+              type: 'stdio',
+              command: 'node',
+              args: [resolve(PLATFORM_ROOT, 'mcp/src/index.js')],
+              env: {}
+            }
+          }
+        }
+        writeFileSync(resolve(gamePath, '.mcp.json'), JSON.stringify(mcpConfig, null, 2) + '\n')
+
         return JSON.stringify({
           ok: true,
           message: `Game "${title}" created from template ${tmpl.name}`,
           repo: `${ORG}/${slug}`,
-          local_path: resolve(process.cwd(), slug),
+          local_path: gamePath,
           next_steps: [
             `cd ${slug}`,
             'Edit game.js to implement your game',
@@ -274,7 +292,7 @@ ${sdkSource}
 
         // Enable GitHub Pages
         try {
-          exec(`gh api repos/${ORG}/${slug}/pages -X POST -f build_type=legacy -f source='{"branch":"main","path":"/"}'`)
+          exec(`gh api repos/${ORG}/${slug}/pages -X POST -f build_type=legacy -f source[branch]=main -f source[path]=/`)
           results.push('GitHub Pages enabled')
         } catch (e) {
           if (e.message.includes('already exists')) {
