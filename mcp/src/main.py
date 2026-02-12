@@ -27,6 +27,7 @@ HANDLERS = {
     "validate_assets": assets.validate_assets,
     "preview_assets": assets.preview_assets,
     "get_versions": versions.get_versions,
+    "update_sdk": workflow.update_sdk,
 }
 
 app = Server("forkarcade")

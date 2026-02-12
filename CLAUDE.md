@@ -40,7 +40,7 @@ prompts/         Prompt library per typ gry
 - `POST /api/games/:slug/score` (auth) → zapis wyniku
 - `GET /api/games/:slug/leaderboard` → top 50 per gra
 - `GET /api/me` (auth) → aktualny user
-- `GET /sdk/forkarcade-sdk.js` → statyczny plik SDK
+- `GET /sdk/forkarcade-sdk.js` → statyczny plik SDK (backward compat, nowe gry mają SDK lokalnie)
 
 ## Baza danych (SQLite)
 
@@ -53,8 +53,8 @@ Dwie tabele: `users` (github_user_id, login, avatar) i `scores` (game_slug, scor
 
 ## MCP (mcp/src/main.py)
 
-11 narzędzi:
-- **Workflow**: `list_templates`, `init_game`, `get_sdk_docs`, `get_game_prompt`, `validate_game`, `publish_game`
+12 narzędzi:
+- **Workflow**: `list_templates`, `init_game`, `get_sdk_docs`, `get_game_prompt`, `validate_game`, `publish_game`, `update_sdk`
 - **Assets**: `get_asset_guide`, `create_sprite`, `validate_assets`, `preview_assets`
 - **Wersje**: `get_versions`
 
@@ -88,4 +88,5 @@ Scores mają kolumnę `version` — SDK automatycznie dołącza wersję. Leaderb
 - Inline styles (nie ma CSS framework)
 - ESM (`import`/`export`), nie CommonJS
 - Vanilla JS w SDK (bez frameworków — musi działać w dowolnej grze)
+- **SDK jest lokalny** — `forkarcade-sdk.js` kopiowany do repo gry przez `init_game`, aktualizowany przez `update_sdk`. Gry używają `<script src="forkarcade-sdk.js"></script>` (relative). Source of truth: `sdk/forkarcade-sdk.js` w platformie.
 - Prompty i CLAUDE.md po polsku

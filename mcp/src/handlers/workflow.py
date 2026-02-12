@@ -42,6 +42,16 @@ def _validate_game_path(path_str):
     return game_path
 
 
+def _get_sdk_info():
+    """Read canonical SDK file and extract version."""
+    sdk_path = PLATFORM_ROOT / "sdk" / "forkarcade-sdk.js"
+    content = sdk_path.read_text()
+    first_line = content.split('\n')[0]
+    match = re.search(r'v(\d+)', first_line)
+    version = int(match.group(1)) if match else 0
+    return {"version": version, "content": content}
+
+
 def list_templates(args):
     items = [{"key": k, "name": t["name"], "description": t["description"], "repo": t["repo"]}
              for k, t in TEMPLATES.items()]
@@ -70,7 +80,9 @@ def init_game(args):
         run(["gh", "repo", "edit", f"{ORG}/{slug}", "--add-topic", "forkarcade-game", "--add-topic", template])
 
         game_path = GAMES_DIR / slug
-        game_config = {"template": template, "slug": slug, "title": title, "currentVersion": 0, "versions": []}
+        sdk_info = _get_sdk_info()
+        (game_path / "forkarcade-sdk.js").write_text(sdk_info["content"])
+        game_config = {"template": template, "slug": slug, "title": title, "currentVersion": 0, "versions": [], "sdkVersion": sdk_info["version"]}
         (game_path / ".forkarcade.json").write_text(json.dumps(game_config, indent=2) + "\n")
 
         mcp_config = {
@@ -108,7 +120,7 @@ def init_game(args):
 
 
 def get_sdk_docs(args):
-    return f"""# ForkArcade SDK Documentation
+    return """# ForkArcade SDK Documentation
 
 ## How it works
 The SDK communicates with the ForkArcade platform via postMessage.
@@ -116,8 +128,10 @@ Games run in an iframe on the platform. The SDK sends messages to the parent win
 which handles authentication and API calls.
 
 ## Include in your game
+The file `forkarcade-sdk.js` is copied into your game directory by `init_game`.
+To update it later, use the `update_sdk` tool.
 ```html
-<script src="{PLATFORM_API}/sdk/forkarcade-sdk.js"></script>
+<script src="forkarcade-sdk.js"></script>
 ```
 
 ## API
@@ -179,13 +193,26 @@ def validate_game(args):
     issues = []
     warnings = []
 
+    sdk_local = game_path / "forkarcade-sdk.js"
+    if not sdk_local.exists():
+        issues.append("Missing forkarcade-sdk.js — use update_sdk tool to add it")
+    else:
+        local_first = sdk_local.read_text().split('\n')[0]
+        local_match = re.search(r'v(\d+)', local_first)
+        local_ver = int(local_match.group(1)) if local_match else 0
+        canonical = _get_sdk_info()
+        if local_ver < canonical["version"]:
+            warnings.append(f'SDK outdated: local v{local_ver}, latest v{canonical["version"]}. Use update_sdk tool.')
+
     index_html = game_path / "index.html"
     if not index_html.exists():
         issues.append("Missing index.html")
     else:
         html = index_html.read_text()
         if "forkarcade-sdk" not in html:
-            issues.append('SDK not included in index.html — add <script src=".../forkarcade-sdk.js"></script>')
+            issues.append('SDK not included in index.html — add <script src="forkarcade-sdk.js"></script>')
+        elif "http" in html and "forkarcade-sdk" in html and 'src="forkarcade-sdk.js"' not in html:
+            warnings.append('SDK loaded from remote URL — change to <script src="forkarcade-sdk.js"></script> (local file)')
         if "<canvas" not in html:
             issues.append("No <canvas> element found in index.html")
         if "sprites.js" not in html:
@@ -252,7 +279,7 @@ def publish_game(args):
                 next_version = (config.get("currentVersion") or 0) + 1
                 version_dir = game_path / "versions" / f"v{next_version}"
                 version_dir.mkdir(parents=True, exist_ok=True)
-                for f in ["index.html", "game.js", "style.css", "sprites.js"]:
+                for f in ["index.html", "game.js", "style.css", "sprites.js", "forkarcade-sdk.js"]:
                     src = game_path / f
                     if src.exists():
                         (version_dir / f).write_text(src.read_text())
@@ -279,3 +306,35 @@ def publish_game(args):
         }, indent=2)
     except Exception as e:
         return json.dumps({"error": str(e), "results": results})
+
+
+def update_sdk(args):
+    game_path = _validate_game_path(args["path"])
+    sdk_info = _get_sdk_info()
+
+    sdk_local = game_path / "forkarcade-sdk.js"
+    old_version = 0
+    if sdk_local.exists():
+        first_line = sdk_local.read_text().split('\n')[0]
+        match = re.search(r'v(\d+)', first_line)
+        old_version = int(match.group(1)) if match else 0
+
+    if old_version >= sdk_info["version"]:
+        return json.dumps({"ok": True, "message": f"SDK already at latest version (v{sdk_info['version']})"})
+
+    sdk_local.write_text(sdk_info["content"])
+
+    config_path = game_path / ".forkarcade.json"
+    if config_path.exists():
+        try:
+            config = json.loads(config_path.read_text())
+            config["sdkVersion"] = sdk_info["version"]
+            config_path.write_text(json.dumps(config, indent=2) + "\n")
+        except Exception:
+            pass
+
+    return json.dumps({
+        "ok": True,
+        "message": f"SDK updated from v{old_version} to v{sdk_info['version']}",
+        "version": sdk_info["version"],
+    })

@@ -119,4 +119,15 @@ TOOLS = [
             "required": ["path"],
         },
     },
+    {
+        "name": "update_sdk",
+        "description": "Aktualizuje forkarcade-sdk.js w grze do najnowszej wersji z platformy",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "path": {"type": "string", "description": "Ścieżka do katalogu gry"},
+            },
+            "required": ["path"],
+        },
+    },
 ]

@@ -1,6 +1,8 @@
+// ForkArcade SDK v1
 (function(window) {
   'use strict';
 
+  var _sdkVersion = 1;
   var _pending = {};
   var _ready = false;
   var _slug = null;
@@ -85,7 +87,8 @@
       var interval = setInterval(function() {
         if (_ready) { clearInterval(interval); callback({ slug: _slug, version: _version }); }
       }, 50);
-    }
+    },
+    sdkVersion: _sdkVersion
   };
 
   sendToParent({ type: 'FA_READY' });
