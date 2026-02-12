@@ -38,9 +38,11 @@ export default function GamePage({ user }) {
 
   useEffect(() => { loadLeaderboard() }, [loadLeaderboard])
 
+  const iframeOrigin = `https://${GITHUB_ORG.toLowerCase()}.github.io`
+
   const iframeUrl = selectedVersion
-    ? `https://${GITHUB_ORG.toLowerCase()}.github.io/${slug}/versions/v${selectedVersion}/`
-    : `https://${GITHUB_ORG.toLowerCase()}.github.io/${slug}/`
+    ? `${iframeOrigin}/${slug}/versions/v${selectedVersion}/`
+    : `${iframeOrigin}/${slug}/`
 
   useEffect(() => {
     function handleMessage(event) {
@@ -50,17 +52,17 @@ export default function GamePage({ user }) {
 
       switch (data.type) {
         case 'FA_READY':
-          iframeRef.current?.contentWindow.postMessage({ type: 'FA_INIT', slug, version: currentVersion }, '*')
+          iframeRef.current?.contentWindow.postMessage({ type: 'FA_INIT', slug, version: currentVersion }, iframeOrigin)
           break
         case 'FA_SUBMIT_SCORE':
           apiFetch(`/api/games/${slug}/score`, {
             method: 'POST',
             body: JSON.stringify({ score: data.score, version: data.version || currentVersion }),
           }).then(result => {
-            iframeRef.current?.contentWindow.postMessage({ type: 'FA_SCORE_RESULT', ok: result.ok, requestId: data.requestId }, '*')
+            iframeRef.current?.contentWindow.postMessage({ type: 'FA_SCORE_RESULT', ok: result.ok, requestId: data.requestId }, iframeOrigin)
             loadLeaderboard()
           }).catch(() => {
-            iframeRef.current?.contentWindow.postMessage({ type: 'FA_SCORE_RESULT', error: 'submit_failed', requestId: data.requestId }, '*')
+            iframeRef.current?.contentWindow.postMessage({ type: 'FA_SCORE_RESULT', error: 'submit_failed', requestId: data.requestId }, iframeOrigin)
           })
           break
         case 'FA_GET_PLAYER':
@@ -68,7 +70,7 @@ export default function GamePage({ user }) {
             user
               ? { type: 'FA_PLAYER_INFO', login: user.login, sub: user.sub, requestId: data.requestId }
               : { type: 'FA_PLAYER_INFO', error: 'not_logged_in', requestId: data.requestId },
-            '*'
+            iframeOrigin
           )
           break
         case 'FA_NARRATIVE_UPDATE':

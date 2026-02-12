@@ -5,6 +5,7 @@
   var _ready = false;
   var _slug = null;
   var _version = null;
+  var _parentOrigin = null;
 
   function generateId() {
     return Math.random().toString(36).substr(2, 9);
@@ -12,8 +13,17 @@
 
   function sendToParent(msg) {
     if (window.parent !== window) {
-      window.parent.postMessage(msg, '*');
+      var origin = _parentOrigin || '*';
+      window.parent.postMessage(msg, origin);
     }
+  }
+
+  function isValidFAMessage(event) {
+    var data = event.data;
+    if (!data || !data.type) return false;
+    if (!data.type.startsWith('FA_')) return false;
+    if (_parentOrigin && event.origin !== _parentOrigin) return false;
+    return true;
   }
 
   function request(type, payload) {
@@ -31,10 +41,11 @@
   }
 
   window.addEventListener('message', function(event) {
+    if (!isValidFAMessage(event)) return;
     var data = event.data;
-    if (!data || !data.type) return;
 
     if (data.type === 'FA_INIT') {
+      _parentOrigin = event.origin;
       _slug = data.slug;
       _version = data.version || null;
       _ready = true;
