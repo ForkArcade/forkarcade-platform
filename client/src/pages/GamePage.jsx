@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams } from 'react-router-dom'
 import { apiFetch, GITHUB_ORG, githubFetch } from '../api'
 import { T } from '../theme'
-import { Panel, TabBar, Badge, StatusBar, Button, SectionHeading, EmptyState } from '../components/ui'
+import { Panel, TabBar, Badge, StatusBar, Button, EmptyState } from '../components/ui'
 import Leaderboard from '../components/Leaderboard'
 import NarrativePanel from '../components/NarrativePanel'
 
@@ -94,11 +94,11 @@ export default function GamePage({ user }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 80px)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: T.sp(3), padding: `${T.sp(2)}px 0`, marginBottom: T.sp(1) }}>
-        <span style={{ fontSize: T.fontSize.md, fontWeight: 700, color: T.textBright }}>{game.title}</span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: T.sp[5], padding: `${T.sp[4]}px 0`, marginBottom: T.sp[2] }}>
+        <span style={{ fontSize: T.fontSize.md, fontWeight: T.weight.semibold, color: T.textBright }}>{game.title}</span>
         {game.topics.filter(t => t !== 'forkarcade-game').map(t => <Badge key={t}>{t}</Badge>)}
         {versions.length > 0 && (
-          <div style={{ display: 'flex', gap: T.sp(1), marginLeft: 'auto' }}>
+          <div style={{ display: 'flex', gap: T.sp[2], marginLeft: 'auto' }}>
             <Button active={selectedVersion === null} onClick={() => setSelectedVersion(null)} style={{ fontFamily: T.mono }}>
               Latest
             </Button>
@@ -117,8 +117,8 @@ export default function GamePage({ user }) {
         )}
       </div>
 
-      <div style={{ display: 'flex', flex: 1, gap: T.sp(1), overflow: 'hidden' }}>
-        <div style={{ flex: 1, background: '#000', border: `1px solid ${T.border}`, overflow: 'hidden' }}>
+      <div style={{ display: 'flex', flex: 1, gap: T.sp[4], overflow: 'hidden' }}>
+        <div style={{ flex: 1, background: '#000', border: `1px solid ${T.border}`, borderRadius: T.radius.lg, overflow: 'hidden' }}>
           <iframe
             ref={iframeRef}
             src={iframeUrl}
@@ -130,18 +130,18 @@ export default function GamePage({ user }) {
 
         <Panel style={{ width: 280, minWidth: 280, display: 'flex', flexDirection: 'column' }}>
           <TabBar tabs={tabs} active={tab} onChange={setTab} />
-          <div style={{ flex: 1, overflow: 'auto', padding: T.sp(3) }}>
+          <div style={{ flex: 1, overflow: 'auto', padding: T.sp[6] }}>
             {tab === 'leaderboard' && <Leaderboard rows={leaderboard} />}
             {tab === 'narrative' && <NarrativePanel narrativeState={narrativeState} />}
             {tab === 'changelog' && (
               <div>
                 {versions.slice().reverse().map(v => (
-                  <div key={v.version} style={{ marginBottom: T.sp(3), borderLeft: `2px solid ${T.border}`, paddingLeft: T.sp(3) }}>
+                  <div key={v.version} style={{ marginBottom: T.sp[6], borderLeft: `2px solid ${T.border}`, paddingLeft: T.sp[5] }}>
                     <div>
                       <span style={{ color: T.accentColor, fontFamily: T.mono, fontSize: T.fontSize.sm }}>v{v.version}</span>
-                      <span style={{ color: T.text, fontSize: T.fontSize.xs, marginLeft: T.sp(2) }}>{v.date}</span>
+                      <span style={{ color: T.muted, fontSize: T.fontSize.xs, marginLeft: T.sp[4] }}>{v.date}</span>
                     </div>
-                    <div style={{ fontSize: T.fontSize.sm, color: T.text, marginTop: T.sp(0.5) }}>{v.description}</div>
+                    <div style={{ fontSize: T.fontSize.sm, color: T.text, marginTop: T.sp[1], lineHeight: T.leading.normal }}>{v.description}</div>
                     {v.issue && (
                       <a
                         href={`https://github.com/${GITHUB_ORG}/${slug}/issues/${v.issue}`}

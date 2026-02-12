@@ -7,23 +7,23 @@ import { T } from '../theme'
 export function Toolbar({ left, right }) {
   return (
     <div style={{
-      height: 48,
+      height: T.sp[9],       // 48
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'space-between',
-      padding: `0 ${T.sp(4)}px`,
+      padding: `0 ${T.sp[7]}px`,  // 0 24
       background: T.surface,
       borderBottom: `1px solid ${T.border}`,
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: T.sp(3) }}>{left}</div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: T.sp(2) }}>{right}</div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: T.sp[6] }}>{left}</div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: T.sp[4] }}>{right}</div>
     </div>
   )
 }
 
 export function Panel({ children, style, ...props }) {
   return (
-    <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, ...style }} {...props}>
+    <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius.lg, ...style }} {...props}>
       {children}
     </div>
   )
@@ -32,16 +32,16 @@ export function Panel({ children, style, ...props }) {
 export function StatusBar({ children }) {
   return (
     <div style={{
-      height: 28,
+      height: T.sp[8],       // 32
       display: 'flex',
       alignItems: 'center',
-      padding: `0 ${T.sp(3)}px`,
+      padding: `0 ${T.sp[6]}px`,  // 0 16
       background: T.surface,
       borderTop: `1px solid ${T.border}`,
       fontSize: T.fontSize.xs,
-      color: T.text,
+      color: T.muted,
       fontFamily: T.mono,
-      gap: T.sp(3),
+      gap: T.sp[5],          // 12
     }}>
       {children}
     </div>
@@ -53,14 +53,14 @@ export function StatusBar({ children }) {
 export function PageHeader({ children }) {
   return (
     <h2 style={{
-      color: T.text,
+      color: T.muted,
       fontSize: T.fontSize.xs,
       fontFamily: T.font,
-      fontWeight: 400,
+      fontWeight: T.weight.medium,
       textTransform: 'uppercase',
       letterSpacing: 3,
-      margin: `${T.sp(2)}px 0 ${T.sp(4)}px`,
-      paddingBottom: T.sp(2),
+      margin: `${T.sp[4]}px 0 ${T.sp[7]}px`,   // 8 0 24
+      paddingBottom: T.sp[4],                     // 8
       borderBottom: `1px solid ${T.border}`,
     }}>
       {children}
@@ -71,11 +71,11 @@ export function PageHeader({ children }) {
 export function SectionHeading({ children }) {
   return (
     <h4 style={{
-      margin: `0 0 ${T.sp(2)}px`,
-      color: T.text,
+      margin: `0 0 ${T.sp[4]}px`,   // 0 0 8
+      color: T.muted,
       fontSize: T.fontSize.xs,
       fontFamily: T.font,
-      fontWeight: 400,
+      fontWeight: T.weight.medium,
       textTransform: 'uppercase',
       letterSpacing: 2,
     }}>
@@ -91,7 +91,7 @@ export function Grid({ children, min = 280 }) {
     <div style={{
       display: 'grid',
       gridTemplateColumns: `repeat(auto-fill, minmax(${min}px, 1fr))`,
-      gap: T.sp(4),
+      gap: T.sp[6],   // 16
     }}>
       {children}
     </div>
@@ -109,11 +109,10 @@ export function Card({ href, to, thumbnail, children }) {
       style={{
         background: T.elevated,
         border: `1px solid ${hover ? T.accentColor + '40' : T.border}`,
-        borderRadius: T.radius,
-        padding: 0,
+        borderRadius: T.radius.lg,
         overflow: 'hidden',
         transition: 'border-color 0.2s, box-shadow 0.2s, transform 0.2s',
-        boxShadow: hover ? `0 4px 16px rgba(0,0,0,0.5), 0 0 0 1px ${T.accentColor}20` : T.shadow,
+        boxShadow: hover ? T.shadow.lg : T.shadow.sm,
         transform: hover ? 'translateY(-2px)' : 'none',
       }}
     >
@@ -126,11 +125,10 @@ export function Card({ href, to, thumbnail, children }) {
             height: 'auto',
             imageRendering: 'pixelated',
             display: 'block',
-            borderBottom: `1px solid ${T.border}`,
           }}
         />
       )}
-      <div style={{ padding: `${T.sp(3)}px ${T.sp(4)}px ${T.sp(4)}px` }}>
+      <div style={{ padding: `${T.sp[5]}px ${T.sp[6]}px ${T.sp[6]}px` }}>
         {children}
       </div>
     </div>
@@ -141,27 +139,63 @@ export function Card({ href, to, thumbnail, children }) {
 }
 
 export function CardTitle({ children }) {
-  return <h3 style={{ margin: `0 0 ${T.sp(1)}px`, fontSize: T.fontSize.md, fontWeight: 600, color: T.textBright }}>{children}</h3>
+  return (
+    <h3 style={{
+      margin: 0,
+      fontSize: T.fontSize.base,
+      fontWeight: T.weight.semibold,
+      color: T.textBright,
+      lineHeight: T.leading.tight,
+    }}>
+      {children}
+    </h3>
+  )
+}
+
+export function CardDescription({ children }) {
+  return (
+    <p style={{
+      margin: `${T.sp[2]}px 0 0`,   // 4px top
+      fontSize: T.fontSize.sm,
+      fontWeight: T.weight.normal,
+      color: T.text,
+      lineHeight: T.leading.normal,
+    }}>
+      {children}
+    </p>
+  )
 }
 
 export function CardTags({ children }) {
-  return <div style={{ display: 'flex', gap: T.sp(1), flexWrap: 'wrap', marginTop: T.sp(2) }}>{children}</div>
+  return (
+    <div style={{ display: 'flex', gap: T.sp[2], flexWrap: 'wrap', marginTop: T.sp[4] }}>
+      {children}
+    </div>
+  )
 }
 
 // --- Controls ---
 
-export function Button({ children, variant, active, onClick, style, ...props }) {
+export function Button({ children, variant, active, size, onClick, style, ...props }) {
+  const h = size === 'sm' ? T.sp[8] : T.sp[8]    // 32
+  const px = size === 'sm' ? T.sp[4] : T.sp[5]    // 8 / 12
   const base = {
-    padding: `${T.sp(1)}px ${T.sp(3)}px`,
-    fontSize: T.fontSize.xs,
+    height: h,
+    padding: `0 ${px}px`,
+    fontSize: T.fontSize.sm,
     fontFamily: T.font,
+    fontWeight: T.weight.medium,
     cursor: 'pointer',
     border: 'none',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    whiteSpace: 'nowrap',
   }
   const variants = {
-    default: { background: T.elevated, border: `1px solid ${T.border}`, borderRadius: T.radius, color: T.textBright },
-    ghost: { background: 'transparent', border: `1px solid ${T.border}`, borderRadius: T.radius, color: T.text },
-    active: { background: T.accentColor, borderRadius: T.radius, color: '#000', fontWeight: 700 },
+    default: { background: T.elevated, border: `1px solid ${T.border}`, borderRadius: T.radius.md, color: T.textBright },
+    ghost: { background: 'transparent', border: `1px solid ${T.border}`, borderRadius: T.radius.md, color: T.text },
+    active: { background: T.accentColor, borderRadius: T.radius.md, color: '#000', fontWeight: T.weight.bold },
   }
   const v = active ? 'active' : (variant || 'default')
   return <button onClick={onClick} style={{ ...base, ...variants[v], ...style }} {...props}>{children}</button>
@@ -177,14 +211,16 @@ export function TabBar({ tabs, active, onChange }) {
           key={t}
           onClick={() => onChange(t)}
           style={{
-            padding: `${T.sp(2)}px ${T.sp(4)}px`,
+            height: T.sp[9],    // 48
+            padding: `0 ${T.sp[6]}px`,  // 0 16
             background: 'transparent',
             color: active === t ? T.accentColor : T.text,
             border: 'none',
             borderBottom: active === t ? `2px solid ${T.accentColor}` : '2px solid transparent',
             cursor: 'pointer',
-            fontSize: T.fontSize.xs,
+            fontSize: T.fontSize.sm,
             fontFamily: T.font,
+            fontWeight: active === t ? T.weight.medium : T.weight.normal,
             textTransform: 'uppercase',
             letterSpacing: 1,
           }}
@@ -202,12 +238,14 @@ export function Badge({ children, color }) {
   const c = color || T.accentColor
   return (
     <span style={{
-      background: c + '18',
+      background: c + '15',
       color: c,
-      padding: `2px ${T.sp(2)}px`,
-      borderRadius: 3,
+      padding: `${T.sp[1]}px ${T.sp[3]}px`,   // 2 6
+      borderRadius: T.radius.sm,
       fontSize: T.fontSize.xs,
       fontFamily: T.mono,
+      fontWeight: T.weight.medium,
+      lineHeight: T.leading.tight,
     }}>
       {children}
     </span>
@@ -217,5 +255,13 @@ export function Badge({ children, color }) {
 // --- Empty State ---
 
 export function EmptyState({ children }) {
-  return <p style={{ color: T.text, fontSize: T.fontSize.sm, padding: `${T.sp(4)}px 0` }}>{children}</p>
+  return (
+    <p style={{
+      color: T.muted,
+      fontSize: T.fontSize.sm,
+      padding: `${T.sp[6]}px 0`,   // 16 0
+    }}>
+      {children}
+    </p>
+  )
 }

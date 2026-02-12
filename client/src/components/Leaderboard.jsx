@@ -14,8 +14,8 @@ export default function Leaderboard({ rows = [] }) {
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: T.sp(2),
-            padding: `${T.sp(1)}px 0`,
+            gap: T.sp[4],
+            padding: `${T.sp[3]}px 0`,
             borderBottom: `1px solid ${T.border}`,
           }}
         >

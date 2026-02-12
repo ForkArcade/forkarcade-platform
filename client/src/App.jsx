@@ -11,6 +11,7 @@ import LoginButton from './components/LoginButton'
 const navStyle = (isActive) => ({
   textDecoration: 'none',
   fontSize: T.fontSize.xs,
+  fontWeight: isActive ? T.weight.medium : T.weight.normal,
   color: isActive ? T.accentColor : T.text,
   textTransform: 'uppercase',
   letterSpacing: 1,
@@ -33,7 +34,7 @@ export default function App() {
       <Toolbar
         left={
           <>
-            <Link to="/" style={{ textDecoration: 'none', color: T.accent, fontSize: T.fontSize.lg, fontWeight: 700, letterSpacing: -0.5 }}>
+            <Link to="/" style={{ textDecoration: 'none', color: T.accent, fontSize: T.fontSize.lg, fontWeight: T.weight.bold, letterSpacing: -0.5 }}>
               ForkArcade
             </Link>
             <NavLink to="/" end style={({ isActive }) => navStyle(isActive)}>Games</NavLink>
@@ -55,7 +56,7 @@ export default function App() {
           )
         }
       />
-      <div style={{ flex: 1, padding: T.sp(4) }}>
+      <div style={{ flex: 1, padding: T.sp[7] }}>
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/templates" element={<TemplatesPage />} />
