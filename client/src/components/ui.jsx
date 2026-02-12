@@ -107,28 +107,32 @@ export function Card({ href, to, thumbnail, children }) {
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
       style={{
-        background: T.elevated,
-        border: `1px solid ${hover ? T.accentColor + '40' : T.border}`,
+        background: 'transparent',
+        border: `1px solid ${hover ? T.border : 'transparent'}`,
         borderRadius: T.radius.lg,
         overflow: 'hidden',
-        transition: 'border-color 0.2s, box-shadow 0.2s, transform 0.2s',
-        boxShadow: hover ? T.shadow.lg : T.shadow.sm,
-        transform: hover ? 'translateY(-2px)' : 'none',
+        transition: 'border-color 0.2s',
       }}
     >
       {thumbnail && (
-        <img
-          src={thumbnail}
-          alt=""
-          style={{
-            width: '100%',
-            height: 'auto',
-            imageRendering: 'pixelated',
-            display: 'block',
-          }}
-        />
+        <div style={{
+          borderRadius: T.radius.md,
+          overflow: 'hidden',
+          margin: T.sp[2],
+        }}>
+          <img
+            src={thumbnail}
+            alt=""
+            style={{
+              width: '100%',
+              height: 'auto',
+              imageRendering: 'pixelated',
+              display: 'block',
+            }}
+          />
+        </div>
       )}
-      <div style={{ padding: `${T.sp[5]}px ${T.sp[6]}px ${T.sp[6]}px` }}>
+      <div style={{ padding: `${T.sp[4]}px ${T.sp[4]}px ${T.sp[5]}px` }}>
         {children}
       </div>
     </div>
