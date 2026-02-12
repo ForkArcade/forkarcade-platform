@@ -107,8 +107,11 @@ export function Card({ href, to, thumbnail, children }) {
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
       style={{
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
         background: 'transparent',
-        border: `1px solid ${hover ? T.border : 'transparent'}`,
+        border: `1px solid ${hover ? T.text : T.border}`,
         borderRadius: T.radius.lg,
         overflow: 'hidden',
         transition: 'border-color 0.2s',
@@ -132,13 +135,14 @@ export function Card({ href, to, thumbnail, children }) {
           />
         </div>
       )}
-      <div style={{ padding: `${T.sp[4]}px ${T.sp[4]}px ${T.sp[5]}px` }}>
+      <div style={{ padding: `${T.sp[4]}px ${T.sp[4]}px ${T.sp[5]}px`, flex: 1 }}>
         {children}
       </div>
     </div>
   )
-  if (to) return <Link to={to} style={{ textDecoration: 'none', color: 'inherit' }}>{content}</Link>
-  if (href) return <a href={href} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none', color: 'inherit' }}>{content}</a>
+  const linkStyle = { textDecoration: 'none', color: 'inherit', height: '100%' }
+  if (to) return <Link to={to} style={linkStyle}>{content}</Link>
+  if (href) return <a href={href} target="_blank" rel="noopener noreferrer" style={linkStyle}>{content}</a>
   return content
 }
 
