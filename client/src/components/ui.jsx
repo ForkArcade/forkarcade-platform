@@ -23,7 +23,7 @@ export function Toolbar({ left, right }) {
 
 export function Panel({ children, style, ...props }) {
   return (
-    <div style={{ background: T.surface, border: `1px solid ${T.border}`, ...style }} {...props}>
+    <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius, ...style }} {...props}>
       {children}
     </div>
   )
@@ -108,9 +108,13 @@ export function Card({ href, to, thumbnail, children }) {
       onMouseLeave={() => setHover(false)}
       style={{
         background: T.elevated,
-        border: `1px solid ${hover ? T.accentColor + '60' : T.border}`,
-        padding: T.sp(4),
-        transition: 'border-color 0.15s',
+        border: `1px solid ${hover ? T.accentColor + '40' : T.border}`,
+        borderRadius: T.radius,
+        padding: 0,
+        overflow: 'hidden',
+        transition: 'border-color 0.2s, box-shadow 0.2s, transform 0.2s',
+        boxShadow: hover ? `0 4px 16px rgba(0,0,0,0.5), 0 0 0 1px ${T.accentColor}20` : T.shadow,
+        transform: hover ? 'translateY(-2px)' : 'none',
       }}
     >
       {thumbnail && (
@@ -121,12 +125,14 @@ export function Card({ href, to, thumbnail, children }) {
             width: '100%',
             height: 'auto',
             imageRendering: 'pixelated',
-            marginBottom: T.sp(3),
             display: 'block',
+            borderBottom: `1px solid ${T.border}`,
           }}
         />
       )}
-      {children}
+      <div style={{ padding: `${T.sp(3)}px ${T.sp(4)}px ${T.sp(4)}px` }}>
+        {children}
+      </div>
     </div>
   )
   if (to) return <Link to={to} style={{ textDecoration: 'none', color: 'inherit' }}>{content}</Link>
@@ -135,11 +141,11 @@ export function Card({ href, to, thumbnail, children }) {
 }
 
 export function CardTitle({ children }) {
-  return <h3 style={{ margin: `0 0 ${T.sp(2)}px`, fontSize: T.fontSize.sm, fontWeight: 700, color: T.textBright }}>{children}</h3>
+  return <h3 style={{ margin: `0 0 ${T.sp(1)}px`, fontSize: T.fontSize.md, fontWeight: 600, color: T.textBright }}>{children}</h3>
 }
 
 export function CardTags({ children }) {
-  return <div style={{ display: 'flex', gap: T.sp(1), flexWrap: 'wrap' }}>{children}</div>
+  return <div style={{ display: 'flex', gap: T.sp(1), flexWrap: 'wrap', marginTop: T.sp(2) }}>{children}</div>
 }
 
 // --- Controls ---
@@ -153,9 +159,9 @@ export function Button({ children, variant, active, onClick, style, ...props }) 
     border: 'none',
   }
   const variants = {
-    default: { background: T.elevated, border: `1px solid ${T.border}`, color: T.textBright },
-    ghost: { background: 'transparent', border: `1px solid ${T.border}`, color: T.text },
-    active: { background: T.accentColor, color: '#000', fontWeight: 700 },
+    default: { background: T.elevated, border: `1px solid ${T.border}`, borderRadius: T.radius, color: T.textBright },
+    ghost: { background: 'transparent', border: `1px solid ${T.border}`, borderRadius: T.radius, color: T.text },
+    active: { background: T.accentColor, borderRadius: T.radius, color: '#000', fontWeight: 700 },
   }
   const v = active ? 'active' : (variant || 'default')
   return <button onClick={onClick} style={{ ...base, ...variants[v], ...style }} {...props}>{children}</button>
@@ -198,7 +204,8 @@ export function Badge({ children, color }) {
     <span style={{
       background: c + '18',
       color: c,
-      padding: `1px ${T.sp(2)}px`,
+      padding: `2px ${T.sp(2)}px`,
+      borderRadius: 3,
       fontSize: T.fontSize.xs,
       fontFamily: T.mono,
     }}>
