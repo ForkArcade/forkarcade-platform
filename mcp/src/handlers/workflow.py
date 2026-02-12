@@ -6,34 +6,41 @@ import subprocess
 from datetime import date
 from pathlib import Path
 
-from templates import TEMPLATES, ORG
+from github_templates import ORG, list_templates as gh_list_templates, get_template, get_template_prompt
 from sprites import generate_sprites_js
 
 _HERE = Path(__file__).resolve().parent
 PLATFORM_ROOT = _HERE.parent.parent.parent
 GAMES_DIR = PLATFORM_ROOT.parent / "games"
-PROMPTS_DIR = PLATFORM_ROOT / "prompts"
+SDK_DIR = PLATFORM_ROOT / "sdk"
 PLATFORM_API = os.environ.get("FORKARCADE_API", "http://localhost:8787")
-ENGINE_DIR = PLATFORM_ROOT / "sdk" / "engine"
-ENGINE_FILES = ["fa-engine.js", "fa-renderer.js", "fa-input.js", "fa-audio.js", "fa-narrative.js"]
-BASE_FILES = ["index.html", "style.css", "sprites.js", "forkarcade-sdk.js"]
+BASE_FILES = ["index.html", "style.css", "sprites.js", "forkarcade-sdk.js", "fa-narrative.js"]
+
+
+def _get_config(game_path):
+    """Read .forkarcade.json from game directory."""
+    config_path = game_path / ".forkarcade.json"
+    if config_path.exists():
+        try:
+            return json.loads(config_path.read_text())
+        except Exception:
+            pass
+    return {}
+
+
+def _get_engine_files(game_path):
+    """Get engine files list from .forkarcade.json (inherited from template repo)."""
+    return _get_config(game_path).get("engineFiles", [])
 
 
 def _get_game_files(game_path):
     """Get game files list from .forkarcade.json (inherited from template repo)."""
-    config_path = game_path / ".forkarcade.json"
-    if config_path.exists():
-        try:
-            config = json.loads(config_path.read_text())
-            return config.get("gameFiles", [])
-        except Exception:
-            pass
-    return []
+    return _get_config(game_path).get("gameFiles", [])
 
 
 def _get_snapshot_files(game_path):
     """Build snapshot file list: base + engine + game files from template."""
-    return BASE_FILES + ENGINE_FILES + _get_game_files(game_path)
+    return BASE_FILES + _get_engine_files(game_path) + _get_game_files(game_path)
 
 
 def run(cmd_args, cwd=None):
@@ -62,15 +69,6 @@ def _validate_game_path(path_str):
     return game_path
 
 
-def _get_engine_version():
-    """Read engine version from fa-engine.js."""
-    engine_path = ENGINE_DIR / "fa-engine.js"
-    if not engine_path.exists():
-        return 0
-    content = engine_path.read_text()
-    match = re.search(r'ENGINE_VERSION\s*=\s*(\d+)', content)
-    return int(match.group(1)) if match else 0
-
 
 def _get_sdk_info():
     """Read canonical SDK file and extract version."""
@@ -83,8 +81,7 @@ def _get_sdk_info():
 
 
 def list_templates(args):
-    items = [{"key": k, "name": t["name"], "description": t["description"], "repo": t["repo"]}
-             for k, t in TEMPLATES.items()]
+    items = gh_list_templates()
     return json.dumps(items, indent=2)
 
 
@@ -94,9 +91,10 @@ def init_game(args):
     title = args["title"]
     description = args.get("description", "")
 
-    tmpl = TEMPLATES.get(template)
+    tmpl = get_template(template)
     if not tmpl:
-        return json.dumps({"error": f"Unknown template: {template}. Available: {', '.join(TEMPLATES.keys())}"})
+        available = [t["key"] for t in gh_list_templates()]
+        return json.dumps({"error": f"Unknown template: {template}. Available: {', '.join(available)}"})
     if not re.match(r"^[a-z0-9-]+$", slug):
         return json.dumps({"error": "Slug must be lowercase alphanumeric with hyphens"})
 
@@ -113,12 +111,11 @@ def init_game(args):
         sdk_info = _get_sdk_info()
         (game_path / "forkarcade-sdk.js").write_text(sdk_info["content"])
 
-        for ef in ENGINE_FILES:
-            src = ENGINE_DIR / ef
-            if src.exists():
-                (game_path / ef).write_text(src.read_text())
+        # Narrative module — platform infrastructure
+        narrative_src = PLATFORM_ROOT / "sdk" / "fa-narrative.js"
+        if narrative_src.exists():
+            (game_path / "fa-narrative.js").write_text(narrative_src.read_text())
 
-        engine_version = _get_engine_version()
         config_path = game_path / ".forkarcade.json"
         game_config = {}
         if config_path.exists():
@@ -126,7 +123,7 @@ def init_game(args):
                 game_config = json.loads(config_path.read_text())
             except Exception:
                 pass
-        game_config.update({"slug": slug, "title": title, "currentVersion": 0, "versions": [], "sdkVersion": sdk_info["version"], "engineVersion": engine_version})
+        game_config.update({"slug": slug, "title": title, "currentVersion": 0, "versions": [], "sdkVersion": sdk_info["version"]})
         game_config.setdefault("template", template)
         config_path.write_text(json.dumps(game_config, indent=2) + "\n")
 
@@ -227,10 +224,12 @@ Node types: `scene`, `choice`, `condition`.
 
 def get_game_prompt(args):
     template = args.get("template", "")
-    prompt_path = PROMPTS_DIR / f"{template}.md"
-    if not prompt_path.exists():
+    template_prompt = get_template_prompt(template)
+    if not template_prompt:
         return json.dumps({"error": f"No prompt found for template: {template}"})
-    return prompt_path.read_text()
+    platform_path = SDK_DIR / "_platform.md"
+    platform_rules = platform_path.read_text() if platform_path.exists() else ""
+    return platform_rules + "\n\n" + template_prompt
 
 
 def validate_game(args):
@@ -250,17 +249,15 @@ def validate_game(args):
         if local_ver < canonical["version"]:
             warnings.append(f'SDK outdated: local v{local_ver}, latest v{canonical["version"]}. Use update_sdk tool.')
 
-    # Engine files check
-    for ef in ENGINE_FILES:
+    # Narrative module check (platform infrastructure)
+    if not (game_path / "fa-narrative.js").exists():
+        issues.append("Missing fa-narrative.js — platform narrative module")
+
+    # Engine files check (from template)
+    engine_files = _get_engine_files(game_path)
+    for ef in engine_files:
         if not (game_path / ef).exists():
-            issues.append(f"Missing engine file: {ef} — use update_engine tool")
-    engine_ver = _get_engine_version()
-    local_engine = game_path / "fa-engine.js"
-    if local_engine.exists():
-        match = re.search(r'ENGINE_VERSION\s*=\s*(\d+)', local_engine.read_text())
-        local_ev = int(match.group(1)) if match else 0
-        if local_ev < engine_ver:
-            warnings.append(f'Engine outdated: local v{local_ev}, latest v{engine_ver}. Use update_engine tool.')
+            issues.append(f"Missing engine file: {ef}")
 
     # Game files check (from template)
     game_files = _get_game_files(game_path)
@@ -281,7 +278,7 @@ def validate_game(args):
         if "<canvas" not in html:
             issues.append("No <canvas> element found in index.html")
 
-        required_scripts = ENGINE_FILES + game_files
+        required_scripts = engine_files + game_files
         for f in required_scripts:
             if f not in html:
                 issues.append(f'{f} not included in index.html')
@@ -337,6 +334,17 @@ def publish_game(args):
 
         try:
             run(["gh", "repo", "edit", f"{ORG}/{slug}", "--add-topic", "forkarcade-game"])
+        except Exception:
+            pass
+
+        # Add template category as topic (e.g. roguelike, strategy-rpg)
+        try:
+            config_path_topic = game_path / ".forkarcade.json"
+            if config_path_topic.exists():
+                cfg = json.loads(config_path_topic.read_text())
+                template = cfg.get("template")
+                if template:
+                    run(["gh", "repo", "edit", f"{ORG}/{slug}", "--add-topic", template])
         except Exception:
             pass
 
@@ -418,38 +426,3 @@ def update_sdk(args):
     })
 
 
-def update_engine(args):
-    game_path = _validate_game_path(args["path"])
-    engine_ver = _get_engine_version()
-
-    local_engine = game_path / "fa-engine.js"
-    old_version = 0
-    if local_engine.exists():
-        match = re.search(r'ENGINE_VERSION\s*=\s*(\d+)', local_engine.read_text())
-        old_version = int(match.group(1)) if match else 0
-
-    if old_version >= engine_ver:
-        return json.dumps({"ok": True, "message": f"Engine already at latest version (v{engine_ver})"})
-
-    updated = []
-    for ef in ENGINE_FILES:
-        src = ENGINE_DIR / ef
-        if src.exists():
-            (game_path / ef).write_text(src.read_text())
-            updated.append(ef)
-
-    config_path = game_path / ".forkarcade.json"
-    if config_path.exists():
-        try:
-            config = json.loads(config_path.read_text())
-            config["engineVersion"] = engine_ver
-            config_path.write_text(json.dumps(config, indent=2) + "\n")
-        except Exception:
-            pass
-
-    return json.dumps({
-        "ok": True,
-        "message": f"Engine updated from v{old_version} to v{engine_ver}",
-        "version": engine_ver,
-        "updated": updated,
-    })

@@ -11,7 +11,7 @@ TOOLS = [
             "type": "object",
             "properties": {
                 "slug": {"type": "string", "description": 'Unikalna nazwa gry (lowercase, hyphens), np. "dark-dungeon"'},
-                "template": {"type": "string", "description": "Klucz template: strategy-rpg lub roguelike"},
+                "template": {"type": "string", "description": "Klucz szablonu (topic z GitHub, np. strategy-rpg, roguelike)"},
                 "title": {"type": "string", "description": "Wyświetlana nazwa gry"},
                 "description": {"type": "string", "description": "Krótki opis gry"},
             },
@@ -29,7 +29,7 @@ TOOLS = [
         "inputSchema": {
             "type": "object",
             "properties": {
-                "template": {"type": "string", "description": "Klucz template: strategy-rpg lub roguelike"},
+                "template": {"type": "string", "description": "Klucz szablonu (topic z GitHub, np. strategy-rpg, roguelike)"},
             },
             "required": ["template"],
         },
@@ -65,7 +65,7 @@ TOOLS = [
         "inputSchema": {
             "type": "object",
             "properties": {
-                "template": {"type": "string", "description": "Klucz template: strategy-rpg lub roguelike"},
+                "template": {"type": "string", "description": "Klucz szablonu (topic z GitHub, np. strategy-rpg, roguelike)"},
             },
             "required": ["template"],
         },
@@ -92,7 +92,7 @@ TOOLS = [
             "type": "object",
             "properties": {
                 "path": {"type": "string", "description": "Ścieżka do katalogu gry"},
-                "template": {"type": "string", "description": "Klucz template (opcjonalny — wykryje automatycznie)"},
+                "template": {"type": "string", "description": "Klucz szablonu (opcjonalny — wykryje automatycznie)"},
             },
             "required": ["path"],
         },
@@ -131,14 +131,19 @@ TOOLS = [
         },
     },
     {
-        "name": "update_engine",
-        "description": "Aktualizuje pliki engine (fa-engine.js, fa-renderer.js, fa-input.js, fa-audio.js, fa-narrative.js) do najnowszej wersji z platformy",
+        "name": "create_thumbnail",
+        "description": "Tworzy ASCII art miniaturkę gry z block characters (spacja, ░, ▒, ▓). Zapisuje jako _thumbnail.txt",
         "inputSchema": {
             "type": "object",
             "properties": {
                 "path": {"type": "string", "description": "Ścieżka do katalogu gry"},
+                "rows": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Wiersze ASCII art (36 znaków szerokości, 16 wierszy). Dozwolone znaki: spacja, ░, ▒, ▓",
+                },
             },
-            "required": ["path"],
+            "required": ["path", "rows"],
         },
     },
 ]

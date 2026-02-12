@@ -11,10 +11,19 @@ export default function HomePage() {
   useEffect(() => {
     githubFetch(`/orgs/${GITHUB_ORG}/repos?type=public&per_page=100`)
       .then(repos => {
-        setGames(repos
+        const gameList = repos
           .filter(r => r.topics?.includes(GAME_TOPIC) && !r.is_template)
-          .map(r => ({ slug: r.name, title: r.description || r.name, topics: r.topics.filter(t => t !== GAME_TOPIC) }))
-        )
+          .map(r => ({ slug: r.name, title: r.description || r.name, topics: r.topics.filter(t => t !== GAME_TOPIC), thumbnail: null }))
+        setGames(gameList)
+
+        gameList.forEach((game, i) => {
+          fetch(`https://raw.githubusercontent.com/${GITHUB_ORG}/${game.slug}/main/_thumbnail.txt`)
+            .then(r => { if (!r.ok) throw new Error(); return r.text() })
+            .then(text => {
+              setGames(prev => prev.map((g, j) => j === i ? { ...g, thumbnail: text.trimEnd() } : g))
+            })
+            .catch(() => {})
+        })
       })
       .catch(() => setGames([]))
   }, [])

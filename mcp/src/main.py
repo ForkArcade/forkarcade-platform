@@ -13,7 +13,7 @@ import mcp.types as types
 
 from context import detect_game_context
 from tools import TOOLS
-from handlers import workflow, assets, versions
+from handlers import workflow, assets, versions, thumbnail
 
 HANDLERS = {
     "list_templates": workflow.list_templates,
@@ -28,7 +28,7 @@ HANDLERS = {
     "preview_assets": assets.preview_assets,
     "get_versions": versions.get_versions,
     "update_sdk": workflow.update_sdk,
-    "update_engine": workflow.update_engine,
+    "create_thumbnail": thumbnail.create_thumbnail,
 }
 
 
@@ -37,8 +37,8 @@ def _build_instructions():
     lines = ["ForkArcade MCP — narzędzia do tworzenia gier na platformę ForkArcade."]
     if ctx:
         lines.append(f"Gra: {ctx.get('title', ctx.get('slug', '?'))} ({ctx.get('template', '?')})")
-        lines.append(f"Wersja: v{ctx.get('currentVersion', 0)}, SDK v{ctx.get('sdkVersion', '?')}, Engine v{ctx.get('engineVersion', '?')}")
-        lines.append("Dostępne: get_game_prompt, validate_game, publish_game, create_sprite, update_sdk, update_engine")
+        lines.append(f"Wersja: v{ctx.get('currentVersion', 0)}, SDK v{ctx.get('sdkVersion', '?')}")
+        lines.append("Dostępne: get_game_prompt, validate_game, publish_game, create_sprite, update_sdk")
     else:
         lines.append("Kontekst: platforma (nie w katalogu gry)")
         lines.append("Dostępne: list_templates, init_game (/new-game)")

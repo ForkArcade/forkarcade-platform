@@ -2,7 +2,7 @@ import json
 import re
 from pathlib import Path
 
-from templates import TEMPLATES, VALID_CATEGORIES
+from github_templates import VALID_CATEGORIES, get_template, get_template_assets
 from sprites import generate_sprites_js, generate_preview_html
 from context import detect_game_context, get_categories_for_template
 
@@ -23,10 +23,10 @@ def _validate_game_path(path_str):
 
 def get_asset_guide(args):
     template = args.get("template", "")
-    tmpl = TEMPLATES.get(template)
-    guide = tmpl["assets"] if tmpl else None
+    tmpl = get_template(template)
+    guide = get_template_assets(template) if tmpl else None
     if not guide:
-        return json.dumps({"error": f"No asset guide for template: {template}. Available: {', '.join(TEMPLATES.keys())}"})
+        return json.dumps({"error": f"No asset guide for template: {template}"})
 
     output = f"# Asset Guide: {tmpl['name']}\n\n"
     output += f"## Styl\n{guide['style']}\n\n"
@@ -120,11 +120,9 @@ def validate_assets(args):
             except Exception:
                 pass
 
-    tmpl = TEMPLATES.get(template or "")
-    if not tmpl or "assets" not in tmpl:
+    guide = get_template_assets(template or "")
+    if not guide:
         return json.dumps({"error": "Cannot detect template type. Pass template parameter explicitly."})
-
-    guide = tmpl["assets"]
 
     data = {}
     if json_path.exists():
