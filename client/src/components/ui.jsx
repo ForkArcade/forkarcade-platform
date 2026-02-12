@@ -156,10 +156,11 @@ export function CardTitle({ children }) {
 export function CardDescription({ children }) {
   return (
     <p style={{
-      margin: `${T.sp[2]}px 0 0`,
+      margin: `${T.sp[3]}px 0 0`,
       fontSize: T.fontSize.sm,
       fontWeight: T.weight.normal,
-      color: T.text,
+      color: T.textBright,
+      opacity: 0.55,
       lineHeight: T.leading.relaxed,
       letterSpacing: T.tracking.normal,
     }}>
