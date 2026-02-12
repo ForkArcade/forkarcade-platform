@@ -15,10 +15,11 @@ export const T = {
   nodeColors: { scene: '#4a9eff', choice: '#ff9f43', condition: '#a55eea' },
 
   // Typography
-  font: "'Inter', 'Helvetica Neue', Helvetica, system-ui, sans-serif",
-  mono: "'JetBrains Mono', 'Fira Code', monospace",
+  font: "'Inter', sans-serif",
+  mono: "'JetBrains Mono', monospace",
   fontSize: { xs: 11, sm: 13, base: 14, md: 16, lg: 20, xl: 30 },
-  leading: { tight: 1.25, normal: 1.5, relaxed: 1.625 },
+  leading: { tight: 1.25, snug: 1.375, normal: 1.5, relaxed: 1.625 },
+  tracking: { tighter: '-0.02em', tight: '-0.01em', normal: '0', wide: '0.025em', wider: '0.05em', widest: '0.1em' },
   weight: { normal: 400, medium: 500, semibold: 600, bold: 700 },
 
   // Spacing — Fibonacci-inspired: 2 4 6 8 12 16 24 32 48 64

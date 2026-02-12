@@ -14,7 +14,7 @@ const navStyle = (isActive) => ({
   fontWeight: isActive ? T.weight.medium : T.weight.normal,
   color: isActive ? T.accentColor : T.text,
   textTransform: 'uppercase',
-  letterSpacing: 1,
+  letterSpacing: T.tracking.wider,
 })
 
 export default function App() {
@@ -34,7 +34,7 @@ export default function App() {
       <Toolbar
         left={
           <>
-            <Link to="/" style={{ textDecoration: 'none', color: T.accent, fontSize: T.fontSize.lg, fontWeight: T.weight.bold, letterSpacing: -0.5 }}>
+            <Link to="/" style={{ textDecoration: 'none', color: T.accent, fontSize: T.fontSize.lg, fontWeight: T.weight.bold, letterSpacing: T.tracking.tighter }}>
               ForkArcade
             </Link>
             <NavLink to="/" end style={({ isActive }) => navStyle(isActive)}>Games</NavLink>

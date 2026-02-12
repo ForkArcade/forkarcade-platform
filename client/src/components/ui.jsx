@@ -55,12 +55,12 @@ export function PageHeader({ children }) {
     <h2 style={{
       color: T.muted,
       fontSize: T.fontSize.xs,
-      fontFamily: T.font,
       fontWeight: T.weight.medium,
       textTransform: 'uppercase',
-      letterSpacing: 3,
-      margin: `${T.sp[4]}px 0 ${T.sp[7]}px`,   // 8 0 24
-      paddingBottom: T.sp[4],                     // 8
+      letterSpacing: T.tracking.widest,
+      lineHeight: T.leading.normal,
+      margin: `${T.sp[4]}px 0 ${T.sp[7]}px`,
+      paddingBottom: T.sp[4],
       borderBottom: `1px solid ${T.border}`,
     }}>
       {children}
@@ -71,13 +71,13 @@ export function PageHeader({ children }) {
 export function SectionHeading({ children }) {
   return (
     <h4 style={{
-      margin: `0 0 ${T.sp[4]}px`,   // 0 0 8
+      margin: `0 0 ${T.sp[4]}px`,
       color: T.muted,
       fontSize: T.fontSize.xs,
-      fontFamily: T.font,
       fontWeight: T.weight.medium,
       textTransform: 'uppercase',
-      letterSpacing: 2,
+      letterSpacing: T.tracking.wider,
+      lineHeight: T.leading.normal,
     }}>
       {children}
     </h4>
@@ -145,7 +145,8 @@ export function CardTitle({ children }) {
       fontSize: T.fontSize.base,
       fontWeight: T.weight.semibold,
       color: T.textBright,
-      lineHeight: T.leading.tight,
+      lineHeight: T.leading.snug,
+      letterSpacing: T.tracking.tight,
     }}>
       {children}
     </h3>
@@ -155,11 +156,12 @@ export function CardTitle({ children }) {
 export function CardDescription({ children }) {
   return (
     <p style={{
-      margin: `${T.sp[2]}px 0 0`,   // 4px top
+      margin: `${T.sp[2]}px 0 0`,
       fontSize: T.fontSize.sm,
       fontWeight: T.weight.normal,
       color: T.text,
-      lineHeight: T.leading.normal,
+      lineHeight: T.leading.relaxed,
+      letterSpacing: T.tracking.normal,
     }}>
       {children}
     </p>
@@ -222,7 +224,7 @@ export function TabBar({ tabs, active, onChange }) {
             fontFamily: T.font,
             fontWeight: active === t ? T.weight.medium : T.weight.normal,
             textTransform: 'uppercase',
-            letterSpacing: 1,
+            letterSpacing: T.tracking.wider,
           }}
         >
           {t}
