@@ -7,7 +7,7 @@ Platforma do tworzenia i grania w gry webowe publikowane na GitHub Pages.
 ```
 client/          React + Vite (port 5173)
 server/          Express + SQLite (port 8787)
-mcp/             MCP server — narzędzia dla Claude Code
+mcp/             MCP server (Python) — narzędzia dla Claude Code
 prompts/         Prompt library per typ gry
 .claude/skills/  Skile: new-game, publish
 ```
@@ -51,7 +51,7 @@ Dwie tabele: `users` (github_user_id, login, avatar) i `scores` (game_slug, scor
 - `/` → HomePage — katalog gier z GitHub API
 - `/play/:slug` → GamePage — iframe + taby (Leaderboard | Narrative)
 
-## MCP (mcp/src/index.js)
+## MCP (mcp/src/main.py)
 
 11 narzędzi:
 - **Workflow**: `list_templates`, `init_game`, `get_sdk_docs`, `get_game_prompt`, `validate_game`, `publish_game`
