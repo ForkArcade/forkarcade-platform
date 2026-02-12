@@ -1,288 +1,163 @@
 # Roguelike — Game Design Prompt
 
-Tworzysz grę typu Roguelike na platformę ForkArcade. Gra działa w przeglądarce, renderuje się na canvas, i komunikuje z platformą przez ForkArcade SDK.
+Tworzysz grę typu Roguelike na platformę ForkArcade. Gra używa multi-file architektury z silnikiem FA.
+
+## Architektura plików
+
+```
+forkarcade-sdk.js   — SDK platformy (nie modyfikuj)
+sprites.js          — generowany z _sprites.json (nie modyfikuj ręcznie)
+fa-engine.js        — ENGINE: game loop, event bus, state, registry (nie modyfikuj)
+fa-renderer.js      — ENGINE: canvas, layers, draw helpers (nie modyfikuj)
+fa-input.js         — ENGINE: keyboard/mouse, keybindings (nie modyfikuj)
+fa-audio.js         — ENGINE: Web Audio, dźwięki (nie modyfikuj)
+fa-narrative.js     — ENGINE: narrative engine (nie modyfikuj)
+data.js             — DANE GRY: definicje wrogów, spelli, itemów, floor'ów
+game.js             — LOGIKA GRY: dungeon gen, FOV, combat, turny, AI
+render.js           — RENDERING: mapa, entity, UI, overlay
+main.js             — ENTRY POINT: keybindings, wiring, ForkArcade.onReady
+```
+
+**Modyfikujesz tylko: `data.js`, `game.js`, `render.js`, `main.js`.**
 
 ## Kluczowe mechaniki
 
 ### Dungeon generation
-- Proceduralna generacja poziomu przy każdym wejściu
-- Algorytmy: BSP (binary space partitioning) dla pokoi + korytarzy, cellular automata dla jaskiń, drunkard walk dla organicznych tuneli
-- Elementy poziomu: podłoga, ściana, drzwi, schody w dół, pułapki
-- Każdy nowy poziom = trudniejszy (więcej wrogów, silniejsi, mniej leczenia)
+- Proceduralna generacja (BSP / cellular automata / drunkard walk)
+- Tile-based: wall, floor, stairs
+- Każdy nowy floor = trudniejszy
 
 ### Ruch i eksploracja
-- Tile-based, turowy — gracz rusza się o 1 pole, potem wrogowie
-- 4-directional (prostsze) lub 8-directional
-- Fog of war: gracz widzi tylko okolice (FOV radius 5-7 tiles)
-- Odkryte ale niewidoczne pola — szare/ciemne
-
-### FOV (Field of View)
-- Raycasting od pozycji gracza
-- Algorytm shadowcasting lub prosty BFS z blokadą ścian
-- Widoczne tile = pełny kolor, odkryte = przyciemnione, nieodkryte = czarne
+- Turowy: gracz rusza się → wrogowie reagują → render
+- FOV: raycasting, radius 5-7 tile'i
+- Odkryte ale niewidoczne = przyciemnione
 
 ### Combat
-- Bump-to-attack: wejdź na pole z wrogiem = atak
-- Prosta formuła: damage = atk - def + random(-1, 2)
-- Wrogowie: różne typy (melee, ranged, special)
-- Wrogowie poruszają się w stronę gracza gdy go widzą (pathfinding A* lub prosty chase)
-
-### Items i inventory
-- Pickup: wejdź na pole z przedmiotem
-- Typy: weapon (zmiana ATK), armor (zmiana DEF), potion (heal), scroll (special effect)
-- Inventory: prosta lista, limit 10-15 slotów
-- Use/equip/drop z klawiatury lub kliknięcia
+- Bump-to-attack
+- Formuła: `damage = atk - def + FA.rand(-1, 2)`
+- Wrogowie definiowani przez behavior w registry
 
 ### Permadeath
-- Śmierć = koniec runu → ForkArcade.submitScore()
-- Brak save/load — każdy run od zera
-- Meta-progression opcjonalna (np. unlock nowych klas)
+- Śmierć = koniec runu → `ForkArcade.submitScore()`
 
-## Scoring dla platformy
-Wywołaj `ForkArcade.submitScore(score)` po śmierci gracza:
+## Scoring
 ```
-score = (dungeon_depth * 100) + (enemies_killed * 10) + (gold_collected) + (items_found * 25)
-```
-Im głębiej zszedł, więcej zabił, więcej zebrał = lepszy score.
-
-## Struktura kodu
-
-```
-game.js
-├── DungeonGenerator: generuje 2D array (0=wall, 1=floor, 2=door, 3=stairs)
-├── Entity: base class — pos, hp, atk, def, sprite/char
-│   ├── Player: inventory, fov, input handling
-│   └── Enemy: AI behavior (chase, patrol, flee)
-├── FOV: shadowcasting/raycasting — zwraca Set widocznych pól
-├── GameMap: 2D array + entities + items na mapie
-├── TurnManager: player acts → all enemies act → next turn
-├── Renderer: canvas — tiles, entities, fog, UI
-└── MessageLog: "You hit the goblin for 3 damage", "You found a potion"
+score = (floor * 100) + (kills * 10) + gold + (items * 25) + (boss ? 500 : 0)
 ```
 
-### Game loop pattern (turowy)
+## Jak dodawać zawartość (data.js)
+
+### Nowy wróg
 ```js
-// Nie requestAnimationFrame loop — turowy!
-// Render po każdej akcji
+FA.register('enemies', 'shadow_drake', {
+  name: 'Shadow Drake', char: 'D', color: '#808',
+  hp: 35, atk: 7, def: 2, xp: 25,
+  behavior: 'ranged',
+  lore: 'Smok cieni polujący w ciemnościach'
+});
+```
 
-function playerAction(direction) {
-  const target = getTargetTile(player.pos, direction)
-
-  if (isWall(target)) return
-  if (hasEnemy(target)) {
-    attack(player, getEnemy(target))
-  } else {
-    player.move(target)
-    pickupItems(target)
+### Nowy spell
+```js
+FA.register('spells', 'Chain Lightning', {
+  name: 'Chain Lightning', cost: 5, type: 'chain', range: 6,
+  sound: 'spell', effectColor: '#48f',
+  effect: function(caster, targets, state) {
+    var dmg = 6;
+    targets.forEach(function(e) { e.hp -= dmg; });
+    return { msg: 'Chain Lightning!', color: '#48f' };
   }
-
-  if (isStairs(target)) nextLevel()
-
-  // Po akcji gracza: tura wrogów
-  enemies.forEach(e => e.takeTurn())
-
-  updateFOV()
-  render()
-  checkDeath()
-}
-
-document.addEventListener('keydown', (e) => {
-  const dirs = { ArrowUp: [0,-1], ArrowDown: [0,1], ArrowLeft: [-1,0], ArrowRight: [1,0] }
-  if (dirs[e.key]) playerAction(dirs[e.key])
-})
+});
 ```
 
-### Dungeon generation (BSP)
+### Nowy item
 ```js
-function generateDungeon(width, height) {
-  const map = Array(height).fill(null).map(() => Array(width).fill(0)) // 0 = wall
-  const rooms = []
+FA.register('items', 'fire_ring', {
+  name: 'Ring of Fire', char: 'o', color: '#f84',
+  type: 'accessory', atk: 3,
+  description: 'Pierścień płomieni — +3 ATK'
+});
+```
 
-  function split(x, y, w, h, depth) {
-    if (depth === 0 || w < 8 || h < 8) {
-      // Carve room with padding
-      const rx = x + 1 + Math.floor(Math.random() * 2)
-      const ry = y + 1 + Math.floor(Math.random() * 2)
-      const rw = w - 3 - Math.floor(Math.random() * 2)
-      const rh = h - 3 - Math.floor(Math.random() * 2)
-      for (let j = ry; j < ry + rh; j++)
-        for (let i = rx; i < rx + rw; i++)
-          map[j][i] = 1 // floor
-      rooms.push({ x: rx, y: ry, w: rw, h: rh })
-      return
-    }
-    // Split horizontally or vertically
-    if (Math.random() > 0.5 && w > 8) {
-      const sx = x + 4 + Math.floor(Math.random() * (w - 8))
-      split(x, y, sx - x, h, depth - 1)
-      split(sx, y, w - (sx - x), h, depth - 1)
-    } else {
-      const sy = y + 4 + Math.floor(Math.random() * (h - 8))
-      split(x, y, w, sy - y, depth - 1)
-      split(x, sy, w, h - (sy - y), depth - 1)
-    }
+### Nowy floor
+```js
+FA.register('floors', 3, {
+  name: 'Zbrojownia',
+  enemies: [['phantom', 1], ['mage', 2], ['armor', 2]],
+  ambientMessages: ['Metal szczęka...', 'Zbroja się obraca...'],
+  encounters: ['ghost-knight']
+});
+```
+
+### Nowe zachowanie wroga (behavior)
+```js
+FA.register('behaviors', 'ranged', {
+  act: function(enemy, state) {
+    var p = state.player;
+    var dist = Math.abs(p.x - enemy.x) + Math.abs(p.y - enemy.y);
+    if (dist <= 1) return { type: 'flee', target: p };
+    if (dist <= 3) return { type: 'ranged_attack', target: p };
+    return { type: 'chase', target: p };
   }
-
-  split(0, 0, width, height, 4)
-  connectRooms(map, rooms) // corridors between room centers
-  return { map, rooms }
-}
+});
 ```
 
-## Canvas rendering tips
-- Tile size: 16x16 lub 24x24 px
-- Ściany: ciemny kolor (#333), podłoga: jasny (#ccc lub #aa8855)
-- Gracz: @ symbol lub kolorowy kwadrat
-- Wrogowie: litery (G=goblin, S=skeleton, D=dragon) w kolorach
-- FOV: widoczne = pełna jasność, odkryte = 30% opacity, nieznane = czarne
-- UI: HP bar na górze, message log na dole (ostatnie 5 wiadomości)
-- Minimap opcjonalna: mały widok całego poziomu w rogu
+## Event bus — kluczowe eventy
 
-## System sprite'ów (pixel art)
+| Event | Payload | Kiedy |
+|-------|---------|-------|
+| `input:action` | `{ action, key }` | Gracz nacisnął klawisz |
+| `entity:damaged` | `{ entity, damage, attacker }` | Ktoś otrzymał obrażenia |
+| `entity:killed` | `{ entity, killer }` | Ktoś zginął |
+| `item:pickup` | `{ item, entity }` | Podniesiono przedmiot |
+| `floor:changed` | `{ floor, name }` | Nowe piętro |
+| `game:over` | `{ victory, score }` | Koniec gry |
+| `message` | `{ text, color }` | Wiadomość do logu |
+| `narrative:transition` | `{ from, to, event }` | Zmiana node'a narracji |
 
-Gra może używać pixel art sprite'ów zamiast tekstu/geometrii. Sprite'y trzymane w `_sprites.json`, wygenerowany `sprites.js` udostępnia `drawSprite()` i `getSprite()`.
+## Rendering (render.js)
 
-### Tworzenie sprite'ów
-Użyj narzędzia `get_asset_guide` aby poznać wymagane sprite'y i paletę kolorów.
-Użyj narzędzia `create_sprite` aby tworzyć sprite'y — waliduje grid i generuje sprites.js.
-
-### Format
-```json
-{
-  "w": 8, "h": 8,
-  "palette": { "1": "#a86", "2": "#d9a", "3": "#fff" },
-  "pixels": [
-    "..1..1..",
-    ".11..11.",
-    ".122221.",
-    "11233211",
-    "11222211",
-    ".112211.",
-    ".1....1.",
-    ".1....1."
-  ]
-}
-```
-
-### Wzorzec integracji (fallback na tekst)
+Używaj layer system:
 ```js
-// W renderze — sprite z fallbackiem na tekst
-var sprite = typeof getSprite === 'function' && getSprite('enemies', e.type)
-if (sprite) {
-  drawSprite(ctx, sprite, sx, sy, T)
-} else {
-  ctx.fillText(e.char, sx + T/2, sy + T/2)
-}
+FA.addLayer('map', function(ctx) {
+  // rysuj tile'e z FOV
+}, 0);
+
+FA.addLayer('entities', function(ctx) {
+  // rysuj wrogów i gracza — FA.draw.sprite z fallbackiem
+}, 10);
+
+FA.addLayer('ui', function(ctx) {
+  // HP/MP bar, floor info, spells — FA.draw.bar, FA.draw.text
+}, 30);
 ```
 
-Pamiętaj dodać `<script src="sprites.js"></script>` w index.html przed game.js.
+## Narrative
 
-## Input
-- Klawiatura: strzałki/WASD = ruch, I = inventory, G = grab, Q = quaff potion
-- Mouse/touch: klik na sąsiedni tile = ruch/atak
-- Numpad opcjonalny (8-dir movement)
+Używaj `FA.narrative` (z engine):
+```js
+FA.narrative.init({
+  startNode: 'surface',
+  variables: { corruption: 0, npcs_saved: 0, cursed: false },
+  graph: { nodes: [...], edges: [...] }
+});
+
+FA.narrative.transition('dungeon-1', 'Zszedł na poziom 1');
+FA.narrative.setVar('corruption', 3, 'Dotknął mrocznego artefaktu');
+```
+
+Typy nodów: `scene`, `choice`, `condition`.
+
+## Sprite'y
+
+Użyj `create_sprite` i `get_asset_guide` z MCP tools. Integracja:
+```js
+FA.draw.sprite('enemies', 'rat', x, y, tileSize, 'r', '#a86')
+```
+Ostatnie 2 argumenty = fallback char i kolor gdy brak sprite'a.
 
 ## Czego unikać
-- Nie rób real-time — turowy system jest prostszy i bardziej strategiczny
-- Nie rób skomplikowanego crafting systemu — pickup & use wystarczy
-- Nie rób wielu klas postaci na start — jedna postać, dobrze zbalansowana
-- Nie rób animacji między turami — instant movement, szybki feedback
-- Skup się na core loop: explore → fight → loot → descend → die → score
-
-## Warstwa narracji
-
-Platforma ForkArcade wyświetla w czasie rzeczywistym panel narracyjny obok gry — graf scenariusza, zmienne fabularne, log zdarzeń. Gra raportuje stan narracji przez SDK.
-
-### Zmienne fabularne
-Roguelike'i mogą mieć zmienne wpływające na świat i narrację:
-```js
-const narrative = {
-  variables: { corruption: 0, npcs_saved: 0, cursed: false },
-  currentNode: 'surface',
-  graph: { nodes: [], edges: [] },
-};
-```
-
-Zmienne numeryczne (0-10) są wyświetlane jako paski postępu. Boolean jako checkmarks.
-
-### Graf narracyjny
-Graf odzwierciedla odkrywanie warstw dungeonu i kluczowe zdarzenia:
-```js
-graph: {
-  nodes: [
-    { id: 'surface', label: 'Powierzchnia', type: 'scene' },
-    { id: 'dungeon-1', label: 'Płytki dungeon', type: 'scene' },
-    { id: 'npc-encounter', label: 'Uwięziony NPC', type: 'choice' },
-    { id: 'deep-dungeon', label: 'Głębiny', type: 'scene' },
-    { id: 'cond-corruption', label: 'Corruption < 5?', type: 'condition' },
-    { id: 'boss-lair', label: 'Legowisko bossa', type: 'scene' },
-  ],
-  edges: [
-    { from: 'surface', to: 'dungeon-1' },
-    { from: 'dungeon-1', to: 'npc-encounter' },
-    { from: 'npc-encounter', to: 'deep-dungeon', label: 'Uratuj' },
-    { from: 'deep-dungeon', to: 'cond-corruption' },
-    { from: 'cond-corruption', to: 'boss-lair', label: 'Tak' },
-  ]
-}
-```
-
-Typy nodów: `scene` (prostokąt), `choice` (romb), `condition` (trójkąt).
-
-### Raportowanie stanu
-Wywołuj `ForkArcade.updateNarrative()` przy kluczowych momentach:
-```js
-// Wejście na nowy poziom
-narrative.currentNode = 'dungeon-' + depth;
-ForkArcade.updateNarrative({
-  variables: narrative.variables,
-  currentNode: narrative.currentNode,
-  graph: narrative.graph,
-  event: 'Zszedł na poziom ' + depth
-});
-
-// Zdarzenie fabularne
-narrative.variables.npcs_saved++;
-ForkArcade.updateNarrative({
-  variables: narrative.variables,
-  currentNode: narrative.currentNode,
-  graph: narrative.graph,
-  event: 'Uratowano NPC na poziomie ' + depth
-});
-```
-
-### Wiązanie mechaniki z narracją
-- Wejście na schody w dół → zmiana node'a w grafie
-- Spotkanie z NPC → node typu choice (uratuj / zignoruj)
-- Podniesienie przeklętego przedmiotu → corruption++
-- Pokonanie bossa → odblokowanie ścieżki
-- Śmierć → zakończenie narracji (event: jak daleko zaszedł)
-
-### Wzorzec narrative engine
-```js
-const narrative = {
-  variables: { corruption: 0, npcs_saved: 0, cursed: false },
-  currentNode: 'surface',
-  graph: { nodes: [...], edges: [...] },
-
-  transition(nodeId, event) {
-    this.currentNode = nodeId;
-    ForkArcade.updateNarrative({
-      variables: this.variables,
-      currentNode: this.currentNode,
-      graph: this.graph,
-      event: event
-    });
-  },
-
-  setVar(name, value, reason) {
-    this.variables[name] = value;
-    ForkArcade.updateNarrative({
-      variables: this.variables,
-      currentNode: this.currentNode,
-      graph: this.graph,
-      event: reason || (name + ' = ' + value)
-    });
-  }
-};
-```
+- Real-time zamiast turowego
+- Skomplikowany inventory/crafting
+- Animacje między turami (instant feedback)
+- Modyfikowanie plików ENGINE (fa-*.js)

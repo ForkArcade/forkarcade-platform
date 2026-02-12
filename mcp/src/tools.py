@@ -130,4 +130,15 @@ TOOLS = [
             "required": ["path"],
         },
     },
+    {
+        "name": "update_engine",
+        "description": "Aktualizuje pliki engine (fa-engine.js, fa-renderer.js, fa-input.js, fa-audio.js, fa-narrative.js) do najnowszej wersji z platformy",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "path": {"type": "string", "description": "Ścieżka do katalogu gry"},
+            },
+            "required": ["path"],
+        },
+    },
 ]

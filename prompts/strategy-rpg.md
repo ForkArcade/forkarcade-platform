@@ -1,233 +1,164 @@
 # Strategy RPG — Game Design Prompt
 
-Tworzysz grę typu Strategy RPG na platformę ForkArcade. Gra działa w przeglądarce, renderuje się na canvas, i komunikuje z platformą przez ForkArcade SDK.
+Tworzysz grę typu Strategy RPG na platformę ForkArcade. Gra używa multi-file architektury z silnikiem FA.
+
+## Architektura plików
+
+```
+forkarcade-sdk.js   — SDK platformy (nie modyfikuj)
+sprites.js          — generowany z _sprites.json (nie modyfikuj ręcznie)
+fa-engine.js        — ENGINE: game loop, event bus, state, registry (nie modyfikuj)
+fa-renderer.js      — ENGINE: canvas, layers, draw helpers (nie modyfikuj)
+fa-input.js         — ENGINE: keyboard/mouse, keybindings (nie modyfikuj)
+fa-audio.js         — ENGINE: Web Audio, dźwięki (nie modyfikuj)
+fa-narrative.js     — ENGINE: narrative engine (nie modyfikuj)
+data.js             — DANE GRY: definicje jednostek, ability, terenu, bitew
+game.js             — LOGIKA GRY: battle setup, turny, combat, AI
+render.js           — RENDERING: hex/grid, jednostki, UI panel, overlay
+main.js             — ENTRY POINT: keybindings, wiring, ForkArcade.onReady
+```
+
+**Modyfikujesz tylko: `data.js`, `game.js`, `render.js`, `main.js`.**
 
 ## Kluczowe mechaniki
 
 ### System walki
 - Turowy: player phase → enemy phase
-- Grid-based (hex lub square) LUB menu-based (jak klasyczne JRPG)
-- Każda jednostka ma: HP, ATK, DEF, SPD (speed decyduje o kolejności)
-- Typy ataków: melee (sąsiednie pola), ranged (dystans), magic (AOE)
-- Terrain modifiers: las (+DEF), góra (blokada), woda (spowolnienie)
+- Grid-based (hex lub square)
+- Każda jednostka: HP, ATK, DEF, SPD, range, move
+- Terrain modifiers: las (+DEF), góra (blokada), woda (niedostępna)
 
 ### Jednostki
 - Klasy: Warrior (tank), Archer (range), Mage (AOE), Healer (support)
-- Każda klasa ma 2-3 unikalne umiejętności
-- Jednostki mają level i XP — zdobywają za pokonanie wroga
-- Recruitment: gracz buduje drużynę z dostępnych jednostek
+- Każda klasa ma 2 unikalne ability
+- Definiowane w registry jako data
 
 ### Progresja
-- Seria bitew (levels/chapters)
-- Między bitwami: equip, heal, recruit
-- Difficulty scaling: więcej wrogów, silniejsi, nowe typy
+- Seria bitew (chapters)
+- Difficulty scaling: więcej wrogów, nowe typy
 
 ### Win/Lose
-- Win: pokonaj wszystkich wrogów LUB spełnij cel misji (dotarcie do punktu, ochrona VIP)
+- Win: zniszcz zamek / pokonaj wszystkich
 - Lose: wszyscy gracze pokonani
-- Game Over → ForkArcade.submitScore()
+- Koniec → `ForkArcade.submitScore()`
 
-## Scoring dla platformy
-Wywołaj `ForkArcade.submitScore(score)` po zakończeniu gry. Score może być obliczony jako:
+## Scoring
 ```
-score = (chapters_completed * 1000) + (enemies_killed * 10) + (units_survived * 500) - (turns_total * 5)
-```
-Im więcej rozdziałów, mniej tur, więcej przetrwałych jednostek = lepszy score.
-
-## Struktura kodu
-
-```
-game.js
-├── Game state machine: MENU → BATTLE_SETUP → PLAYER_TURN → ENEMY_TURN → BATTLE_END → INTERMISSION
-├── Grid/Board: 2D array, tile types, unit positions
-├── Unit class: stats, abilities, position, AI (for enemies)
-├── BattleManager: turn order, damage calc, win/lose check
-├── Renderer: canvas drawing — grid, units, UI, animations
-└── InputHandler: click/tap on grid → select unit → select action → select target
+score = (chapters * 1000) + (kills * 10) + (survived * 500) - (turns * 5)
 ```
 
-### Game loop pattern
+## Jak dodawać zawartość (data.js)
+
+### Nowy typ jednostki
 ```js
-const STATE = { MENU: 0, BATTLE: 1, PLAYER_TURN: 2, ENEMY_TURN: 3, ANIMATION: 4, RESULT: 5 }
-let state = STATE.MENU
+FA.register('unitTypes', 'paladin', {
+  name: 'Paladin', char: 'P',
+  hp: 35, atk: 8, def: 10, spd: 2,
+  range: 1, move: 2,
+  abilities: ['holyStrike', 'divineShield']
+});
+```
 
-function update() {
-  switch(state) {
-    case STATE.PLAYER_TURN: handlePlayerInput(); break
-    case STATE.ENEMY_TURN: runEnemyAI(); break
-    case STATE.ANIMATION: updateAnimations(); break
-    case STATE.RESULT: showResult(); break
+### Nowy ability
+```js
+FA.register('abilities', 'holyStrike', {
+  name: 'Holy Strike',
+  targetType: 'enemy',
+  range: 1,
+  effect: function(attacker, target, state) {
+    var dmg = attacker.atk + 5 - target.def;
+    target.hp -= Math.max(1, dmg);
+    return { msg: 'Holy Strike!', color: '#ff0' };
   }
-}
-
-function render() {
-  drawGrid()
-  drawUnits()
-  drawUI()
-  drawAnimations()
-}
-
-function gameLoop() {
-  update()
-  render()
-  requestAnimationFrame(gameLoop)
-}
+});
 ```
 
-### Damage formula
+### Nowy teren
 ```js
-function calcDamage(attacker, defender, terrain) {
-  const raw = attacker.atk - defender.def * terrain.defBonus
-  return Math.max(1, Math.floor(raw * (0.9 + Math.random() * 0.2)))
-}
+FA.register('terrain', 'swamp', {
+  name: 'Swamp', color: '#4a6a3a',
+  moveCost: 2, defBonus: 0.8
+});
 ```
 
-## Canvas rendering tips
-- Grid: rysuj tile po tile, kolory/patterny per typ terenu
-- Jednostki: kolorowe kółka lub prostokąty z literą klasy (W/A/M/H)
-- Zaznaczenie: highlight pola na które unit może się ruszyć (BFS po gridzie)
-- UI: panel boczny ze statami zaznaczonej jednostki
-- Animacje: proste tweeny (unit przesuwa się z pola A do B)
-- HP bar: mały pasek nad jednostką
-
-## System sprite'ów (pixel art)
-
-Gra może używać pixel art sprite'ów zamiast geometrii. Sprite'y trzymane w `_sprites.json`, wygenerowany `sprites.js` udostępnia `drawSprite()` i `getSprite()`.
-
-### Tworzenie sprite'ów
-Użyj narzędzia `get_asset_guide` aby poznać wymagane sprite'y i paletę kolorów.
-Użyj narzędzia `create_sprite` aby tworzyć sprite'y — waliduje grid i generuje sprites.js.
-
-### Format
-```json
-{
-  "w": 8, "h": 8,
-  "palette": { "1": "#4a4", "2": "#286028" },
-  "pixels": [
-    ".11..11.",
-    "11111111",
-    "12211221",
-    "12211221",
-    "11111111",
-    ".111111.",
-    "..1111..",
-    "..1..1.."
-  ]
-}
-```
-
-### Wzorzec integracji (fallback na geometrię)
+### Nowa bitwa
 ```js
-// W renderze — sprite z fallbackiem na geometrię
-var sprite = typeof getSprite === 'function' && getSprite('units', unit.className)
-if (sprite) {
-  drawSprite(ctx, sprite, sx, sy, tileSize)
-} else {
-  ctx.fillStyle = unit.team === 'player' ? '#44c' : '#c44'
-  ctx.fillRect(sx + 2, sy + 2, tileSize - 4, tileSize - 4)
-  ctx.fillStyle = '#fff'
-  ctx.fillText(unit.char, sx + tileSize/2, sy + tileSize/2)
-}
+FA.register('battles', 2, {
+  name: 'Forest Stronghold',
+  enemyTypes: ['warrior', 'archer', 'mage', 'warrior'],
+  castlePos: { col: 7, row: 0 },
+  terrainBias: { forest: 0.25, water: 0.05 }
+});
 ```
 
-Pamiętaj dodać `<script src="sprites.js"></script>` w index.html przed game.js.
+## Event bus — kluczowe eventy
+
+| Event | Payload | Kiedy |
+|-------|---------|-------|
+| `input:click` | `{ x, y }` | Klik na canvas |
+| `input:action` | `{ action, key }` | Klawisz akcji |
+| `entity:damaged` | `{ entity, damage, attacker }` | Obrażenia |
+| `entity:killed` | `{ entity, killer }` | Jednostka pokonana |
+| `turn:player` | `{}` | Tura gracza |
+| `turn:enemy` | `{}` | Tura wroga |
+| `battle:end` | `{ victory }` | Koniec bitwy |
+| `game:over` | `{ victory, score }` | Koniec gry |
+| `message` | `{ text, color }` | Floating message |
+
+## Rendering (render.js)
+
+Używaj layer system i FA.draw helpers:
+```js
+FA.addLayer('grid', function(ctx) {
+  // rysuj hex grid — FA.draw.hex(cx, cy, size, fill, stroke)
+}, 0);
+
+FA.addLayer('units', function(ctx) {
+  // rysuj jednostki — FA.draw.sprite + FA.draw.bar (HP)
+}, 10);
+
+FA.addLayer('highlights', function(ctx) {
+  // reachable tiles, attack targets
+}, 5);
+
+FA.addLayer('ui', function(ctx) {
+  // panel boczny ze statami, przyciski akcji
+}, 30);
+```
+
+## Hex math (game.js)
+```js
+function hexToPixel(col, row) { /* offset coords → pixel */ }
+function pixelToHex(px, py) { /* pixel → offset coords */ }
+function hexDistance(c1, r1, c2, r2) { /* cube distance */ }
+function hexNeighbors(col, row) { /* 6 sąsiadów */ }
+```
+
+## Narrative
+
+Używaj `FA.narrative` (z engine):
+```js
+FA.narrative.init({
+  startNode: 'chapter-1',
+  variables: { morale: 5, battles_won: 0, casualties: 0 },
+  graph: { nodes: [...], edges: [...] }
+});
+
+FA.narrative.transition('chapter-2', 'Advancing to Forest Stronghold');
+FA.narrative.setVar('morale', 7, 'Victory boost');
+```
+
+Typy nodów: `scene`, `choice`, `condition`.
+
+## Sprite'y
+
+Użyj `create_sprite` i `get_asset_guide`. Integracja:
+```js
+FA.draw.sprite('units', 'warrior', x - size, y - size, size * 2, 'W', '#44c')
+```
 
 ## Czego unikać
-- Nie rób inventory z drag&drop — prosty equip z listy
-- Nie rób cutscenes — krótkie teksty przed bitwą
-- Skup się na core loop: wybierz unit → rusz → atakuj → następna tura
-
-## Warstwa narracji
-
-Platforma ForkArcade wyświetla w czasie rzeczywistym panel narracyjny obok gry — graf scenariusza, zmienne fabularne, log zdarzeń. Gra raportuje stan narracji przez SDK.
-
-### Zmienne fabularne
-Definiuj zmienne które wpływają na fabułę i są widoczne dla gracza:
-```js
-const narrative = {
-  variables: { morale: 5, betrayals: 0, alliance_formed: false },
-  currentNode: 'chapter-1',
-  graph: { nodes: [], edges: [] },
-};
-```
-
-Zmienne numeryczne (0-10) są wyświetlane jako paski postępu. Boolean jako checkmarks.
-
-### Graf narracyjny
-Graf to state machine — nodes to sceny/rozdziały, edges to przejścia:
-```js
-graph: {
-  nodes: [
-    { id: 'chapter-1', label: 'Obrona wioski', type: 'scene' },
-    { id: 'choice-ally', label: 'Sojusz czy zdrada?', type: 'choice' },
-    { id: 'path-loyal', label: 'Lojalny sojusznik', type: 'scene' },
-    { id: 'path-betray', label: 'Zdrada', type: 'scene' },
-    { id: 'cond-morale', label: 'Morale > 5?', type: 'condition' },
-  ],
-  edges: [
-    { from: 'chapter-1', to: 'choice-ally' },
-    { from: 'choice-ally', to: 'path-loyal', label: 'Sojusz' },
-    { from: 'choice-ally', to: 'path-betray', label: 'Zdrada' },
-    { from: 'path-loyal', to: 'cond-morale' },
-  ]
-}
-```
-
-Typy nodów: `scene` (prostokąt), `choice` (romb), `condition` (trójkąt).
-
-### Raportowanie stanu
-Wywołuj `ForkArcade.updateNarrative()` przy zmianie sceny, zmiennej lub ważnym zdarzeniu:
-```js
-// Przejście do nowego rozdziału
-narrative.currentNode = 'chapter-2';
-ForkArcade.updateNarrative({
-  variables: narrative.variables,
-  currentNode: narrative.currentNode,
-  graph: narrative.graph,
-  event: 'Rozpoczęto Rozdział 2: Oblężenie'
-});
-
-// Zmiana zmiennej po decyzji gracza
-narrative.variables.morale += 2;
-ForkArcade.updateNarrative({
-  variables: narrative.variables,
-  currentNode: narrative.currentNode,
-  graph: narrative.graph,
-  event: 'morale +2 (gracz obronił cywili)'
-});
-```
-
-### Wiązanie mechaniki z narracją
-- Wynik bitwy → zmiana node'a (wygrana → path A, przegrana → path B)
-- Decyzje przed bitwą (np. kogo wysłać) → zmiana zmiennych
-- Utrata kluczowej jednostki → zdarzenie fabularne
-- Znalezienie artefaktu → odblokowanie ścieżki w grafie
-
-### Wzorzec narrative engine
-```js
-const narrative = {
-  variables: { morale: 5, betrayals: 0, has_artifact: false },
-  currentNode: 'chapter-1',
-  graph: { nodes: [...], edges: [...] },
-
-  transition(nodeId, event) {
-    this.currentNode = nodeId;
-    ForkArcade.updateNarrative({
-      variables: this.variables,
-      currentNode: this.currentNode,
-      graph: this.graph,
-      event: event
-    });
-  },
-
-  setVar(name, value, reason) {
-    this.variables[name] = value;
-    ForkArcade.updateNarrative({
-      variables: this.variables,
-      currentNode: this.currentNode,
-      graph: this.graph,
-      event: reason || (name + ' = ' + value)
-    });
-  }
-};
-```
+- Drag & drop inventory
+- Cutscenes — krótkie teksty przed bitwą
+- Modyfikowanie plików ENGINE (fa-*.js)
+- Skup się na: wybierz unit → rusz → atakuj → następna tura

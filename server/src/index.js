@@ -32,10 +32,9 @@ const banner = [
   '      █▀█ █▀▄ █▄▄ █▀█ █▄▀ ██▄' + R,
   '',
   `  ${Y}API${R}  http://localhost:${process.env.PORT}`,
-  `  ${Y}SDK${R}  http://localhost:${process.env.PORT}/sdk/forkarcade-sdk.js`,
   '',
-  `  ${D}New game:${R}  claude ${D}then${R} /new-game`,
-  `  ${D}Edit game:${R} cd games/<slug> ${D}then${R} claude`,
+  `  ${D}Nowa gra:${R}     cd forkarcade-platform ${D}&&${R} claude ${D}then${R} /new-game`,
+  `  ${D}Edycja gry:${R}   cd ../games/<slug> ${D}&&${R} claude`,
   '',
 ]
 
