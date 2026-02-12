@@ -7,13 +7,11 @@ import App from './App'
 const params = new URLSearchParams(window.location.search)
 const redirectPath = params.get('p')
 if (redirectPath) {
-  const base = import.meta.env.BASE_URL.replace(/\/$/, '')
-  const cleaned = redirectPath.startsWith(base) ? redirectPath.slice(base.length) : redirectPath
-  window.history.replaceState(null, '', base + (cleaned || '/'))
+  window.history.replaceState(null, '', redirectPath)
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(
-  <BrowserRouter basename={import.meta.env.BASE_URL}>
+  <BrowserRouter>
     <App />
   </BrowserRouter>
 )
