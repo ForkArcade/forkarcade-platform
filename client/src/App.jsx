@@ -34,8 +34,11 @@ export default function App() {
       <Toolbar
         left={
           <>
-            <Link to="/" style={{ textDecoration: 'none', color: T.accent, fontSize: T.fontSize.lg, fontWeight: T.weight.bold, letterSpacing: T.tracking.tighter }}>
-              ForkArcade
+            <Link to="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: T.sp[3] }}>
+              <img src="/logo.png" alt="" width={28} height={28} style={{ imageRendering: 'pixelated' }} />
+              <span style={{ color: T.accent, fontSize: T.fontSize.lg, fontWeight: T.weight.bold, letterSpacing: T.tracking.tighter }}>
+                ForkArcade
+              </span>
             </Link>
             <NavLink to="/" end style={({ isActive }) => navStyle(isActive)}>Games</NavLink>
             <NavLink to="/templates" style={({ isActive }) => navStyle(isActive)}>Templates</NavLink>
@@ -63,6 +66,29 @@ export default function App() {
           <Route path="/play/:slug" element={<GamePage user={user} />} />
         </Routes>
       </div>
+      <footer style={{
+        borderTop: `1px solid ${T.border}`,
+        padding: `${T.sp[6]}px ${T.sp[7]}px`,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: T.sp[3] }}>
+          <img src="/logo.png" alt="" width={20} height={20} style={{ imageRendering: 'pixelated', opacity: 0.5 }} />
+          <span style={{ fontSize: T.fontSize.xs, color: T.muted, letterSpacing: T.tracking.wide }}>
+            ForkArcade
+          </span>
+        </div>
+        <div style={{ display: 'flex', gap: T.sp[5], fontSize: T.fontSize.xs }}>
+          <a href="https://github.com/ForkArcade" target="_blank" rel="noopener noreferrer" style={{ color: T.muted, textDecoration: 'none' }}>
+            GitHub
+          </a>
+          <span style={{ color: T.border }}>|</span>
+          <span style={{ color: T.muted }}>
+            Built with Claude Code
+          </span>
+        </div>
+      </footer>
     </div>
   )
 }
