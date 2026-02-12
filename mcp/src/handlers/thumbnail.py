@@ -25,21 +25,28 @@ def create_thumbnail(args):
     game_path = _validate_game_path(args["path"])
     palette = args["palette"]
     pixels = args["pixels"]
+    scale = args.get("scale", 1)
+
+    if not isinstance(scale, int) or scale < 1 or scale > 8:
+        return json.dumps({"error": "scale must be an integer 1-8"})
 
     if not isinstance(palette, dict) or len(palette) == 0:
         return json.dumps({"error": "palette must be a non-empty object mapping chars to hex colors"})
 
-    if not isinstance(pixels, list) or len(pixels) != THUMBNAIL_HEIGHT:
+    expected_w = THUMBNAIL_WIDTH * scale
+    expected_h = THUMBNAIL_HEIGHT * scale
+
+    if not isinstance(pixels, list) or len(pixels) != expected_h:
         return json.dumps({
-            "error": f"Expected {THUMBNAIL_HEIGHT} rows, got {len(pixels) if isinstance(pixels, list) else 0}"
+            "error": f"Expected {expected_h} rows (scale={scale}), got {len(pixels) if isinstance(pixels, list) else 0}"
         })
 
     for i, row in enumerate(pixels):
         if not isinstance(row, str):
             return json.dumps({"error": f"Row {i} must be a string"})
-        if len(row) != THUMBNAIL_WIDTH:
+        if len(row) != expected_w:
             return json.dumps({
-                "error": f"Row {i} has {len(row)} chars, expected {THUMBNAIL_WIDTH}"
+                "error": f"Row {i} has {len(row)} chars, expected {expected_w} (scale={scale})"
             })
 
     # Parse palette
@@ -56,18 +63,22 @@ def create_thumbnail(args):
         except (ValueError, IndexError):
             return json.dumps({"error": f"Invalid hex color for '{char}': #{hex_color}"})
 
-    # Build image
-    img = Image.new("RGB", (THUMBNAIL_WIDTH, THUMBNAIL_HEIGHT), (0, 0, 0))
+    # Build image at scale resolution
+    img = Image.new("RGB", (expected_w, expected_h), (0, 0, 0))
     for y, row in enumerate(pixels):
         for x, ch in enumerate(row):
             if ch in color_map:
                 img.putpixel((x, y), color_map[ch])
+
+    # Downscale with LANCZOS antialiasing
+    if scale > 1:
+        img = img.resize((THUMBNAIL_WIDTH, THUMBNAIL_HEIGHT), Image.LANCZOS)
 
     out_path = game_path / "_thumbnail.png"
     img.save(out_path)
 
     return json.dumps({
         "ok": True,
-        "message": f"Thumbnail saved ({THUMBNAIL_WIDTH}x{THUMBNAIL_HEIGHT}, {len(palette)} colors)",
+        "message": f"Thumbnail saved ({THUMBNAIL_WIDTH}x{THUMBNAIL_HEIGHT}, scale={scale}, {len(palette)} colors)",
         "path": str(out_path),
     })

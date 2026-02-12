@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams } from 'react-router-dom'
 import { apiFetch, GITHUB_ORG, githubFetch } from '../api'
 import { T } from '../theme'
-import { Panel, TabBar, Badge, StatusBar } from '../components/ui'
+import { Panel, TabBar, Badge, StatusBar, Button, SectionHeading, EmptyState } from '../components/ui'
 import Leaderboard from '../components/Leaderboard'
 import NarrativePanel from '../components/NarrativePanel'
 
@@ -87,53 +87,38 @@ export default function GamePage({ user }) {
     return () => window.removeEventListener('message', handleMessage)
   }, [slug, user, loadLeaderboard, currentVersion])
 
-  if (!game) return <div style={{ color: T.textDim, padding: 20 }}>Loading...</div>
+  if (!game) return <EmptyState>Loading...</EmptyState>
 
   const tabs = ['leaderboard', 'narrative']
   if (versions.length > 0) tabs.push('changelog')
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 76px)' }}>
-      {/* Toolbar: title + version pills + topics */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 0', marginBottom: 4 }}>
-        <span style={{ fontSize: 15, fontWeight: 600, color: T.textBright }}>{game.title}</span>
+    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 80px)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: T.sp(3), padding: `${T.sp(2)}px 0`, marginBottom: T.sp(1) }}>
+        <span style={{ fontSize: T.fontSize.md, fontWeight: 700, color: T.textBright }}>{game.title}</span>
         {game.topics.filter(t => t !== 'forkarcade-game').map(t => <Badge key={t}>{t}</Badge>)}
         {versions.length > 0 && (
-          <div style={{ display: 'flex', gap: 3, marginLeft: 'auto' }}>
-            <button
-              onClick={() => setSelectedVersion(null)}
-              style={{
-                padding: '3px 10px', fontSize: 11, cursor: 'pointer', borderRadius: 3,
-                fontFamily: T.mono, border: 'none',
-                background: selectedVersion === null ? T.accent : T.elevated,
-                color: selectedVersion === null ? '#000' : T.textDim,
-              }}
-            >
+          <div style={{ display: 'flex', gap: T.sp(1), marginLeft: 'auto' }}>
+            <Button active={selectedVersion === null} onClick={() => setSelectedVersion(null)} style={{ fontFamily: T.mono }}>
               Latest
-            </button>
+            </Button>
             {versions.map(v => (
-              <button
+              <Button
                 key={v.version}
+                active={selectedVersion === v.version}
                 onClick={() => setSelectedVersion(v.version)}
                 title={v.description}
-                style={{
-                  padding: '3px 8px', fontSize: 11, cursor: 'pointer', borderRadius: 3,
-                  fontFamily: T.mono, border: 'none',
-                  background: selectedVersion === v.version ? T.accent : T.elevated,
-                  color: selectedVersion === v.version ? '#000' : T.textDim,
-                }}
+                style={{ fontFamily: T.mono }}
               >
                 v{v.version}
-              </button>
+              </Button>
             ))}
           </div>
         )}
       </div>
 
-      {/* Main: viewer + side panel */}
-      <div style={{ display: 'flex', flex: 1, gap: 1, overflow: 'hidden' }}>
-        {/* Viewer */}
-        <div style={{ flex: 1, background: '#000', border: `1px solid ${T.border}`, borderRadius: T.radius, overflow: 'hidden' }}>
+      <div style={{ display: 'flex', flex: 1, gap: T.sp(1), overflow: 'hidden' }}>
+        <div style={{ flex: 1, background: '#000', border: `1px solid ${T.border}`, overflow: 'hidden' }}>
           <iframe
             ref={iframeRef}
             src={iframeUrl}
@@ -143,44 +128,42 @@ export default function GamePage({ user }) {
           />
         </div>
 
-        {/* Side panel */}
-        <Panel style={{ width: 280, minWidth: 280, display: 'flex', flexDirection: 'column', marginLeft: 4 }}>
+        <Panel style={{ width: 280, minWidth: 280, display: 'flex', flexDirection: 'column' }}>
           <TabBar tabs={tabs} active={tab} onChange={setTab} />
-          <div style={{ flex: 1, overflow: 'auto', padding: 12 }}>
+          <div style={{ flex: 1, overflow: 'auto', padding: T.sp(3) }}>
             {tab === 'leaderboard' && <Leaderboard rows={leaderboard} />}
             {tab === 'narrative' && <NarrativePanel narrativeState={narrativeState} />}
             {tab === 'changelog' && (
               <div>
                 {versions.slice().reverse().map(v => (
-                  <div key={v.version} style={{ marginBottom: 12, borderLeft: `2px solid ${T.borderLight}`, paddingLeft: 10 }}>
+                  <div key={v.version} style={{ marginBottom: T.sp(3), borderLeft: `2px solid ${T.border}`, paddingLeft: T.sp(3) }}>
                     <div>
-                      <span style={{ color: T.accent, fontFamily: T.mono, fontSize: 12 }}>v{v.version}</span>
-                      <span style={{ color: T.textDim, fontSize: 11, marginLeft: 8 }}>{v.date}</span>
+                      <span style={{ color: T.accentColor, fontFamily: T.mono, fontSize: T.fontSize.sm }}>v{v.version}</span>
+                      <span style={{ color: T.text, fontSize: T.fontSize.xs, marginLeft: T.sp(2) }}>{v.date}</span>
                     </div>
-                    <div style={{ fontSize: 13, color: T.text, marginTop: 2 }}>{v.description}</div>
+                    <div style={{ fontSize: T.fontSize.sm, color: T.text, marginTop: T.sp(0.5) }}>{v.description}</div>
                     {v.issue && (
                       <a
                         href={`https://github.com/${GITHUB_ORG}/${slug}/issues/${v.issue}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        style={{ fontSize: 11, color: T.accent, textDecoration: 'none' }}
+                        style={{ fontSize: T.fontSize.xs, color: T.accentColor, textDecoration: 'none' }}
                       >
                         #{v.issue}
                       </a>
                     )}
                   </div>
                 ))}
-                {versions.length === 0 && <span style={{ color: T.textDim, fontSize: 12 }}>No versions yet</span>}
+                {versions.length === 0 && <EmptyState>No versions yet</EmptyState>}
               </div>
             )}
           </div>
         </Panel>
       </div>
 
-      {/* Status bar */}
       <StatusBar>
         <span>{slug}</span>
-        <span style={{ color: T.borderLight }}>|</span>
+        <span style={{ color: T.border }}>|</span>
         <span>{currentVersion ? `v${currentVersion}` : 'no versions'}</span>
       </StatusBar>
     </div>

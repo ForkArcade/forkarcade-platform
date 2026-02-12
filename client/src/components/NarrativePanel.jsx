@@ -1,24 +1,23 @@
 import { T } from '../theme'
-
-const NODE_COLORS = { scene: '#4a9eff', choice: '#ff9f43', condition: '#a55eea' }
+import { SectionHeading, EmptyState } from './ui'
 
 function NodeList({ graph, currentNode }) {
   if (!graph || !graph.nodes || graph.nodes.length === 0) {
-    return <div style={{ color: T.textDim, fontSize: 12, padding: '8px 0' }}>No narrative graph yet</div>
+    return <EmptyState>No narrative graph yet</EmptyState>
   }
 
   return (
-    <div style={{ fontSize: 11, fontFamily: T.mono }}>
+    <div style={{ fontSize: T.fontSize.xs, fontFamily: T.mono }}>
       {graph.nodes.map(node => {
         const active = node.id === currentNode
-        const color = NODE_COLORS[node.type] || T.textDim
+        const color = T.nodeColors[node.type] || T.text
         return (
-          <div key={node.id} style={{ padding: '2px 0', display: 'flex', gap: 6, alignItems: 'center' }}>
+          <div key={node.id} style={{ padding: `${T.sp(0.5)}px 0`, display: 'flex', gap: T.sp(1.5), alignItems: 'center' }}>
             <span style={{ color, fontSize: 9 }}>{node.type === 'choice' ? '\u25c6' : node.type === 'condition' ? '\u25b2' : '\u25a0'}</span>
             <span style={{ color: active ? T.textBright : T.text, fontWeight: active ? 700 : 400 }}>
               {node.label || node.id}
             </span>
-            {active && <span style={{ color: T.accent, fontSize: 9 }}>\u25c0</span>}
+            {active && <span style={{ color: T.accentColor, fontSize: 9 }}>{'\u25c0'}</span>}
           </div>
         )
       })}
@@ -28,16 +27,16 @@ function NodeList({ graph, currentNode }) {
 
 function VariablesTable({ variables }) {
   if (!variables || Object.keys(variables).length === 0) {
-    return <div style={{ color: T.textDim, fontSize: 12, padding: '8px 0' }}>No variables</div>
+    return <EmptyState>No variables</EmptyState>
   }
 
   return (
-    <div style={{ fontSize: 12 }}>
+    <div style={{ fontSize: T.fontSize.sm }}>
       {Object.entries(variables).map(([name, value]) => (
-        <div key={name} style={{ display: 'flex', gap: 8, padding: '3px 0', borderBottom: `1px solid ${T.border}` }}>
-          <span style={{ fontFamily: T.mono, color: T.text, minWidth: 90, fontSize: 11 }}>{name}</span>
+        <div key={name} style={{ display: 'flex', gap: T.sp(2), padding: `${T.sp(1)}px 0`, borderBottom: `1px solid ${T.border}` }}>
+          <span style={{ fontFamily: T.mono, color: T.text, minWidth: 90, fontSize: T.fontSize.xs }}>{name}</span>
           <span style={{
-            fontFamily: T.mono, fontSize: 11,
+            fontFamily: T.mono, fontSize: T.fontSize.xs,
             color: typeof value === 'boolean' ? (value ? T.success : T.danger) : T.textBright,
           }}>
             {String(value)}
@@ -50,14 +49,14 @@ function VariablesTable({ variables }) {
 
 function EventLog({ events }) {
   if (!events || events.length === 0) {
-    return <div style={{ color: T.textDim, fontSize: 12, padding: '8px 0' }}>No events yet</div>
+    return <EmptyState>No events yet</EmptyState>
   }
 
   return (
-    <div style={{ fontFamily: T.mono, fontSize: 11, maxHeight: 160, overflow: 'auto' }}>
+    <div style={{ fontFamily: T.mono, fontSize: T.fontSize.xs, maxHeight: 160, overflow: 'auto' }}>
       {events.map((evt, i) => (
-        <div key={i} style={{ color: T.text, padding: '2px 0' }}>
-          <span style={{ color: T.textDim }}>&gt;</span> {evt}
+        <div key={i} style={{ color: T.text, padding: `${T.sp(0.5)}px 0` }}>
+          <span style={{ color: T.text }}>&gt;</span> {evt}
         </div>
       ))}
     </div>
@@ -66,20 +65,19 @@ function EventLog({ events }) {
 
 export default function NarrativePanel({ narrativeState }) {
   const { variables, currentNode, graph, events } = narrativeState || {}
-  const h = { margin: '0 0 6px', color: T.textDim, fontSize: 11, textTransform: 'uppercase', letterSpacing: 1 }
 
   return (
-    <div style={{ fontSize: 12 }}>
-      <div style={{ marginBottom: 12 }}>
-        <h4 style={h}>Graph</h4>
+    <div style={{ fontSize: T.fontSize.sm }}>
+      <div style={{ marginBottom: T.sp(3) }}>
+        <SectionHeading>Graph</SectionHeading>
         <NodeList graph={graph} currentNode={currentNode} />
       </div>
-      <div style={{ marginBottom: 12 }}>
-        <h4 style={h}>Variables</h4>
+      <div style={{ marginBottom: T.sp(3) }}>
+        <SectionHeading>Variables</SectionHeading>
         <VariablesTable variables={variables} />
       </div>
       <div>
-        <h4 style={h}>Events</h4>
+        <SectionHeading>Events</SectionHeading>
         <EventLog events={events} />
       </div>
     </div>

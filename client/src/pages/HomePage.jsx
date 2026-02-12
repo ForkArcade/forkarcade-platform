@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
-import { T } from '../theme'
 import { GITHUB_ORG, githubFetch } from '../api'
-import GameCard from '../components/GameCard'
+import { PageHeader, Grid, Card, CardTitle, CardTags, Badge, EmptyState } from '../components/ui'
 
 const GAME_TOPIC = 'forkarcade-game'
 
@@ -30,11 +29,16 @@ export default function HomePage() {
 
   return (
     <div>
-      <h2 style={{ color: T.textBright, fontSize: 14, textTransform: 'uppercase', letterSpacing: 1, margin: '8px 0 16px' }}>Games</h2>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
-        {games.map(g => <GameCard key={g.slug} game={g} />)}
-      </div>
-      {games.length === 0 && <p style={{ color: T.textDim }}>No games yet.</p>}
+      <PageHeader>Games</PageHeader>
+      <Grid>
+        {games.map(g => (
+          <Card key={g.slug} to={`/play/${g.slug}`} thumbnail={g.thumbnail}>
+            <CardTitle>{g.title}</CardTitle>
+            {g.topics?.length > 0 && <CardTags>{g.topics.map(t => <Badge key={t}>{t}</Badge>)}</CardTags>}
+          </Card>
+        ))}
+      </Grid>
+      {games.length === 0 && <EmptyState>No games yet.</EmptyState>}
     </div>
   )
 }

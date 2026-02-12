@@ -132,13 +132,14 @@ TOOLS = [
     },
     {
         "name": "create_thumbnail",
-        "description": "Tworzy pixel art miniaturkę gry (72x32 PNG). Palette + pixels jak create_sprite, '.' = czarny",
+        "description": "Tworzy pixel art miniaturkę gry (72x32 PNG). Palette + pixels jak create_sprite, '.' = czarny. Opcjonalny scale (2-8) dla antialiasingu — podaj piksele w wyższej rozdzielczości (np. 144x64 przy scale=2), tool downscale'uje z LANCZOS do 72x32",
         "inputSchema": {
             "type": "object",
             "properties": {
                 "path": {"type": "string", "description": "Ścieżka do katalogu gry"},
                 "palette": {"type": "object", "description": 'Mapa znaków na kolory hex: { "1": "#a86", "2": "#d9a" }'},
-                "pixels": {"type": "array", "items": {"type": "string"}, "description": "Grid pikseli 72x32 — każdy wiersz to string, '.' = czarny"},
+                "pixels": {"type": "array", "items": {"type": "string"}, "description": "Grid pikseli (72*scale)x(32*scale) — każdy wiersz to string, '.' = czarny"},
+                "scale": {"type": "integer", "description": "Mnożnik rozdzielczości dla antialiasingu (1-8, domyślnie 1). scale=4 → podaj 288x128 pikseli"},
             },
             "required": ["path", "palette", "pixels"],
         },
