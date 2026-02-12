@@ -20,19 +20,18 @@ export default function GameCard({ game }) {
         }}
       >
         {game.thumbnail && (
-          <pre style={{
-            margin: '0 0 10px',
-            fontFamily: T.mono,
-            fontSize: 7,
-            lineHeight: 1.0,
-            color: T.accent,
-            letterSpacing: 0,
-            overflow: 'hidden',
-            whiteSpace: 'pre',
-            userSelect: 'none',
-          }}>
-            {game.thumbnail}
-          </pre>
+          <img
+            src={game.thumbnail}
+            alt={game.title}
+            style={{
+              width: '100%',
+              height: 'auto',
+              imageRendering: 'pixelated',
+              borderRadius: 2,
+              marginBottom: 10,
+              display: 'block',
+            }}
+          />
         )}
         <h3 style={{ margin: '0 0 8px', fontSize: 14, color: T.textBright }}>{game.title}</h3>
         {game.topics?.length > 0 && (

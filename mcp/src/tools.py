@@ -132,18 +132,15 @@ TOOLS = [
     },
     {
         "name": "create_thumbnail",
-        "description": "Tworzy ASCII art miniaturkę gry z block characters (spacja, ░, ▒, ▓). Zapisuje jako _thumbnail.txt",
+        "description": "Tworzy pixel art miniaturkę gry (72x32 PNG). Palette + pixels jak create_sprite, '.' = czarny",
         "inputSchema": {
             "type": "object",
             "properties": {
                 "path": {"type": "string", "description": "Ścieżka do katalogu gry"},
-                "rows": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "description": "Wiersze ASCII art (36 znaków szerokości, 16 wierszy). Dozwolone znaki: spacja, ░, ▒, ▓",
-                },
+                "palette": {"type": "object", "description": 'Mapa znaków na kolory hex: { "1": "#a86", "2": "#d9a" }'},
+                "pixels": {"type": "array", "items": {"type": "string"}, "description": "Grid pikseli 72x32 — każdy wiersz to string, '.' = czarny"},
             },
-            "required": ["path", "rows"],
+            "required": ["path", "palette", "pixels"],
         },
     },
 ]

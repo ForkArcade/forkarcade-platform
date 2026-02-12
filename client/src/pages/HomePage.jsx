@@ -17,12 +17,12 @@ export default function HomePage() {
         setGames(gameList)
 
         gameList.forEach((game, i) => {
-          fetch(`https://raw.githubusercontent.com/${GITHUB_ORG}/${game.slug}/main/_thumbnail.txt`)
-            .then(r => { if (!r.ok) throw new Error(); return r.text() })
-            .then(text => {
-              setGames(prev => prev.map((g, j) => j === i ? { ...g, thumbnail: text.trimEnd() } : g))
-            })
-            .catch(() => {})
+          const url = `https://raw.githubusercontent.com/${GITHUB_ORG}/${game.slug}/main/_thumbnail.png`
+          const img = new window.Image()
+          img.onload = () => {
+            setGames(prev => prev.map((g, j) => j === i ? { ...g, thumbnail: url } : g))
+          }
+          img.src = url
         })
       })
       .catch(() => setGames([]))
