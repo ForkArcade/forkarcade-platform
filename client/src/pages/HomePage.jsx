@@ -9,8 +9,23 @@ function formatSlug(slug) {
   return slug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
 }
 
+const ABOUT_TABS = [
+  { key: 'general', label: 'General' },
+  { key: 'narrative', label: 'Narrative' },
+  { key: 'platform', label: 'Platform' },
+  { key: 'evolve', label: 'Evolve' },
+]
+
+const ABOUT_CONTENT = {
+  general: 'ForkArcade is an open platform for web games built entirely by AI. Every game runs on GitHub Pages, scores are shared across players, and anyone can fork a template to create something new.',
+  narrative: 'Each game template includes a built-in narrative engine. Story graphs, branching choices, variables and events all run client-side inside the game iframe, synced to the platform via postMessage in real time.',
+  platform: 'Games are automatically wrapped in standard elements — title screens, score submission, player identification. Templates provide the engine, MCP tools handle scaffolding, validation, pixel art sprites and publishing. Claude Code does the rest.',
+  evolve: 'Games evolve through GitHub issues. Players submit feedback or feature requests, Claude Code picks them up, implements changes, and opens a PR — each merge creates a new playable version. The goal: users submit issues directly from this platform and AI evolves games under the hood.',
+}
+
 export default function HomePage() {
   const [games, setGames] = useState([])
+  const [aboutTab, setAboutTab] = useState('general')
 
   useEffect(() => {
     githubFetch(`/orgs/${GITHUB_ORG}/repos?type=public&per_page=100`)
@@ -54,12 +69,30 @@ export default function HomePage() {
         {games.length === 0 && <EmptyState>No games yet.</EmptyState>}
       </div>
 
-      <aside style={{
-        width: 240,
-        minWidth: 240,
-        paddingTop: T.sp[9],
-      }}>
-        <SectionHeading>About</SectionHeading>
+      <aside style={{ width: 260, minWidth: 260, paddingTop: T.sp[9] }}>
+        <div style={{ display: 'flex', gap: T.sp[1], marginBottom: T.sp[5], flexWrap: 'wrap' }}>
+          {ABOUT_TABS.map(t => (
+            <button
+              key={t.key}
+              onClick={() => setAboutTab(t.key)}
+              style={{
+                padding: `${T.sp[1]}px ${T.sp[3]}px`,
+                fontSize: T.fontSize.xs,
+                fontFamily: T.font,
+                fontWeight: aboutTab === t.key ? T.weight.medium : T.weight.normal,
+                color: aboutTab === t.key ? T.textBright : T.muted,
+                background: aboutTab === t.key ? T.border : 'transparent',
+                border: 'none',
+                borderRadius: T.radius.sm,
+                cursor: 'pointer',
+                letterSpacing: T.tracking.wide,
+              }}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+
         <p style={{
           fontSize: T.fontSize.sm,
           color: T.text,
@@ -67,7 +100,7 @@ export default function HomePage() {
           letterSpacing: T.tracking.normal,
           marginBottom: T.sp[7],
         }}>
-          ForkArcade is an open platform for web games. Every game runs on GitHub Pages, scores are shared across players, and anyone can fork a template to create something new.
+          {ABOUT_CONTENT[aboutTab]}
         </p>
 
         <SectionHeading>Filter</SectionHeading>
