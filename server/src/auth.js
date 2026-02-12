@@ -24,9 +24,11 @@ export function auth(req, res, next) {
 }
 
 function cookieOptions() {
+  const crossOrigin = process.env.CLIENT_ORIGIN && process.env.SERVER_ORIGIN
+    && new URL(process.env.CLIENT_ORIGIN).origin !== new URL(process.env.SERVER_ORIGIN).origin
   return {
     httpOnly: true,
-    sameSite: 'lax',
+    sameSite: crossOrigin ? 'none' : 'lax',
     secure: process.env.NODE_ENV === 'production',
     maxAge: 30 * 24 * 60 * 60 * 1000,
   }
