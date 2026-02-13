@@ -423,6 +423,43 @@ function SimpleMd({ text }) {
       continue
     }
 
+    // Table (pipe-based)
+    if (line.includes('|') && line.trim().startsWith('|')) {
+      const rows = []
+      while (i < lines.length && lines[i].includes('|') && lines[i].trim().startsWith('|')) {
+        const cells = lines[i].split('|').slice(1, -1).map(c => c.trim())
+        if (!cells.every(c => /^[-:]+$/.test(c))) rows.push(cells)
+        i++
+      }
+      if (rows.length > 0) {
+        const header = rows[0]
+        const body = rows.slice(1)
+        elements.push(
+          <div key={elements.length} style={{ overflow: 'auto', margin: `${T.sp[3]}px 0` }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: T.fontSize.xs, fontFamily: T.mono }}>
+              <thead>
+                <tr>
+                  {header.map((h, j) => (
+                    <th key={j} style={{ textAlign: 'left', padding: `${T.sp[2]}px ${T.sp[3]}px`, borderBottom: `1px solid ${T.border}`, color: T.textBright, fontWeight: T.weight.medium }}>{inline(h)}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {body.map((row, ri) => (
+                  <tr key={ri}>
+                    {row.map((cell, ci) => (
+                      <td key={ci} style={{ padding: `${T.sp[2]}px ${T.sp[3]}px`, borderBottom: `1px solid ${T.border}`, color: T.text }}>{inline(cell)}</td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )
+      }
+      continue
+    }
+
     // Headings
     if (line.startsWith('### ')) {
       elements.push(<h4 key={elements.length} style={{ color: T.textBright, fontSize: T.fontSize.sm, fontWeight: T.weight.semibold, margin: `${T.sp[5]}px 0 ${T.sp[2]}px` }}>{inline(line.slice(4))}</h4>)
