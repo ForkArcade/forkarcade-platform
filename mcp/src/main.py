@@ -11,6 +11,7 @@ from mcp.server.lowlevel import Server
 import mcp.server.stdio as stdio
 import mcp.types as types
 
+from pathlib import Path
 from context import detect_game_context
 from tools import TOOLS
 from handlers import workflow, assets, versions, thumbnail
@@ -36,12 +37,13 @@ def _build_instructions():
     ctx = detect_game_context()
     lines = ["ForkArcade MCP — narzędzia do tworzenia gier na platformę ForkArcade."]
     if ctx:
-        lines.append(f"Gra: {ctx.get('title', ctx.get('slug', '?'))} ({ctx.get('template', '?')})")
+        lines.append(f"Gra: {ctx.get('title', ctx.get('slug', '?'))} (template: {ctx.get('template', '?')})")
         lines.append(f"Wersja: v{ctx.get('currentVersion', 0)}, SDK v{ctx.get('sdkVersion', '?')}")
-        lines.append("Dostępne: get_game_prompt, validate_game, publish_game, create_sprite, update_sdk")
+        tools = [t["name"] for t in TOOLS if t["name"] not in ("list_templates", "init_game")]
+        lines.append(f"Dostępne toole ({len(tools)}): {', '.join(tools)}")
     else:
         lines.append("Kontekst: platforma (nie w katalogu gry)")
-        lines.append("Dostępne: list_templates, init_game (/new-game)")
+        lines.append("Dostępne: list_templates, init_game")
     return "\n".join(lines)
 
 
@@ -63,6 +65,8 @@ async def handle_call_tool(name: str, arguments: dict | None) -> list[types.Text
     args = dict(arguments or {})
 
     if ctx:
+        if not args.get("path"):
+            args["path"] = str(Path.cwd())
         if not args.get("template") and name in ("get_game_prompt", "get_asset_guide", "validate_assets"):
             args["template"] = ctx["template"]
         if not args.get("slug") and name == "publish_game":

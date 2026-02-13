@@ -130,6 +130,13 @@ Gry ewoluuja przez GitHub issues. Kazda wersja jest grywalna.
 ### Scores
 Scores maja kolumne `version` -- SDK automatycznie dolacza wersje. Leaderboard filtrowany per wersja (`?version=N`).
 
+## ZASADA ZERO NADGORLIWOŚCI
+
+- **NIGDY nie twórz bonusowych plików** — żadnych CLI wrapperów, helper scriptów, dodatkowych narzędzi "na wszelki wypadek"
+- **NIGDY nie dodawaj ficzerów których nikt nie prosił** — każdy niepotrzebny plik to dług techniczny
+- **Rób DOKŁADNIE to o co proszono** — nic więcej, nic mniej
+- **Nie proponuj "bonusów"** — jak user chce dodatkowy tool, sam poprosi
+
 ## Konwencje
 
 - Inline styles (nie ma CSS framework)

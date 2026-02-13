@@ -39,4 +39,17 @@ router.get('/api/github/repos', async (_req, res) => {
   }
 })
 
+// Generic proxy for any GitHub API path (authenticated, avoids rate limits)
+router.get('/api/github/proxy/*', async (req, res) => {
+  const ghPath = req.params[0]
+  try {
+    const r = await fetch(`https://api.github.com/${ghPath}`, { headers: ghHeaders() })
+    if (!r.ok) throw new Error(`GitHub API ${r.status}`)
+    const data = await r.json()
+    res.json(data)
+  } catch (err) {
+    res.status(502).json({ error: 'GitHub API unavailable' })
+  }
+})
+
 export default router

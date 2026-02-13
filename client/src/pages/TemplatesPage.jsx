@@ -26,7 +26,7 @@ export default function TemplatesPage() {
       <PageHeader>Templates</PageHeader>
       <Grid>
         {templates.map(t => (
-          <Card key={t.slug} href={t.url}>
+          <Card key={t.slug} to={`/templates/${t.slug}`}>
             <CardTitle>{t.name}</CardTitle>
             {t.topics?.length > 0 && <CardTags>{t.topics.map(tp => <Badge key={tp}>{tp}</Badge>)}</CardTags>}
           </Card>

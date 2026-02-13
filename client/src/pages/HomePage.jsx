@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { T } from '../theme'
 import { GITHUB_ORG, githubFetch } from '../api'
-import { PageHeader, Grid, Card, CardTitle, CardDescription, CardTags, Badge, SectionHeading, EmptyState } from '../components/ui'
+import { PageHeader, Grid, Card, CardTitle, CardDescription, CardTags, Badge, SectionHeading, PillTabs, EmptyState } from '../components/ui'
 
 const GAME_TOPIC = 'forkarcade-game'
 
@@ -70,27 +70,8 @@ export default function HomePage() {
       </div>
 
       <aside style={{ width: 260, minWidth: 260, paddingTop: T.sp[9] }}>
-        <div style={{ display: 'flex', gap: T.sp[1], marginBottom: T.sp[5], flexWrap: 'wrap' }}>
-          {ABOUT_TABS.map(t => (
-            <button
-              key={t.key}
-              onClick={() => setAboutTab(t.key)}
-              style={{
-                padding: `${T.sp[1]}px ${T.sp[3]}px`,
-                fontSize: T.fontSize.xs,
-                fontFamily: T.font,
-                fontWeight: aboutTab === t.key ? T.weight.medium : T.weight.normal,
-                color: aboutTab === t.key ? T.textBright : T.muted,
-                background: aboutTab === t.key ? T.border : 'transparent',
-                border: 'none',
-                borderRadius: T.radius.sm,
-                cursor: 'pointer',
-                letterSpacing: T.tracking.wide,
-              }}
-            >
-              {t.label}
-            </button>
-          ))}
+        <div style={{ marginBottom: T.sp[5] }}>
+          <PillTabs tabs={ABOUT_TABS} active={aboutTab} onChange={setAboutTab} />
         </div>
 
         <p style={{

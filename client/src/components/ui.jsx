@@ -243,6 +243,113 @@ export function TabBar({ tabs, active, onChange }) {
   )
 }
 
+export function IconTabBar({ tabs, active, onChange }) {
+  return (
+    <div style={{ display: 'flex', borderBottom: `1px solid ${T.border}` }}>
+      {tabs.map(t => {
+        const Icon = t.icon
+        return (
+          <button
+            key={t.key}
+            onClick={() => onChange(t.key)}
+            title={t.label}
+            style={{
+              width: 40,
+              height: 40,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: 'transparent',
+              color: active === t.key ? T.accentColor : T.muted,
+              border: 'none',
+              borderBottom: active === t.key ? `2px solid ${T.accentColor}` : '2px solid transparent',
+              cursor: 'pointer',
+              padding: 0,
+            }}
+          >
+            <Icon size={16} />
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+// --- Segmented Control ---
+
+export function SegmentedControl({ items, active, onChange }) {
+  return (
+    <div style={{
+      display: 'inline-flex',
+      background: T.surface,
+      border: `1px solid ${T.border}`,
+      borderRadius: T.radius.md,
+      overflow: 'hidden',
+    }}>
+      {items.map((item, i) => {
+        const isActive = active === item.value
+        return (
+          <button
+            key={item.value}
+            onClick={() => onChange(item.value)}
+            title={item.title}
+            style={{
+              padding: `0 ${T.sp[4]}px`,
+              height: 26,
+              background: isActive ? T.elevated : 'transparent',
+              color: isActive ? T.textBright : T.muted,
+              border: 'none',
+              borderRight: i < items.length - 1 ? `1px solid ${T.border}` : 'none',
+              cursor: 'pointer',
+              fontSize: T.fontSize.xs,
+              fontFamily: T.mono,
+              fontWeight: isActive ? T.weight.medium : T.weight.normal,
+              letterSpacing: T.tracking.wide,
+            }}
+          >
+            {item.label}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+// --- Pill Tabs ---
+
+export function PillTabs({ tabs, active, onChange }) {
+  return (
+    <div style={{ display: 'flex', gap: T.sp[1], flexWrap: 'wrap' }}>
+      {tabs.map(t => (
+        <button
+          key={t.key}
+          onClick={() => onChange(t.key)}
+          style={{
+            padding: `${T.sp[1]}px ${T.sp[3]}px`,
+            fontSize: T.fontSize.xs,
+            fontFamily: T.font,
+            fontWeight: active === t.key ? T.weight.medium : T.weight.normal,
+            color: active === t.key ? T.textBright : T.muted,
+            background: active === t.key ? T.border : 'transparent',
+            border: 'none',
+            borderRadius: T.radius.sm,
+            cursor: 'pointer',
+            letterSpacing: T.tracking.wide,
+          }}
+        >
+          {t.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+// --- Separator ---
+
+export function Separator() {
+  return <span style={{ color: T.border }}>|</span>
+}
+
 // --- Badge ---
 
 export function Badge({ children, color }) {
@@ -260,6 +367,95 @@ export function Badge({ children, color }) {
     }}>
       {children}
     </span>
+  )
+}
+
+// --- Data Display ---
+
+export function FileCard({ name, size, accent, label }) {
+  return (
+    <div style={{
+      background: T.surface,
+      border: `1px solid ${T.border}`,
+      borderLeft: `3px solid ${accent || T.accentColor}`,
+      borderRadius: T.radius.md,
+      padding: `${T.sp[4]}px ${T.sp[5]}px`,
+      display: 'flex',
+      flexDirection: 'column',
+      gap: T.sp[1],
+    }}>
+      <span style={{
+        fontFamily: T.mono,
+        fontSize: T.fontSize.sm,
+        color: T.textBright,
+        fontWeight: T.weight.medium,
+      }}>
+        {name}
+      </span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: T.sp[3] }}>
+        {size != null && (
+          <span style={{ fontFamily: T.mono, fontSize: T.fontSize.xs, color: T.muted }}>
+            {(size / 1024).toFixed(1)} KB
+          </span>
+        )}
+        {label && <Badge>{label}</Badge>}
+      </div>
+    </div>
+  )
+}
+
+export function KeyValue({ label, value }) {
+  return (
+    <div style={{
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'baseline',
+      padding: `${T.sp[2]}px 0`,
+      borderBottom: `1px solid ${T.border}`,
+    }}>
+      <span style={{
+        fontSize: T.fontSize.xs,
+        color: T.muted,
+        textTransform: 'uppercase',
+        letterSpacing: T.tracking.wider,
+      }}>
+        {label}
+      </span>
+      <span style={{
+        fontSize: T.fontSize.xs,
+        color: T.textBright,
+        fontFamily: T.mono,
+        fontWeight: T.weight.medium,
+      }}>
+        {value}
+      </span>
+    </div>
+  )
+}
+
+export function ColorSwatch({ name, color }) {
+  return (
+    <div style={{
+      display: 'flex',
+      alignItems: 'center',
+      gap: T.sp[3],
+      padding: `${T.sp[1]}px 0`,
+    }}>
+      <div style={{
+        width: 12,
+        height: 12,
+        borderRadius: T.radius.sm,
+        background: color,
+        border: `1px solid ${T.border}`,
+        flexShrink: 0,
+      }} />
+      <span style={{ fontFamily: T.mono, fontSize: T.fontSize.xs, color: T.text, flex: 1 }}>
+        {name}
+      </span>
+      <span style={{ fontFamily: T.mono, fontSize: T.fontSize.xs, color: T.muted }}>
+        {color}
+      </span>
+    </div>
   )
 }
 

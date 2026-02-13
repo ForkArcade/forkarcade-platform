@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
-import { Routes, Route, Link, NavLink } from 'react-router-dom'
+import { Routes, Route, Link, NavLink, useLocation } from 'react-router-dom'
 import { apiFetch } from './api'
 import { T } from './theme'
-import { Toolbar, Button } from './components/ui'
+import { Toolbar, Button, Separator } from './components/ui'
 import HomePage from './pages/HomePage'
 import GamePage from './pages/GamePage'
 import TemplatesPage from './pages/TemplatesPage'
+import TemplateDetailPage from './pages/TemplateDetailPage'
 import LoginButton from './components/LoginButton'
 
 const navStyle = (isActive) => ({
@@ -19,6 +20,8 @@ const navStyle = (isActive) => ({
 
 export default function App() {
   const [user, setUser] = useState(null)
+  const location = useLocation()
+  const isGamePage = location.pathname.startsWith('/play/')
 
   async function me() {
     try {
@@ -30,12 +33,12 @@ export default function App() {
   useEffect(() => { me() }, [])
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <Toolbar
         left={
           <>
             <Link to="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: T.sp[3] }}>
-              <img src="/logo.png" alt="" width={28} height={28} style={{ imageRendering: 'pixelated' }} />
+              <img src="/logo.svg" alt="" width={28} height={28} />
               <span style={{ color: T.accent, fontSize: T.fontSize.lg, fontWeight: T.weight.bold, letterSpacing: T.tracking.tighter }}>
                 ForkArcade
               </span>
@@ -59,10 +62,11 @@ export default function App() {
           )
         }
       />
-      <div style={{ flex: 1, padding: T.sp[7] }}>
+      <div style={{ flex: 1, padding: isGamePage ? `${T.sp[4]}px ${T.sp[5]}px` : T.sp[7], overflow: isGamePage ? 'hidden' : 'auto' }}>
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/templates" element={<TemplatesPage />} />
+          <Route path="/templates/:slug" element={<TemplateDetailPage />} />
           <Route path="/play/:slug" element={<GamePage user={user} />} />
         </Routes>
       </div>
@@ -74,7 +78,7 @@ export default function App() {
         justifyContent: 'space-between',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: T.sp[3] }}>
-          <img src="/logo.png" alt="" width={20} height={20} style={{ imageRendering: 'pixelated', opacity: 0.5 }} />
+          <img src="/logo.svg" alt="" width={14} height={14} style={{ opacity: 0.5 }} />
           <span style={{ fontSize: T.fontSize.xs, color: T.muted, letterSpacing: T.tracking.wide }}>
             ForkArcade
           </span>
@@ -83,7 +87,7 @@ export default function App() {
           <a href="https://github.com/ForkArcade" target="_blank" rel="noopener noreferrer" style={{ color: T.muted, textDecoration: 'none' }}>
             GitHub
           </a>
-          <span style={{ color: T.border }}>|</span>
+          <Separator />
           <span style={{ color: T.muted }}>
             Built with Claude Code
           </span>

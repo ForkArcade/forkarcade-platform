@@ -22,9 +22,9 @@ export async function githubFetch(path) {
     if (!res.ok) throw new Error(`GitHub proxy ${res.status}`)
     return res.json()
   }
-  const res = await fetch(`https://api.github.com${path}`, {
-    headers: { Accept: 'application/vnd.github+json' },
-  })
-  if (!res.ok) throw new Error(`GitHub API ${res.status}`)
+  // All other GitHub API calls go through server proxy (authenticated, no rate limits)
+  const proxyPath = path.startsWith('/') ? path.slice(1) : path
+  const res = await fetch(`${API}/api/github/proxy/${proxyPath}`)
+  if (!res.ok) throw new Error(`GitHub proxy ${res.status}`)
   return res.json()
 }
