@@ -9,12 +9,25 @@ router.post('/api/games/:slug/score', auth, async (req, res) => {
   if (typeof score !== 'number') return res.status(400).json({ error: 'invalid_score' })
 
   try {
-    await db.execute({
-      sql: `INSERT INTO scores (github_user_id, game_slug, score, version, created_at)
-            VALUES (?, ?, ?, ?, ?)`,
-      args: [req.user.sub, req.params.slug, score, version || null, new Date().toISOString()],
-    })
-    res.json({ ok: true })
+    // Get personal best + insert score + mint coins in one batch (single round-trip to Turso)
+    const results = await db.batch([
+      { sql: 'SELECT MAX(score) as best FROM scores WHERE github_user_id = ? AND game_slug = ?', args: [req.user.sub, req.params.slug] },
+      { sql: 'INSERT INTO scores (github_user_id, game_slug, score, version, created_at) VALUES (?, ?, ?, ?, ?)', args: [req.user.sub, req.params.slug, score, version || null, new Date().toISOString()] },
+    ])
+    const personalBest = results[0].rows[0]?.best ?? 0
+    const isPersonalRecord = score > personalBest
+
+    let coins = Math.floor(score * 0.1)
+    if (isPersonalRecord) coins = Math.floor(coins * 1.5)
+    if (coins > 0) {
+      await db.execute({
+        sql: `INSERT INTO wallets (github_user_id, balance) VALUES (?, ?)
+              ON CONFLICT(github_user_id) DO UPDATE SET balance = balance + ?`,
+        args: [req.user.sub, coins, coins],
+      })
+    }
+
+    res.json({ ok: true, coins, isPersonalRecord })
   } catch (err) {
     console.error('Score insert error:', err.message)
     res.status(500).json({ error: 'db_error' })

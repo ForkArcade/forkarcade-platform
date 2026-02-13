@@ -22,7 +22,7 @@ sdk/
 - **Game catalog = GitHub API** — there is no games table. Client fetches repository list from the `ForkArcade` org filtered by the `forkarcade-game` topic. Do not add a games table.
 - **Template catalog = GitHub API** — templates are repos with the `forkarcade-template` topic. MCP tools (`github_templates.py`) fetch them dynamically. Asset metadata lives in `_assets.json` in the template repo. No hardcoded template list.
 - **Games in iframe** — each game runs on GitHub Pages, embedded in an `<iframe>` on the platform. Communication via postMessage (SDK).
-- **Server is thin** — auth (GitHub OAuth + JWT cookie) + scores (SQLite). Nothing else. Do not add game logic or narrative on the server side.
+- **Server is thin** — auth (GitHub OAuth + JWT cookie) + scores + wallet + evolve voting (SQLite). Do not add game logic or narrative on the server side.
 - **Narrative is client-side** — narrative data (graph, variables, events) passes through postMessage from iframe to parent. Not persisted in the database.
 - **No build step** — games are vanilla JS, `<script>` tags, GitHub Pages (`build_type=legacy`). No bundler.
 
@@ -77,25 +77,31 @@ Adding a new template = creating a repo on GitHub with the appropriate topics an
 | `FA_GET_PLAYER` | game -> platform | Requests player info (requestId) |
 | `FA_PLAYER_INFO` | platform -> game | Response (requestId) |
 | `FA_NARRATIVE_UPDATE` | game -> platform | Narrative state (fire-and-forget) |
+| `FA_COIN_EARNED` | platform -> game | Coins earned after score submit (fire-and-forget) |
 
 ## Server — Endpoints
 
 - `GET /auth/github` -> redirect to GitHub OAuth
 - `GET /auth/github/callback` -> exchange code for token, upsert user, set cookie
 - `POST /auth/logout` -> clear cookie
-- `POST /api/games/:slug/score` (auth) -> save score
+- `POST /api/games/:slug/score` (auth) -> save score, mint coins
 - `GET /api/games/:slug/leaderboard` -> top 50 per game
 - `GET /api/me` (auth) -> current user
+- `GET /api/wallet` (auth) -> coin balance
+- `POST /api/games/:slug/evolve-issues` (auth) -> create `[EVOLVE]` issue on GitHub
+- `POST /api/games/:slug/vote` (auth) -> vote on evolve issue (burn coins)
+- `GET /api/games/:slug/votes` -> aggregated vote totals per issue
+- `POST /api/games/:slug/evolve-trigger` (auth) -> add `evolve` label (triggers GitHub Actions)
 
 ## Database (SQLite)
 
-Two tables: `users` (github_user_id, login, avatar) and `scores` (game_slug, score, version, created_at). Scores identified by `game_slug` (TEXT), not by FK to games.
+Four tables: `users`, `scores`, `wallets` (github_user_id, balance), `votes` (game_slug, issue_number, coins_spent). Scores identified by `game_slug` (TEXT), not by FK to games.
 
 ## Client — Routing
 
 - `/` -> HomePage — game catalog from GitHub API (topic `forkarcade-game`)
 - `/templates` -> TemplatesPage — template list from GitHub API (topic `forkarcade-template`)
-- `/play/:slug` -> GamePage — iframe + tabs (Leaderboard | Narrative)
+- `/play/:slug` -> GamePage — iframe + tabs (Info | Leaderboard | Narrative | Evolve | Changelog)
 
 ## MCP (mcp/src/main.py)
 
@@ -112,7 +118,7 @@ Publish sets the `forkarcade-game` topic + category topic, enables GitHub Pages,
 Games evolve through GitHub issues. Every version is playable.
 
 ### Flow
-1. User creates issue with `evolve` label -> GitHub Actions triggers Claude Code
+1. Player proposes `[EVOLVE]` issue via platform -> votes reach threshold -> `evolve` label added -> GitHub Actions triggers Claude Code
 2. Claude Code implements -> opens PR
 3. PR merge -> workflow creates snapshot in `/versions/v{N}/`
 4. Platform displays version selector + changelog
@@ -123,9 +129,14 @@ Games evolve through GitHub issues. Every version is playable.
 /game.js
 /versions/v1/        <- snapshot v1
 /versions/v2/        <- snapshot v2
+/changelog/v1.md     <- LLM reasoning log for v1
+/changelog/v2.md     <- LLM reasoning log for v2
 /.forkarcade.json    <- metadata with versions array
 /.github/workflows/  <- evolve.yml + version.yml
 ```
+
+### Changelog Files
+Each evolve creates `changelog/v{N}.md` — structured LLM log with: issue reference, changes list, reasoning/tradeoffs, files modified. Convention defined in `_platform.md`. Platform displays in Changelog tab (click to view full log).
 
 ### Scores
 Scores have a `version` column — SDK automatically includes the version. Leaderboard filtered per version (`?version=N`).

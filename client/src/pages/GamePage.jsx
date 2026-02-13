@@ -5,16 +5,19 @@ import { T } from '../theme'
 import { Panel, IconTabBar, Badge, SegmentedControl, EmptyState } from '../components/ui'
 import Leaderboard from '../components/Leaderboard'
 import NarrativePanel from '../components/NarrativePanel'
-import { Trophy, BookOpen, Clock, Info, Loader, AlertCircle, FileText, X } from 'lucide-react'
+import { Trophy, BookOpen, Clock, Info, Loader, AlertCircle, FileText, Zap } from 'lucide-react'
+import EvolvePanel from '../components/EvolvePanel'
+import { MdPopup } from '../components/MdPopup'
 
 const TAB_ICONS = {
   info: { label: 'Info', icon: Info },
   leaderboard: { label: 'Leaderboard', icon: Trophy },
   narrative: { label: 'Narrative', icon: BookOpen },
+  evolve: { label: 'Evolve', icon: Zap },
   changelog: { label: 'Changelog', icon: Clock },
 }
 
-export default function GamePage({ user }) {
+export default function GamePage({ user, balance, onBalanceChange }) {
   const { slug } = useParams()
   const [game, setGame] = useState(null)
   const [leaderboard, setLeaderboard] = useState([])
@@ -26,6 +29,7 @@ export default function GamePage({ user }) {
   const [focused, setFocused] = useState(false)
   const [claudeMd, setClaudeMd] = useState(null)
   const [showClaudeMd, setShowClaudeMd] = useState(false)
+  const [changelogPopup, setChangelogPopup] = useState(null) // { version, text } | null
   const iframeRef = useRef(null)
 
   const currentVersion = selectedVersion || (versions.length > 0 ? versions[versions.length - 1].version : null)
@@ -106,6 +110,10 @@ export default function GamePage({ user }) {
             body: JSON.stringify({ score: data.score, version: data.version || currentVersion }),
           }).then(result => {
             iframeRef.current?.contentWindow.postMessage({ type: 'FA_SCORE_RESULT', ok: result.ok, requestId: data.requestId }, iframeOrigin)
+            if (result.coins > 0) {
+              iframeRef.current?.contentWindow.postMessage({ type: 'FA_COIN_EARNED', coins: result.coins, isPersonalRecord: result.isPersonalRecord }, iframeOrigin)
+              onBalanceChange(prev => (prev ?? 0) + result.coins)
+            }
             loadLeaderboard()
           }).catch(() => {
             iframeRef.current?.contentWindow.postMessage({ type: 'FA_SCORE_RESULT', error: 'submit_failed', requestId: data.requestId }, iframeOrigin)
@@ -135,7 +143,7 @@ export default function GamePage({ user }) {
 
   if (!game) return <EmptyState>Loading...</EmptyState>
 
-  const tabKeys = ['info', 'leaderboard', 'narrative']
+  const tabKeys = ['info', 'leaderboard', 'narrative', 'evolve']
   if (versions.length > 0) tabKeys.push('changelog')
 
   const iconTabs = tabKeys.map(k => ({ key: k, ...TAB_ICONS[k] }))
@@ -253,6 +261,17 @@ export default function GamePage({ user }) {
           </div>
         )}
         <IconTabBar tabs={iconTabs} active={tab} onChange={setTab} />
+        <div style={{
+          padding: `${T.sp[3]}px ${T.sp[5]}px`,
+          borderBottom: `1px solid ${T.border}`,
+          fontSize: T.fontSize.xs,
+          fontWeight: T.weight.medium,
+          color: T.muted,
+          textTransform: 'uppercase',
+          letterSpacing: T.tracking.widest,
+        }}>
+          {TAB_ICONS[tab]?.label}
+        </div>
         <div style={{ flex: 1, overflow: 'auto', padding: T.sp[5] }}>
             {tab === 'info' && (
               <div>
@@ -295,26 +314,30 @@ export default function GamePage({ user }) {
             )}
             {tab === 'leaderboard' && <Leaderboard rows={leaderboard} />}
             {tab === 'narrative' && <NarrativePanel narrativeState={narrativeState} />}
+            {tab === 'evolve' && <EvolvePanel slug={slug} user={user} balance={balance} onBalanceChange={onBalanceChange} />}
             {tab === 'changelog' && (
               <div>
                 {versions.slice().reverse().map(v => (
-                  <div key={v.version} style={{
-                    marginBottom: T.sp[5],
-                    borderLeft: `2px solid ${T.border}`,
-                    paddingLeft: T.sp[4],
-                  }}>
+                  <div
+                    key={v.version}
+                    onClick={() => {
+                      fetch(`https://raw.githubusercontent.com/${GITHUB_ORG}/${slug}/main/changelog/v${v.version}.md`)
+                        .then(r => r.ok ? r.text() : null)
+                        .then(text => { if (text) setChangelogPopup({ version: v.version, text }) })
+                        .catch(() => {})
+                    }}
+                    style={{
+                      marginBottom: T.sp[5],
+                      borderLeft: `2px solid ${T.border}`,
+                      paddingLeft: T.sp[4],
+                      cursor: 'pointer',
+                    }}
+                  >
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: T.sp[3] }}>
                       <span style={{ color: T.accentColor, fontFamily: T.mono, fontSize: T.fontSize.xs }}>v{v.version}</span>
                       <span style={{ color: T.muted, fontSize: T.fontSize.xs }}>{v.date}</span>
                       {v.issue && (
-                        <a
-                          href={`https://github.com/${GITHUB_ORG}/${slug}/issues/${v.issue}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          style={{ fontSize: T.fontSize.xs, color: T.muted, textDecoration: 'none' }}
-                        >
-                          #{v.issue}
-                        </a>
+                        <span style={{ fontSize: T.fontSize.xs, color: T.muted }}>#{v.issue}</span>
                       )}
                     </div>
                     <div style={{
@@ -334,185 +357,11 @@ export default function GamePage({ user }) {
         </Panel>
 
       {showClaudeMd && claudeMd && (
-        <div
-          onClick={() => setShowClaudeMd(false)}
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0,0,0,0.7)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 100,
-          }}
-        >
-          <div
-            onClick={e => e.stopPropagation()}
-            style={{
-              background: T.surface,
-              border: `1px solid ${T.border}`,
-              borderRadius: T.radius.lg,
-              width: '90%',
-              maxWidth: 640,
-              maxHeight: '80vh',
-              display: 'flex',
-              flexDirection: 'column',
-            }}
-          >
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: `${T.sp[4]}px ${T.sp[5]}px`,
-              borderBottom: `1px solid ${T.border}`,
-            }}>
-              <span style={{ fontSize: T.fontSize.sm, fontFamily: T.mono, color: T.textBright, fontWeight: T.weight.medium }}>
-                CLAUDE.md
-              </span>
-              <button
-                onClick={() => setShowClaudeMd(false)}
-                style={{ background: 'none', border: 'none', color: T.muted, cursor: 'pointer', padding: T.sp[1] }}
-              >
-                <X size={16} />
-              </button>
-            </div>
-            <div style={{ overflow: 'auto', padding: T.sp[5] }}>
-              <SimpleMd text={claudeMd} />
-            </div>
-          </div>
-        </div>
+        <MdPopup title="CLAUDE.md" text={claudeMd} onClose={() => setShowClaudeMd(false)} />
+      )}
+      {changelogPopup && (
+        <MdPopup title={`Changelog v${changelogPopup.version}`} text={changelogPopup.text} onClose={() => setChangelogPopup(null)} />
       )}
     </div>
   )
-}
-
-function SimpleMd({ text }) {
-  const lines = text.split('\n')
-  const elements = []
-  let i = 0
-
-  while (i < lines.length) {
-    const line = lines[i]
-
-    // Code block
-    if (line.startsWith('```')) {
-      const lang = line.slice(3).trim()
-      const codeLines = []
-      i++
-      while (i < lines.length && !lines[i].startsWith('```')) {
-        codeLines.push(lines[i])
-        i++
-      }
-      i++ // skip closing ```
-      elements.push(
-        <pre key={elements.length} style={{
-          background: T.bg,
-          border: `1px solid ${T.border}`,
-          borderRadius: T.radius.md,
-          padding: T.sp[4],
-          margin: `${T.sp[3]}px 0`,
-          fontSize: T.fontSize.xs,
-          fontFamily: T.mono,
-          color: T.text,
-          overflow: 'auto',
-          lineHeight: T.leading.relaxed,
-        }}>
-          {codeLines.join('\n')}
-        </pre>
-      )
-      continue
-    }
-
-    // Table (pipe-based)
-    if (line.includes('|') && line.trim().startsWith('|')) {
-      const rows = []
-      while (i < lines.length && lines[i].includes('|') && lines[i].trim().startsWith('|')) {
-        const cells = lines[i].split('|').slice(1, -1).map(c => c.trim())
-        if (!cells.every(c => /^[-:]+$/.test(c))) rows.push(cells)
-        i++
-      }
-      if (rows.length > 0) {
-        const header = rows[0]
-        const body = rows.slice(1)
-        elements.push(
-          <div key={elements.length} style={{ overflow: 'auto', margin: `${T.sp[3]}px 0` }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: T.fontSize.xs, fontFamily: T.mono }}>
-              <thead>
-                <tr>
-                  {header.map((h, j) => (
-                    <th key={j} style={{ textAlign: 'left', padding: `${T.sp[2]}px ${T.sp[3]}px`, borderBottom: `1px solid ${T.border}`, color: T.textBright, fontWeight: T.weight.medium }}>{inline(h)}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {body.map((row, ri) => (
-                  <tr key={ri}>
-                    {row.map((cell, ci) => (
-                      <td key={ci} style={{ padding: `${T.sp[2]}px ${T.sp[3]}px`, borderBottom: `1px solid ${T.border}`, color: T.text }}>{inline(cell)}</td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )
-      }
-      continue
-    }
-
-    // Headings
-    if (line.startsWith('### ')) {
-      elements.push(<h4 key={elements.length} style={{ color: T.textBright, fontSize: T.fontSize.sm, fontWeight: T.weight.semibold, margin: `${T.sp[5]}px 0 ${T.sp[2]}px` }}>{inline(line.slice(4))}</h4>)
-      i++; continue
-    }
-    if (line.startsWith('## ')) {
-      elements.push(<h3 key={elements.length} style={{ color: T.textBright, fontSize: T.fontSize.base, fontWeight: T.weight.semibold, margin: `${T.sp[5]}px 0 ${T.sp[2]}px` }}>{inline(line.slice(3))}</h3>)
-      i++; continue
-    }
-    if (line.startsWith('# ')) {
-      elements.push(<h2 key={elements.length} style={{ color: T.textBright, fontSize: T.fontSize.md, fontWeight: T.weight.bold, margin: `${T.sp[5]}px 0 ${T.sp[3]}px` }}>{inline(line.slice(2))}</h2>)
-      i++; continue
-    }
-
-    // List item
-    if (/^[-*] /.test(line)) {
-      elements.push(
-        <div key={elements.length} style={{ display: 'flex', gap: T.sp[3], margin: `${T.sp[1]}px 0`, fontSize: T.fontSize.xs, color: T.text, lineHeight: T.leading.relaxed }}>
-          <span style={{ color: T.muted }}>-</span>
-          <span>{inline(line.slice(2))}</span>
-        </div>
-      )
-      i++; continue
-    }
-
-    // Empty line
-    if (!line.trim()) {
-      elements.push(<div key={elements.length} style={{ height: T.sp[3] }} />)
-      i++; continue
-    }
-
-    // Paragraph
-    elements.push(<p key={elements.length} style={{ fontSize: T.fontSize.xs, color: T.text, lineHeight: T.leading.relaxed, margin: `${T.sp[2]}px 0` }}>{inline(line)}</p>)
-    i++
-  }
-
-  return <>{elements}</>
-}
-
-function inline(text) {
-  const parts = []
-  const re = /(`[^`]+`)|(\*\*[^*]+\*\*)/g
-  let last = 0
-  let m
-  while ((m = re.exec(text)) !== null) {
-    if (m.index > last) parts.push(text.slice(last, m.index))
-    if (m[1]) {
-      parts.push(<code key={parts.length} style={{ background: T.bg, padding: '1px 4px', borderRadius: 3, fontFamily: T.mono, fontSize: T.fontSize.xs, color: T.accentColor }}>{m[1].slice(1, -1)}</code>)
-    } else if (m[2]) {
-      parts.push(<strong key={parts.length} style={{ color: T.textBright, fontWeight: T.weight.semibold }}>{m[2].slice(2, -2)}</strong>)
-    }
-    last = m.index + m[0].length
-  }
-  if (last < text.length) parts.push(text.slice(last))
-  return parts.length === 1 && typeof parts[0] === 'string' ? parts[0] : parts
 }

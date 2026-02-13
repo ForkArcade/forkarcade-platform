@@ -9,6 +9,7 @@ import { initDb } from './db.js'
 import authRouter from './auth.js'
 import scoresRouter from './routes/scores.js'
 import githubRouter from './routes/github.js'
+import walletRouter from './routes/wallet.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const app = express()
@@ -23,6 +24,7 @@ app.use('/sdk', express.static(path.join(__dirname, '../../sdk')))
 app.use(authRouter)
 app.use(scoresRouter)
 app.use(githubRouter)
+app.use(walletRouter)
 
 const C = '\x1b[36m', Y = '\x1b[33m', D = '\x1b[2m', R = '\x1b[0m'
 const banner = [

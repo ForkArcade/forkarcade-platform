@@ -20,13 +20,17 @@ const navStyle = (isActive) => ({
 
 export default function App() {
   const [user, setUser] = useState(null)
+  const [walletBalance, setWalletBalance] = useState(null)
   const location = useLocation()
   const isGamePage = location.pathname.startsWith('/play/')
 
   async function me() {
     try {
       const j = await apiFetch('/api/me')
-      if (j.user) setUser(j.user)
+      if (j.user) {
+        setUser(j.user)
+        apiFetch('/api/wallet').then(w => setWalletBalance(w.balance ?? 0)).catch(() => {})
+      }
     } catch {}
   }
 
@@ -50,6 +54,11 @@ export default function App() {
         right={
           !user ? <LoginButton /> : (
             <>
+              {walletBalance != null && walletBalance > 0 && (
+                <span style={{ fontFamily: T.mono, fontSize: T.fontSize.xs, color: T.gold, fontWeight: T.weight.medium }}>
+                  {walletBalance}c
+                </span>
+              )}
               {user.avatar && <img src={user.avatar} alt="" width={24} height={24} style={{ borderRadius: '50%' }} />}
               <span style={{ fontSize: T.fontSize.sm, color: T.text }}>@{user.login}</span>
               <Button
@@ -64,10 +73,10 @@ export default function App() {
       />
       <div style={{ flex: 1, padding: isGamePage ? `${T.sp[4]}px ${T.sp[5]}px` : T.sp[7], overflow: isGamePage ? 'hidden' : 'auto' }}>
         <Routes>
-          <Route path="/" element={<HomePage />} />
+          <Route path="/" element={<HomePage user={user} balance={walletBalance ?? 0} onBalanceChange={setWalletBalance} />} />
           <Route path="/templates" element={<TemplatesPage />} />
           <Route path="/templates/:slug" element={<TemplateDetailPage />} />
-          <Route path="/play/:slug" element={<GamePage user={user} />} />
+          <Route path="/play/:slug" element={<GamePage user={user} balance={walletBalance ?? 0} onBalanceChange={setWalletBalance} />} />
         </Routes>
       </div>
       <footer style={{

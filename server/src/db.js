@@ -22,6 +22,19 @@ export async function initDb() {
     )`,
     `CREATE INDEX IF NOT EXISTS idx_scores_game_slug ON scores(game_slug)`,
     `CREATE INDEX IF NOT EXISTS idx_scores_game_version ON scores(game_slug, version)`,
+    `CREATE TABLE IF NOT EXISTS wallets (
+      github_user_id INTEGER PRIMARY KEY,
+      balance INTEGER DEFAULT 0
+    )`,
+    `CREATE TABLE IF NOT EXISTS votes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      github_user_id INTEGER NOT NULL,
+      game_slug TEXT NOT NULL,
+      issue_number INTEGER NOT NULL,
+      coins_spent INTEGER NOT NULL,
+      created_at TEXT NOT NULL
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_votes_game_issue ON votes(game_slug, issue_number)`,
   ])
 }
 

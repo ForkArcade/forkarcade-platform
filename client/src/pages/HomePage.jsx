@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { T } from '../theme'
 import { GITHUB_ORG, githubFetch, fetchBuildCache } from '../api'
 import { PageHeader, Grid, Card, CardTitle, CardDescription, CardTags, Badge, SectionHeading, PillTabs, EmptyState } from '../components/ui'
+import NewGamePanel from '../components/NewGamePanel'
 
 const GAME_TOPIC = 'forkarcade-game'
 
@@ -11,19 +13,19 @@ function formatSlug(slug) {
 
 const ABOUT_TABS = [
   { key: 'general', label: 'General' },
-  { key: 'narrative', label: 'Narrative' },
-  { key: 'platform', label: 'Platform' },
+  { key: 'coins', label: 'Coins' },
   { key: 'evolve', label: 'Evolve' },
+  { key: 'propose', label: 'Propose' },
 ]
 
 const ABOUT_CONTENT = {
-  general: 'ForkArcade is an open platform for web games built entirely by AI. Every game runs on GitHub Pages, scores are shared across players, and anyone can fork a template to create something new.',
-  narrative: 'Each game template includes a built-in narrative engine. Story graphs, branching choices, variables and events all run client-side inside the game iframe, synced to the platform via postMessage in real time.',
-  platform: 'Games are automatically wrapped in standard elements — title screens, score submission, player identification. Templates provide the engine, MCP tools handle scaffolding, validation, pixel art sprites and publishing. Claude Code does the rest.',
-  evolve: 'Games evolve through GitHub issues. Players submit feedback or feature requests, Claude Code picks them up, implements changes, and opens a PR — each merge creates a new playable version. The goal: users submit issues directly from this platform and AI evolves games under the hood.',
+  general: 'ForkArcade is an open platform for web games built entirely by AI. Play games, earn ForkCoin, and shape what gets built next. Every game runs on GitHub Pages, built from templates by Claude Code.',
+  coins: 'Earn ForkCoin by playing. Every score submit mints coins — 10% of your score, with a 50% bonus for personal records. Spend coins to vote on game changes or propose new games. Coins are burned on voting — they don\'t come back.',
+  evolve: 'Games evolve through player votes. Open the Evolve tab on any game, propose a change or vote on existing ones. When enough players vote, AI implements the top issue and creates a new version — every version stays playable.',
+  propose: 'Want a new game? Propose it below. Describe the concept, pick a template, and let others vote. At 10 unique voters the proposal is approved and queued for creation by Claude Code.',
 }
 
-export default function HomePage() {
+export default function HomePage({ user, balance, onBalanceChange }) {
   const [games, setGames] = useState([])
   const [status, setStatus] = useState('loading')
   const [aboutTab, setAboutTab] = useState('general')
@@ -92,14 +94,18 @@ export default function HomePage() {
           {ABOUT_CONTENT[aboutTab]}
         </p>
 
-        <SectionHeading>Filter</SectionHeading>
-        <p style={{
-          fontSize: T.fontSize.sm,
+        <Link to="/templates" style={{
+          display: 'block',
+          fontSize: T.fontSize.xs,
           color: T.muted,
-          lineHeight: T.leading.normal,
+          textDecoration: 'none',
+          marginBottom: T.sp[6],
         }}>
-          Coming soon
-        </p>
+          Browse templates →
+        </Link>
+
+        <SectionHeading>Propose New Game</SectionHeading>
+        <NewGamePanel user={user} balance={balance} onBalanceChange={onBalanceChange} />
       </aside>
     </div>
   )

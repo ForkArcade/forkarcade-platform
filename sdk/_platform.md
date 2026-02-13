@@ -70,6 +70,31 @@ var faFont = getComputedStyle(document.documentElement).getPropertyValue('--fa-f
 ctx.font = '16px ' + faFont;
 ```
 
+## Evolve Changelog (mandatory during evolve)
+
+When implementing an evolve issue, you MUST create a changelog file:
+
+**Path**: `changelog/v{N}.md` (where N = new version number)
+
+**Format**:
+```markdown
+# v{N} — {short title}
+
+## Issue
+{issue title} (#{issue_number})
+
+## Changes
+- {what was added/changed/fixed — bullet list}
+
+## Reasoning
+{why these decisions were made, tradeoffs considered, what was rejected and why}
+
+## Files Modified
+- `{file}` — {what changed}
+```
+
+This file is committed as part of the evolve PR. The platform displays it in the Changelog tab.
+
 ## Platform Files (do not edit)
 
 - `forkarcade-sdk.js` — SDK (scoring, auth)
