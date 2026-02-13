@@ -73,7 +73,7 @@ TOOLS = [
     },
     {
         "name": "create_sprite",
-        "description": "Creates a pixel art sprite (minimum 16x16) — validates, saves to _sprites.json, generates sprites.js",
+        "description": "Creates a pixel art sprite — validates, saves to _sprites.json, generates sprites.js",
         "inputSchema": {
             "type": "object",
             "properties": {

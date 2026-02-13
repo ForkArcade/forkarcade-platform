@@ -24,12 +24,10 @@ def get_asset_guide(args):
     for cat, info in guide["categories"].items():
         output += f"### {cat}\n{info['desc']}\n"
         output += f"Sprite'y: {', '.join(info['sprites'])}\n\n"
-    output += '## Sprite Format (minimum 16x16)\n```json\n'
-    output += '{\n  "w": 16, "h": 16,\n  "palette": { "1": "#a86", "2": "#d9a", "3": "#4a3" },\n'
-    output += '  "pixels": [\n    "......1111......",\n    ".....112211.....",\n    ".....122221.....",\n    "....11222211....",\n'
-    output += '    "....12222221....",\n    "....12233221....",\n    "....12233221....",\n    "....12222221....",\n'
-    output += '    ".....222222.....",\n    "....33333333....",\n    "...3333333333...",\n    "...3333333333...",\n'
-    output += '    "....33333333....",\n    ".....33..33.....",\n    "....33....33....",\n    "....33....33...."\n  ]\n}\n```\n\n'
+    output += '## Sprite Format\n```json\n'
+    output += '{\n  "w": 8, "h": 8,\n  "palette": { "1": "#a86", "2": "#d9a" },\n'
+    output += '  "pixels": [\n    "..1..1..",\n    ".11..11.",\n    ".122221.",\n    "11222211",\n'
+    output += '    "11222211",\n    ".112211.",\n    ".1....1.",\n    ".1....1."\n  ]\n}\n```\n\n'
     output += "## Renderer Integration\n```js\n"
     output += "var sprite = typeof getSprite === 'function' && getSprite('enemies', enemy.type)\n"
     output += "if (sprite) {\n  drawSprite(ctx, sprite, sx, sy, T)\n} else {\n  ctx.fillText(enemy.char, sx + T/2, sy + T/2)\n}\n```\n"
@@ -55,8 +53,6 @@ def create_sprite(args):
         return json.dumps({"error": "pixels must be a non-empty array of strings"})
     h = len(pixels)
     w = len(pixels[0])
-    if w < 16 or h < 16:
-        return json.dumps({"error": f"Sprite too small ({w}x{h}). Minimum size is 16x16."})
     for i in range(h):
         if not isinstance(pixels[i], str):
             return json.dumps({"error": f"Row {i} must be a string"})
