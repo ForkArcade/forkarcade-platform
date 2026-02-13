@@ -25,9 +25,11 @@ const ABOUT_CONTENT = {
 
 export default function HomePage() {
   const [games, setGames] = useState([])
+  const [status, setStatus] = useState('loading') // loading | ok | error
   const [aboutTab, setAboutTab] = useState('general')
 
   useEffect(() => {
+    setStatus('loading')
     githubFetch(`/orgs/${GITHUB_ORG}/repos?type=public&per_page=100`)
       .then(repos => {
         const gameList = repos
@@ -40,6 +42,7 @@ export default function HomePage() {
             thumbnail: null,
           }))
         setGames(gameList)
+        setStatus('ok')
 
         gameList.forEach((game, i) => {
           const url = `https://raw.githubusercontent.com/${GITHUB_ORG}/${game.slug}/main/_thumbnail.png`
@@ -50,7 +53,10 @@ export default function HomePage() {
           img.src = url
         })
       })
-      .catch(() => setGames([]))
+      .catch(() => {
+        setGames([])
+        setStatus('error')
+      })
   }, [])
 
   return (
@@ -66,7 +72,9 @@ export default function HomePage() {
             </Card>
           ))}
         </Grid>
-        {games.length === 0 && <EmptyState>No games yet.</EmptyState>}
+        {status === 'loading' && <EmptyState>Loading games...</EmptyState>}
+        {status === 'error' && <EmptyState>Server is waking up — free Render.com plan spins down after inactivity. Refresh in a few seconds.</EmptyState>}
+        {status === 'ok' && games.length === 0 && <EmptyState>No games yet.</EmptyState>}
       </div>
 
       <aside style={{ width: 260, minWidth: 260, paddingTop: T.sp[9] }}>

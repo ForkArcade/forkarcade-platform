@@ -4,8 +4,10 @@ import { PageHeader, Grid, Card, CardTitle, CardTags, Badge, EmptyState } from '
 
 export default function TemplatesPage() {
   const [templates, setTemplates] = useState([])
+  const [status, setStatus] = useState('loading') // loading | ok | error
 
   useEffect(() => {
+    setStatus('loading')
     githubFetch(`/orgs/${GITHUB_ORG}/repos?type=public&per_page=100`)
       .then(repos => {
         setTemplates(repos
@@ -17,8 +19,12 @@ export default function TemplatesPage() {
             topics: r.topics.filter(t => t !== TEMPLATE_TOPIC),
           }))
         )
+        setStatus('ok')
       })
-      .catch(() => setTemplates([]))
+      .catch(() => {
+        setTemplates([])
+        setStatus('error')
+      })
   }, [])
 
   return (
@@ -32,7 +38,9 @@ export default function TemplatesPage() {
           </Card>
         ))}
       </Grid>
-      {templates.length === 0 && <EmptyState>No templates found.</EmptyState>}
+      {status === 'loading' && <EmptyState>Loading templates...</EmptyState>}
+      {status === 'error' && <EmptyState>Server is waking up — free Render.com plan spins down after inactivity. Refresh in a few seconds.</EmptyState>}
+      {status === 'ok' && templates.length === 0 && <EmptyState>No templates found.</EmptyState>}
     </div>
   )
 }
