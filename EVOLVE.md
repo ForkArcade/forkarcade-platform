@@ -1,248 +1,247 @@
-# Evolve — Ewolucja Gier przez Graczy i AI
+# Evolve — Game Evolution Through Players and AI
 
-## Wizja
+## Vision
 
-Gry na ForkArcade nie mają jednego autora. Gry **ewoluują** — gracze decydują co się zmienia, AI to implementuje. Każda gra to żywy organizm napędzany feedbackiem społeczności i autonomią AI.
+Games on ForkArcade don't have a single author. Games **evolve** — players decide what changes, AI implements it. Each game is a living organism driven by community feedback and AI autonomy.
 
-Issue na GitHub to DNA zmian. ForkCoin to mechanizm selekcji. Claude Code to silnik mutacji.
+GitHub issues are the DNA of change. ForkCoin is the selection mechanism. Claude Code is the mutation engine.
 
-## Aktorzy
+## Actors
 
-### Gracz
-- Gra w gry → zarabia ForkCoin
-- Pisze issues (propozycje zmian) na GitHub repo gry
-- Głosuje coinami na cudze issues
-- Testuje nowe wersje po merge
+### Player
+- Plays games -> earns ForkCoin
+- Writes issues (change proposals) on the game's GitHub repo
+- Votes with coins on others' issues
+- Tests new versions after merge
 
 ### AI (Claude Code)
-- Odbiera najwyżej głosowane issue
-- Analizuje kod gry, engine, prompt
-- Implementuje zmiany → otwiera PR
-- PR merge → nowa wersja gry (snapshot w `/versions/vN/`)
+- Receives the highest-voted issue
+- Analyzes game code, engine, prompt
+- Implements changes -> opens PR
+- PR merge -> new game version (snapshot in `/versions/vN/`)
 
-### Platforma
-- Agreguje głosy, zarządza kolejką evolve
-- Triggeruje GitHub Actions workflow
-- Archiwizuje wersje, wyświetla changelog
-- Pilnuje fairness (limity, cooldowny)
+### Platform
+- Aggregates votes, manages evolve queue
+- Triggers GitHub Actions workflow
+- Archives versions, displays changelog
+- Enforces fairness (limits, cooldowns)
 
 ## Flow
 
 ```
-1. Gracz pisze issue na GitHub
-   "Dodaj system craftingu z zebranych surowców"
-   ↓
-2. Issue pojawia się na platformie (GamePage → tab Issues)
-   Inni gracze widzą propozycję
-   ↓
-3. Gracze głosują coinami
-   10 coinów = 1 głos, bez limitu per issue
-   Coiny są wydawane (burned) — nie wracają
-   ↓
+1. Player writes a GitHub issue
+   "Add a crafting system from gathered resources"
+   |
+2. Issue appears on the platform (GamePage -> Issues tab)
+   Other players see the proposal
+   |
+3. Players vote with coins
+   10 coins = 1 vote, no limit per issue
+   Coins are burned — they don't come back
+   |
 4. Evolve trigger
-   Co X godzin (lub po osiągnięciu progu głosów)
-   platforma wybiera issue z najwyższą liczbą głosów
-   ↓
+   Every X hours (or after reaching a vote threshold)
+   platform picks the issue with the most votes
+   |
 5. GitHub Actions workflow
-   Label `evolve` + komentarz z kontekstem głosów
-   Claude Code dostaje issue + codebase + game prompt
-   ↓
-6. AI implementuje → PR
-   PR zawiera: zmiany w kodzie, opis, test notes
-   ↓
-7. Auto-merge (lub review przez twórcę)
-   Version workflow tworzy snapshot /versions/vN/
-   ↓
-8. Nowa wersja live na platformie
-   Gracze widzą changelog, mogą grać w nową wersję
-   Nowy cykl się zaczyna
+   Label `evolve` + comment with vote context
+   Claude Code gets issue + codebase + game prompt
+   |
+6. AI implements -> PR
+   PR contains: code changes, description, test notes
+   |
+7. Auto-merge (or review by creator)
+   Version workflow creates snapshot /versions/vN/
+   |
+8. New version live on the platform
+   Players see changelog, can play the new version
+   New cycle begins
 ```
 
-## Issues na GitHub — konwencje
+## GitHub Issues — Conventions
 
-### Kto może pisać issues
-- Każdy z kontem GitHub (publiczne repo = publiczne issues)
-- Platforma może oferować formularz który tworzy issue przez GitHub API (uproszczony UX)
+### Who can write issues
+- Anyone with a GitHub account (public repo = public issues)
+- Platform can offer a form that creates issues via GitHub API (simplified UX)
 
-### Kategorie issues (labels)
+### Issue categories (labels)
 
-| Label | Opis | Przykład |
-|-------|------|---------|
-| `feature` | Nowa mechanika lub content | "Dodaj system craftingu" |
-| `balance` | Zmiana balansu / trudności | "Za dużo wrogów na lvl 3" |
-| `visual` | Grafika, animacje, UI | "Lepsze eksplozje" |
-| `audio` | Dźwięki, muzyka | "Dodaj efekt dźwiękowy strzału" |
-| `bug` | Coś nie działa | "Gracz przechodzi przez ściany" |
-| `narrative` | Fabuła, dialogi, branching | "Dodaj alternatywne zakończenie" |
+| Label | Description | Example |
+|-------|-------------|---------|
+| `feature` | New mechanic or content | "Add a crafting system" |
+| `balance` | Balance / difficulty change | "Too many enemies on lvl 3" |
+| `visual` | Graphics, animations, UI | "Better explosions" |
+| `audio` | Sound, music | "Add a shooting sound effect" |
+| `bug` | Something doesn't work | "Player walks through walls" |
+| `narrative` | Story, dialogue, branching | "Add an alternative ending" |
 
-### Format issue (template)
+### Issue format (template)
 
 ```markdown
-## Co chcę zmienić
-[Opis zmiany — co gracz powinien zobaczyć/poczuć]
+## What I want to change
+[Description — what the player should see/feel]
 
-## Dlaczego
-[Motywacja — co jest teraz nie tak lub czego brakuje]
+## Why
+[Motivation — what's wrong now or what's missing]
 
-## Jak to może wyglądać (opcjonalne)
-[Szczegóły implementacji, jeśli gracz ma pomysł]
+## How it could look (optional)
+[Implementation details, if the player has an idea]
 ```
 
-Platforma może prepopulować template przy tworzeniu issue z UI.
+Platform can prepopulate the template when creating an issue from the UI.
 
-## Mechanizm głosowania
+## Voting Mechanism
 
-### Zasady
-- **1 głos = 10 ForkCoin** (konfigurowalny per gra)
-- Gracz może dać wiele głosów na jedno issue (stake więcej coinów = silniejszy głos)
-- Coiny są **burned** przy głosowaniu — nie wracają. To nadaje im wartość.
-- Głosować można tylko na otwarte issues z odpowiednim labelem
-- Nie można głosować na własne issues (anti-spam)
+### Rules
+- **1 vote = 10 ForkCoin** (configurable per game)
+- Player can cast multiple votes on one issue (stake more coins = stronger voice)
+- Coins are **burned** on voting — they don't come back. This gives them value.
+- Can only vote on open issues with the appropriate label
+- Cannot vote on own issues (anti-spam)
 
-### Wyświetlanie
-- GamePage → nowy tab (ikona: `Vote` / `Megaphone`) obok Leaderboard/Narrative/Changelog
-- Lista otwartych issues posortowana po liczbie głosów
-- Przy każdym issue: tytuł, kategoria, liczba głosów, przycisk "Vote"
-- Po zagłosowaniu: animacja coina, aktualizacja salda
+### Display
+- GamePage -> new tab (icon: `Vote` / `Megaphone`) next to Leaderboard/Narrative/Changelog
+- Open issues sorted by vote count
+- For each issue: title, category, vote count, "Vote" button
+- After voting: coin animation, balance update
 
 ### Anti-gaming
-- Minimum 1 sesja w grze zanim możesz głosować (musisz grać żeby mieć opinię)
-- Rate limit: max X głosów per gra per dzień
-- Twórca gry może zablokować issue (close) jeśli jest spam/trolling
+- Minimum 1 session in the game before you can vote (must play to have an opinion)
+- Rate limit: max X votes per game per day
+- Game creator can close issues if spam/trolling
 
-## Evolve Trigger — kiedy AI zaczyna pracę
+## Evolve Trigger — When AI Starts Working
 
-### Opcja A: Próg głosów
-- Issue zbiera N głosów → automatyczny trigger
-- Próg rośnie z każdą wersją gry (v1: 10 głosów, v2: 15, v3: 20...)
-- Zapobiega zbyt częstym zmianom w początkowej fazie
+### Option A: Vote threshold
+- Issue collects N votes -> automatic trigger
+- Threshold increases with each game version (v1: 10 votes, v2: 15, v3: 20...)
+- Prevents too-frequent changes in the early phase
 
-### Opcja B: Cykl czasowy
-- Co 48h/72h platforma sprawdza najwyżej głosowane issue
-- Jeśli jest issue z > 0 głosów → trigger
-- Przewidywalny rytm ewolucji
+### Option B: Time cycle
+- Every 48h/72h the platform checks the highest-voted issue
+- If there's an issue with > 0 votes -> trigger
+- Predictable evolution rhythm
 
-### Opcja C: Hybryda (rekomendacja)
-- Cykl co 48h, ALE issue z > N głosów triggeruje natychmiast
-- Pilne poprawki (bugi) mogą mieć niższy próg
-- Twórca gry może ręcznie triggerować evolve
+### Option C: Hybrid (recommended)
+- Cycle every 48h, BUT issue with > N votes triggers immediately
+- Urgent fixes (bugs) can have a lower threshold
+- Game creator can manually trigger evolve
 
-## Rola twórcy gry
+## Game Creator's Role
 
-Twórca (kto zrobił `init_game` + `publish_game`) ma specjalne uprawnienia:
+The creator (whoever ran `init_game` + `publish_game`) has special privileges:
 
-- **Veto** — może zamknąć issue które nie pasuje do wizji gry
-- **Priority** — może oznaczyć issue jako `priority` (AI bierze je najpierw, niezależnie od głosów)
-- **Manual trigger** — może odpalić evolve bez czekania na głosy
-- **Review PR** — może wymagać review przed merge (zamiast auto-merge)
-- **Freeze** — może zamrozić grę (brak evolve) na czas określony
+- **Veto** — can close issues that don't fit the game's vision
+- **Priority** — can mark issues as `priority` (AI takes them first, regardless of votes)
+- **Manual trigger** — can fire evolve without waiting for votes
+- **Review PR** — can require review before merge (instead of auto-merge)
+- **Freeze** — can freeze the game (no evolve) for a set period
 
-Twórca NIE może:
-- Głosować coinami na issues własnej gry
-- Mintować coinów poza normalnym graniem
+Creator CANNOT:
+- Vote with coins on their own game's issues
+- Mint coins outside of normal play
 
-## AI Context — co Claude Code dostaje
+## AI Context — What Claude Code Receives
 
-Przy evolve workflow AI otrzymuje:
-
-```
-1. Issue z GitHub (tytuł, body, labels, komentarze)
-2. Kontekst głosów (ile głosów, kto głosował — anonimowo)
-3. Pełen kod gry (repo)
-4. _prompt.md z template'u (mechaniki, scoring, rendering)
-5. CLAUDE.md z template'u (API engine'u)
-6. _platform.md (złote zasady platformy)
-7. Historia poprzednich wersji (changelog)
-8. Obecny stan narracji (jeśli relevantne)
-```
-
-AI NIE dostaje:
-- Dostępu do bazy danych platformy
-- Możliwości zmiany SDK lub engine'u (tylko game files)
-- Dostępu do innych gier
-
-## Wersje i kompatybilność
-
-Każdy evolve tworzy nową wersję:
+During evolve workflow, AI receives:
 
 ```
-/index.html          ← latest (po merge)
-/versions/v1/        ← snapshot v1
-/versions/v2/        ← snapshot v2 (po evolve)
-/.forkarcade.json    ← versions array z opisami
+1. GitHub issue (title, body, labels, comments)
+2. Vote context (how many votes, who voted — anonymously)
+3. Full game code (repo)
+4. _prompt.md from the template (mechanics, scoring, rendering)
+5. CLAUDE.md from the template (engine API)
+6. _platform.md (platform golden rules)
+7. Previous version history (changelog)
+8. Current narrative state (if relevant)
 ```
 
-- Stare wersje zawsze grywalne (snapshot jest kompletny)
-- Leaderboard per wersja (score z v1 nie miesza się z v2)
-- Gracz może wrócić do dowolnej wersji przez SegmentedControl
-- Coiny zarabia się z dowolnej wersji (ale kurs może się różnić)
+AI does NOT receive:
+- Access to the platform database
+- Ability to change SDK or engine (only game files)
+- Access to other games
 
-## UI na platformie
+## Versions and Compatibility
 
-### GamePage — nowy tab "Evolve" (ikona: Zap / Rocket)
+Each evolve creates a new version:
 
 ```
-┌─────────────────────────────┐
-│ ▲ 47  Dodaj system craftingu│  ← najwyżej głosowane
-│       feature · #12         │
-│       [Vote 10₵]            │
-├─────────────────────────────┤
-│ ▲ 23  Alternatywne          │
-│       zakończenie            │
-│       narrative · #15       │
-│       [Vote 10₵]            │
-├─────────────────────────────┤
-│ ▲ 8   Lepsze eksplozje      │
-│       visual · #18          │
-│       [Vote 10₵]            │
-├─────────────────────────────┤
-│ ▲ 3   Bug: przechodzenie    │
-│       przez ściany           │
-│       bug · #20             │
-│       [Vote 10₵]            │
-└─────────────────────────────┘
-  Próg evolve: 50 głosów
-  Następny cykl: za 18h
+/index.html          <- latest (after merge)
+/versions/v1/        <- snapshot v1
+/versions/v2/        <- snapshot v2 (after evolve)
+/.forkarcade.json    <- versions array with descriptions
 ```
 
-### HomePage — badge "Hot" na kartach gier
+- Old versions always playable (snapshot is complete)
+- Leaderboard per version (scores from v1 don't mix with v2)
+- Player can return to any version via SegmentedControl
+- Coins earned from any version (but rate may vary)
 
-- Gry z aktywnym głosowaniem (> N głosów w ostatnich 48h) dostają badge
-- Zachęca do wejścia i zagłosowania
+## Platform UI
 
-### Profil gracza — historia głosów
+### GamePage — new "Evolve" tab (icon: Zap / Rocket)
 
-- "Zagłosowałeś na 12 issues w 5 grach"
-- "3 Twoje propozycje zostały zaimplementowane"
-- Achievement: "Kingmaker" — Twój głos przesądził o evolve
+```
++-----------------------------+
+| ^ 47  Add crafting system   |  <- highest voted
+|       feature · #12         |
+|       [Vote 10c]            |
++-----------------------------+
+| ^ 23  Alternative ending    |
+|       narrative · #15       |
+|       [Vote 10c]            |
++-----------------------------+
+| ^ 8   Better explosions     |
+|       visual · #18          |
+|       [Vote 10c]            |
++-----------------------------+
+| ^ 3   Bug: walking through  |
+|       walls                 |
+|       bug · #20             |
+|       [Vote 10c]            |
++-----------------------------+
+  Evolve threshold: 50 votes
+  Next cycle: in 18h
+```
 
-## Fazy wdrożenia
+### HomePage — "Hot" badge on game cards
 
-### Faza 1: Issues na platformie (read-only)
-- Nowy tab "Evolve" na GamePage
-- Pobieranie issues z GitHub API (label filter)
-- Wyświetlanie listy — bez głosowania jeszcze
-- Link do GitHub issue (otwiera w nowym oknie)
+- Games with active voting (> N votes in last 48h) get a badge
+- Encourages entering and voting
 
-### Faza 2: Głosowanie coinami
-- Integracja z walletem (COIN.md)
-- Przycisk "Vote" → burn coinów → komentarz na GitHub issue z liczbą głosów
-- Sortowanie po głosach
-- Anti-gaming (rate limits, minimum 1 sesja)
+### Player Profile — vote history
 
-### Faza 3: Automatyczny evolve trigger
-- GitHub Actions workflow czyta głosy (z komentarzy lub API platformy)
-- Automatyczny trigger po osiągnięciu progu
-- Powiadomienie na platformie: "Nowa wersja w drodze!"
+- "You voted on 12 issues in 5 games"
+- "3 of your proposals were implemented"
+- Achievement: "Kingmaker" — your vote decided the evolve
 
-### Faza 4: Formularz issues z platformy
-- Gracz pisze issue bez wychodzenia z platformy
-- Platforma tworzy issue przez GitHub API
-- Template z kategoriami (labels)
-- Uproszczony UX dla nie-devów
+## Implementation Phases
 
-### Faza 5: Governance zaawansowany
-- Twórca: veto, priority, freeze
-- Dynamiczny próg głosów
-- Sezonowość (resety, eventy)
-- Achievement system za udział w evolucji
+### Phase 1: Issues on the platform (read-only)
+- New "Evolve" tab on GamePage
+- Fetch issues from GitHub API (label filter)
+- Display list — no voting yet
+- Link to GitHub issue (opens in new window)
+
+### Phase 2: Coin voting
+- Integration with wallet (COIN.md)
+- "Vote" button -> burn coins -> comment on GitHub issue with vote count
+- Sort by votes
+- Anti-gaming (rate limits, minimum 1 session)
+
+### Phase 3: Automatic evolve trigger
+- GitHub Actions workflow reads votes (from comments or platform API)
+- Automatic trigger after reaching threshold
+- Notification on platform: "New version incoming!"
+
+### Phase 4: Issue form from the platform
+- Player writes issue without leaving the platform
+- Platform creates issue via GitHub API
+- Template with categories (labels)
+- Simplified UX for non-devs
+
+### Phase 5: Advanced governance
+- Creator: veto, priority, freeze
+- Dynamic vote threshold
+- Seasonality (resets, events)
+- Achievement system for evolve participation

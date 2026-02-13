@@ -1,32 +1,32 @@
 ---
 name: new-game
-description: Tworzy nową grę na platformę ForkArcade. Pyta o typ gry, nazwę i opis, potem inicjalizuje projekt z odpowiedniego template'u.
+description: Creates a new game on the ForkArcade platform. Asks about game type, name and description, then initializes the project from the appropriate template.
 ---
 
-Tworzysz nową grę na platformę ForkArcade. Postępuj krok po kroku:
+You are creating a new game on the ForkArcade platform. Follow these steps:
 
-1. Zapytaj użytkownika o wizję gry — co to za gra, jaki klimat, jakie mechaniki
-2. Użyj narzędzia `list_templates` aby zobaczyć dostępne template'y
-3. Zaproponuj najlepszy template na podstawie opisu użytkownika
-4. Zapytaj o slug (nazwa repo, lowercase-with-hyphens) i tytuł gry
-5. Użyj narzędzia `init_game` aby sforkować template i sklonować repo
-6. Użyj narzędzia `get_game_prompt` aby pobrać wiedzę o mechanikach tego typu gry
-7. Na podstawie wizji użytkownika i promptu — zaimplementuj grę w `game.js`
-8. Użyj narzędzia `validate_game` aby sprawdzić czy wszystko jest OK
-9. Zapytaj użytkownika czy chce opublikować — jeśli tak, użyj `publish_game`
+1. Ask the user about their game vision — what kind of game, what atmosphere, what mechanics
+2. Use the `list_templates` tool to see available templates
+3. Suggest the best template based on the user's description
+4. Ask for a slug (repo name, lowercase-with-hyphens) and game title
+5. Use the `init_game` tool to fork the template and clone the repo
+6. Use the `get_game_prompt` tool to get knowledge about this game type's mechanics
+7. Based on the user's vision and the prompt — implement the game in `game.js`
+8. Use the `validate_game` tool to check everything is OK
+9. Ask the user if they want to publish — if yes, use `publish_game`
 
-Po implementacji gry (opcjonalnie):
-10. Zapytaj użytkownika czy chce stworzyć pixel art sprite'y
-11. Jeśli tak — użyj `get_asset_guide` aby poznać wymagane sprite'y dla tego szablonu
-12. Użyj `create_sprite` wielokrotnie aby stworzyć sprite'y (8x8 pixel art)
-13. Dodaj `<script src="sprites.js"></script>` w index.html przed game.js
-14. Dodaj fallback pattern w renderze: `getSprite()` → `drawSprite()` → tekst/geometria
+After game implementation (optional):
+10. Ask the user if they want to create pixel art sprites
+11. If yes — use `get_asset_guide` to learn required sprites for this template
+12. Use `create_sprite` multiple times to create sprites (8x8 pixel art)
+13. Add `<script src="sprites.js"></script>` in index.html before game.js
+14. Add fallback pattern in the renderer: `getSprite()` -> `drawSprite()` -> text/geometry
 
-Pamiętaj:
-- Gra renderuje się na canvas w przeglądarce
-- SDK jest już podpięty w index.html
-- Wywołaj `ForkArcade.onReady()` na starcie i `ForkArcade.submitScore()` na końcu gry
-- Skup się na core gameplay loop — nie overengineeruj
-- Sprite'y są opcjonalne — gra musi działać bez nich (fallback na tekst)
-- Po publikacji gra ma system wersji: issues z labelem `evolve` → Claude Code → PR → nowa wersja
-- `publish_game` automatycznie tworzy version v1 snapshot
+Remember:
+- The game renders on a canvas in the browser
+- SDK is already included in index.html
+- Call `ForkArcade.onReady()` on startup and `ForkArcade.submitScore()` at end of game
+- Focus on the core gameplay loop — don't overengineer
+- Sprites are optional — the game must work without them (text fallback)
+- After publishing, the game has a version system: issues with `evolve` label -> Claude Code -> PR -> new version
+- `publish_game` automatically creates a v1 version snapshot

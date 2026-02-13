@@ -1,14 +1,14 @@
 ---
 name: publish
-description: Waliduje i publikuje grę na platformie ForkArcade — push do GitHub, GitHub Pages, rejestracja w katalogu gier.
+description: Validates and publishes a game on the ForkArcade platform — push to GitHub, GitHub Pages, registration in the game catalog.
 disable-model-invocation: true
 ---
 
-Publikujesz grę na platformę ForkArcade. Postępuj krok po kroku:
+You are publishing a game on the ForkArcade platform. Follow these steps:
 
-1. Użyj narzędzia `validate_game` z path do bieżącego katalogu gry
-2. Jeśli są problemy — napraw je i waliduj ponownie
-3. Pokaż użytkownikowi podsumowanie: slug, tytuł, opis
-4. Zapytaj o potwierdzenie publikacji
-5. Użyj narzędzia `publish_game` z odpowiednimi parametrami
-6. Pokaż wynik: link do repo, link do gry na platformie
+1. Use the `validate_game` tool with the path to the current game directory
+2. If there are issues — fix them and validate again
+3. Show the user a summary: slug, title, description
+4. Ask for publication confirmation
+5. Use the `publish_game` tool with the appropriate parameters
+6. Show the result: link to repo, link to game on platform

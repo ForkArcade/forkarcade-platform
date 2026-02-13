@@ -1,57 +1,57 @@
-# ForkArcade — Zasady platformy
+# ForkArcade — Platform Rules
 
-Te zasady obowiazuja KAZDA gre na platformie ForkArcade, niezaleznie od szablonu.
+These rules apply to EVERY game on the ForkArcade platform, regardless of template.
 
-## 3 ekrany (obowiazkowe)
+## 3 Screens (mandatory)
 
-Kazda gra MUSI miec minimum 3 ekrany (stan `screen` w state):
+Every game MUST have at least 3 screens (`screen` state):
 
-1. **Ekran startowy** (`screen: 'start'`) — tytul gry, krotki opis, sterowanie, prompt do rozpoczecia (np. `[SPACJA]`)
-2. **Ekran gry** (`screen: 'playing'`) — wlasciwa rozgrywka
-3. **Ekran koncowy** (`screen: 'victory'` / `screen: 'defeat'` / `screen: 'death'`) — tekst narracyjny, statystyki, wynik, prompt do restartu (np. `[R]`)
+1. **Start screen** (`screen: 'start'`) — game title, short description, controls, prompt to begin (e.g. `[SPACE]`)
+2. **Game screen** (`screen: 'playing'`) — actual gameplay
+3. **End screen** (`screen: 'victory'` / `screen: 'defeat'` / `screen: 'death'`) — narrative text, stats, score, prompt to restart (e.g. `[R]`)
 
-## Narracja (obowiazkowa)
+## Narrative (mandatory)
 
-Narracja to misja platformy — dev skupia sie na grze, narracja jest za darmo. Ale gracz MUSI ja widziec w grze.
+Narrative is the platform's mission — dev focuses on the game, narrative comes for free. But the player MUST see it in the game.
 
-- Zarejestruj teksty narracyjne: `FA.register('narrativeText', nodeId, { text, color })`
-- Wyswietlaj je w grze (np. pasek u gory ekranu z fade out)
-- Wywoluj `showNarrative(nodeId)` przy kluczowych momentach
-- Ekran koncowy pokazuje odpowiedni tekst narracyjny
+- Register narrative texts: `FA.register('narrativeText', nodeId, { text, color })`
+- Display them in the game (e.g. bar at the top of the screen with fade out)
+- Call `showNarrative(nodeId)` at key moments
+- End screen shows appropriate narrative text
 
-Wzorzec `showNarrative`:
+`showNarrative` pattern:
 ```js
 function showNarrative(nodeId) {
   var textDef = FA.lookup('narrativeText', nodeId);
   if (textDef) {
-    // life w milisekundach! dt w engine jest w ms (~16.67ms per tick)
+    // life is in milliseconds! dt in the engine is in ms (~16.67ms per tick)
     FA.setState('narrativeMessage', { text: textDef.text, color: textDef.color, life: 4000 });
   }
   FA.narrative.transition(nodeId);
 }
 ```
-W game loop odliczaj: `if (state.narrativeMessage && state.narrativeMessage.life > 0) state.narrativeMessage.life -= dt;`
-W renderze wyswietlaj pasek z `alpha = Math.min(1, state.narrativeMessage.life / 1000)` dla plynnego fade out.
+In the game loop count down: `if (state.narrativeMessage && state.narrativeMessage.life > 0) state.narrativeMessage.life -= dt;`
+In the renderer display the bar with `alpha = Math.min(1, state.narrativeMessage.life / 1000)` for smooth fade out.
 
 ## Timing
 
-**dt jest w milisekundach** (~16.67ms per tick). Timery musza uzywac ms:
-- `life: 4000` = 4 sekundy
-- `life: 2000` = 2 sekundy
-- NIE `life: 3` (to 3ms = niewidoczne)
+**dt is in milliseconds** (~16.67ms per tick). Timers must use ms:
+- `life: 4000` = 4 seconds
+- `life: 2000` = 2 seconds
+- NOT `life: 3` (that's 3ms = invisible)
 
 ## SDK
 
-- `ForkArcade.onReady(callback)` — wywolaj na starcie
-- `ForkArcade.submitScore(score)` — wywolaj na koncu gry
-- `ForkArcade.updateNarrative(data)` — raportuj stan narracji do platformy
+- `ForkArcade.onReady(callback)` — call on startup
+- `ForkArcade.submitScore(score)` — call at end of game
+- `ForkArcade.updateNarrative(data)` — report narrative state to the platform
 
-## Sprite fallback
+## Sprite Fallback
 
-`FA.draw.sprite(category, name, x, y, size, fallbackChar, fallbackColor)` — jesli brak sprite'a, rysuje tekst. Gra MUSI dzialac bez sprite'ow.
+`FA.draw.sprite(category, name, x, y, size, fallbackChar, fallbackColor)` — if sprite is missing, draws text. Game MUST work without sprites.
 
-## Pliki platformy (nie edytuj)
+## Platform Files (do not edit)
 
 - `forkarcade-sdk.js` — SDK (scoring, auth)
-- `fa-narrative.js` — modul narracji (graf, zmienne, transition)
-- `sprites.js` — generowany z `_sprites.json`
+- `fa-narrative.js` — narrative module (graph, variables, transition)
+- `sprites.js` — generated from `_sprites.json`

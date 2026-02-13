@@ -1,46 +1,46 @@
 # ForkArcade Platform
 
-Platforma do tworzenia i grania w gry webowe publikowane na GitHub Pages.
+A platform for creating and playing web games published on GitHub Pages.
 
-> **TL;DR**: Gry = repozytoria w org `ForkArcade` na GitHub Pages w iframe. Szablony = dynamicznie z GitHub API (topic `forkarcade-template`), samowystarczalne (engine w środku). Platforma dostarcza SDK (scoring) + narrację. Serwer = auth + scores. Bez build stepa.
+> **TL;DR**: Games = repositories in the `ForkArcade` org on GitHub Pages in iframes. Templates = dynamically discovered via GitHub API (topic `forkarcade-template`), self-contained (engine inside). Platform provides SDK (scoring) + narrative. Server = auth + scores. No build step.
 
-## Architektura
+## Architecture
 
 ```
 client/          React + Vite (port 5173)
 server/          Express + SQLite (port 8787)
-mcp/             MCP server (Python) — narzędzia dla Claude Code
+mcp/             MCP server (Python) — tools for Claude Code
 sdk/
   forkarcade-sdk.js   SDK (postMessage, scoring, auth)
-  fa-narrative.js     Moduł narracji (graf, zmienne, transition)
-  _platform.md        Złote zasady platformy (prepended do każdego game promptu)
-.claude/skills/  Skile: new-game
+  fa-narrative.js     Narrative module (graph, variables, transition)
+  _platform.md        Platform golden rules (prepended to every game prompt)
+.claude/skills/  Skills: new-game
 ```
 
-## Kluczowe decyzje
+## Key Decisions
 
-- **Katalog gier = GitHub API** — nie mamy tabeli games. Klient pobiera listę repozytoriów z org `ForkArcade` filtrując po topicu `forkarcade-game`. Nie dodawaj tabeli games.
-- **Katalog szablonów = GitHub API** — szablony to repos z topicem `forkarcade-template`. MCP tools (`github_templates.py`) pobierają je dynamicznie. Metadane assetów w `_assets.json` w template repo. Nie ma hardcoded listy szablonów.
-- **Gry w iframe** — każda gra działa na GitHub Pages, osadzona w `<iframe>` na platformie. Komunikacja przez postMessage (SDK).
-- **Serwer jest cienki** — auth (GitHub OAuth + JWT cookie) + scores (SQLite). Nic więcej. Nie dodawaj logiki gier ani narracji po stronie serwera.
-- **Narracja jest client-side** — dane narracyjne (graf, zmienne, eventy) przechodzą postMessage z iframe do parenta. Nie są persystowane w bazie.
-- **Brak build stepa** — gry to vanilla JS, `<script>` tags, GitHub Pages (`build_type=legacy`). Żadnego bundlera.
+- **Game catalog = GitHub API** — there is no games table. Client fetches repository list from the `ForkArcade` org filtered by the `forkarcade-game` topic. Do not add a games table.
+- **Template catalog = GitHub API** — templates are repos with the `forkarcade-template` topic. MCP tools (`github_templates.py`) fetch them dynamically. Asset metadata lives in `_assets.json` in the template repo. No hardcoded template list.
+- **Games in iframe** — each game runs on GitHub Pages, embedded in an `<iframe>` on the platform. Communication via postMessage (SDK).
+- **Server is thin** — auth (GitHub OAuth + JWT cookie) + scores (SQLite). Nothing else. Do not add game logic or narrative on the server side.
+- **Narrative is client-side** — narrative data (graph, variables, events) passes through postMessage from iframe to parent. Not persisted in the database.
+- **No build step** — games are vanilla JS, `<script>` tags, GitHub Pages (`build_type=legacy`). No bundler.
 
-## Platforma dostarcza
+## Platform Provides
 
-- **SDK** (`forkarcade-sdk.js`) — scoring, auth, postMessage. `init_game` kopiuje, `update_sdk` aktualizuje.
-- **Narracja** (`fa-narrative.js`) — graf, zmienne, transition(). Misja platformy: dev skupia się na grze, narracja jest za darmo. `init_game` kopiuje z platformy.
+- **SDK** (`forkarcade-sdk.js`) — scoring, auth, postMessage. `init_game` copies it, `update_sdk` updates it.
+- **Narrative** (`fa-narrative.js`) — graph, variables, transition(). Platform mission: dev focuses on the game, narrative comes for free. `init_game` copies from platform.
 
-## Engine (w szablonach)
+## Engine (in templates)
 
-Moduły engine leżą w template repos (każdy szablon jest samowystarczalny). `init_game` klonuje template — engine jest już w środku.
+Engine modules live in template repos (each template is self-contained). `init_game` clones the template — engine is already inside.
 
 - Pattern: vanilla JS, IIFE, global namespace `window.FA`
-- **dt jest w milisekundach** (~16.67ms per tick). Timery muszą używać ms (np. `life: 4000` = 4 sekundy)
+- **dt is in milliseconds** (~16.67ms per tick). Timers must use ms (e.g. `life: 4000` = 4 seconds)
 
-## Struktura gry
+## Game Structure
 
-Cała struktura gry jest zdefiniowana w szablonie — `.forkarcade.json` w template repo:
+The entire game structure is defined in the template — `.forkarcade.json` in the template repo:
 
 ```json
 {
@@ -50,100 +50,99 @@ Cała struktura gry jest zdefiniowana w szablonie — `.forkarcade.json` w templ
 }
 ```
 
-- `engineFiles` — które moduły engine są w szablonie
-- `gameFiles` — pliki gry (skeleton w template repo, implementacja przez Claude)
-- `init_game` klonuje template (engine + game files już w środku) i kopiuje SDK
+- `engineFiles` — which engine modules are in the template
+- `gameFiles` — game files (skeleton in template repo, implementation by Claude)
+- `init_game` clones the template (engine + game files already inside) and copies SDK
 
-## Szablony (dynamiczne)
+## Templates (dynamic)
 
-Szablony odkrywane z GitHub API po topicu `forkarcade-template`. Każdy template repo ma:
-- Topic `forkarcade-template` + topic kategorii (np. `strategy-rpg`, `roguelike`)
-- `.forkarcade.json` — `template` (klucz), `engineFiles`, `gameFiles`
-- `_assets.json` — metadane assetów (styl, paleta, kategorie sprite'ów)
-- `_prompt.md` — game design prompt dla Claude (mechaniki, scoring, eventy, rendering)
-- `CLAUDE.md` — dokumentacja engine API dla Claude
-- Skeleton plików gry z komentarzami
+Templates discovered via GitHub API by the `forkarcade-template` topic. Each template repo has:
+- Topic `forkarcade-template` + category topic (e.g. `strategy-rpg`, `roguelike`)
+- `.forkarcade.json` — `template` (key), `engineFiles`, `gameFiles`
+- `_assets.json` — asset metadata (style, palette, sprite categories)
+- `_prompt.md` — game design prompt for Claude (mechanics, scoring, events, rendering)
+- `CLAUDE.md` — engine API documentation for Claude
+- Skeleton game files with comments
 
-Dodanie nowego szablonu = stworzenie repo na GitHub z odpowiednimi topicami i plikami. Zero zmian w kodzie platformy.
+Adding a new template = creating a repo on GitHub with the appropriate topics and files. Zero changes to platform code.
 
-## PostMessage protocol (SDK <-> Platforma)
+## PostMessage Protocol (SDK <-> Platform)
 
-| Type | Kierunek | Opis |
-|------|----------|------|
-| `FA_READY` | gra -> platforma | Gra gotowa |
-| `FA_INIT` | platforma -> gra | Przekazuje slug |
-| `FA_SUBMIT_SCORE` | gra -> platforma | Wysyła wynik (requestId) |
-| `FA_SCORE_RESULT` | platforma -> gra | Odpowiedź (requestId) |
-| `FA_GET_PLAYER` | gra -> platforma | Prosi o info gracza (requestId) |
-| `FA_PLAYER_INFO` | platforma -> gra | Odpowiedź (requestId) |
-| `FA_NARRATIVE_UPDATE` | gra -> platforma | Stan narracji (fire-and-forget) |
+| Type | Direction | Description |
+|------|-----------|-------------|
+| `FA_READY` | game -> platform | Game ready |
+| `FA_INIT` | platform -> game | Passes slug |
+| `FA_SUBMIT_SCORE` | game -> platform | Submits score (requestId) |
+| `FA_SCORE_RESULT` | platform -> game | Response (requestId) |
+| `FA_GET_PLAYER` | game -> platform | Requests player info (requestId) |
+| `FA_PLAYER_INFO` | platform -> game | Response (requestId) |
+| `FA_NARRATIVE_UPDATE` | game -> platform | Narrative state (fire-and-forget) |
 
-## Serwer -- endpointy
+## Server — Endpoints
 
-- `GET /auth/github` -> redirect do GitHub OAuth
-- `GET /auth/github/callback` -> wymiana code na token, upsert user, set cookie
+- `GET /auth/github` -> redirect to GitHub OAuth
+- `GET /auth/github/callback` -> exchange code for token, upsert user, set cookie
 - `POST /auth/logout` -> clear cookie
-- `POST /api/games/:slug/score` (auth) -> zapis wyniku
-- `GET /api/games/:slug/leaderboard` -> top 50 per gra
-- `GET /api/me` (auth) -> aktualny user
+- `POST /api/games/:slug/score` (auth) -> save score
+- `GET /api/games/:slug/leaderboard` -> top 50 per game
+- `GET /api/me` (auth) -> current user
 
-## Baza danych (SQLite)
+## Database (SQLite)
 
-Dwie tabele: `users` (github_user_id, login, avatar) i `scores` (game_slug, score, version, created_at). Scores identyfikowane po `game_slug` (TEXT), nie po FK do games.
+Two tables: `users` (github_user_id, login, avatar) and `scores` (game_slug, score, version, created_at). Scores identified by `game_slug` (TEXT), not by FK to games.
 
-## Klient -- routing
+## Client — Routing
 
-- `/` -> HomePage -- katalog gier z GitHub API (topic `forkarcade-game`)
-- `/templates` -> TemplatesPage -- lista szablonow z GitHub API (topic `forkarcade-template`)
-- `/play/:slug` -> GamePage -- iframe + taby (Leaderboard | Narrative)
+- `/` -> HomePage — game catalog from GitHub API (topic `forkarcade-game`)
+- `/templates` -> TemplatesPage — template list from GitHub API (topic `forkarcade-template`)
+- `/play/:slug` -> GamePage — iframe + tabs (Leaderboard | Narrative)
 
 ## MCP (mcp/src/main.py)
 
-12 narzedzi, szablony pobierane dynamicznie z GitHub API (`github_templates.py`):
+12 tools, templates fetched dynamically from GitHub API (`github_templates.py`):
 
 - **Workflow**: `list_templates`, `init_game`, `get_sdk_docs`, `get_game_prompt`, `validate_game`, `publish_game`, `update_sdk`
 - **Assets**: `get_asset_guide`, `create_sprite`, `validate_assets`, `preview_assets`
-- **Wersje**: `get_versions`
+- **Versions**: `get_versions`
 
-Publish ustawia topic `forkarcade-game` + topic kategorii, wlacza GitHub Pages i tworzy version snapshot (`/versions/v{N}/`). Asset tools tworza pixel art sprite'y w formacie `_sprites.json` -> generowany `sprites.js`.
+Publish sets the `forkarcade-game` topic + category topic, enables GitHub Pages, and creates a version snapshot (`/versions/v{N}/`). Asset tools create pixel art sprites in `_sprites.json` format -> generated `sprites.js`.
 
-## Wersjonowanie gier
+## Game Versioning
 
-Gry ewoluuja przez GitHub issues. Kazda wersja jest grywalna.
+Games evolve through GitHub issues. Every version is playable.
 
 ### Flow
-1. User tworzy issue z labelem `evolve` -> GitHub Actions odpala Claude Code
-2. Claude Code implementuje -> otwiera PR
-3. PR merge -> workflow tworzy snapshot w `/versions/v{N}/`
-4. Platforma wyswietla version selector + changelog
+1. User creates issue with `evolve` label -> GitHub Actions triggers Claude Code
+2. Claude Code implements -> opens PR
+3. PR merge -> workflow creates snapshot in `/versions/v{N}/`
+4. Platform displays version selector + changelog
 
-### Struktura wersji w repo gry
+### Version Structure in Game Repo
 ```
 /index.html          <- latest
 /game.js
 /versions/v1/        <- snapshot v1
 /versions/v2/        <- snapshot v2
-/.forkarcade.json    <- metadata z versions array
+/.forkarcade.json    <- metadata with versions array
 /.github/workflows/  <- evolve.yml + version.yml
 ```
 
 ### Scores
-Scores maja kolumne `version` -- SDK automatycznie dolacza wersje. Leaderboard filtrowany per wersja (`?version=N`).
+Scores have a `version` column — SDK automatically includes the version. Leaderboard filtered per version (`?version=N`).
 
-## ZASADA ZERO NADGORLIWOŚCI
+## ZERO OVERENGINEERING RULE
 
-- **NIGDY nie twórz bonusowych plików** — żadnych CLI wrapperów, helper scriptów, dodatkowych narzędzi "na wszelki wypadek"
-- **NIGDY nie dodawaj ficzerów których nikt nie prosił** — każdy niepotrzebny plik to dług techniczny
-- **Rób DOKŁADNIE to o co proszono** — nic więcej, nic mniej
-- **Nie proponuj "bonusów"** — jak user chce dodatkowy tool, sam poprosi
+- **NEVER create bonus files** — no CLI wrappers, helper scripts, extra tools "just in case"
+- **NEVER add features nobody asked for** — every unnecessary file is technical debt
+- **Do EXACTLY what was asked** — nothing more, nothing less
+- **Don't propose "bonuses"** — if the user wants an extra tool, they'll ask
 
-## Konwencje
+## Conventions
 
-- Inline styles (nie ma CSS framework)
-- ESM (`import`/`export`) w kliencie i serwerze, nie CommonJS
-- Vanilla JS w SDK i engine (bez frameworkow -- musi dzialac w dowolnej grze)
-- IIFE pattern w grach, global namespace `window.FA`
-- **SDK jest lokalny** -- `forkarcade-sdk.js` kopiowany do repo gry przez `init_game`, aktualizowany przez `update_sdk`. Source of truth: `sdk/forkarcade-sdk.js`
-- **Engine jest w szablonie** -- pliki engine przychodzą z template repo. Każdy szablon jest samowystarczalny.
-- **Narracja jest w platformie** -- `fa-narrative.js` kopiowany z `sdk/` przez `init_game`. Misja platformy.
-- Prompty i CLAUDE.md po polsku
+- Inline styles (no CSS framework)
+- ESM (`import`/`export`) in client and server, not CommonJS
+- Vanilla JS in SDK and engine (no frameworks — must work in any game)
+- IIFE pattern in games, global namespace `window.FA`
+- **SDK is local** — `forkarcade-sdk.js` copied to the game repo by `init_game`, updated by `update_sdk`. Source of truth: `sdk/forkarcade-sdk.js`
+- **Engine is in the template** — engine files come from the template repo. Each template is self-contained.
+- **Narrative is in the platform** — `fa-narrative.js` copied from `sdk/` by `init_game`. Platform mission.

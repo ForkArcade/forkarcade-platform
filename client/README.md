@@ -6,25 +6,25 @@
 npm run dev
 ```
 
-## Deploy na https://forkarcade.github.io/
+## Deploy to https://forkarcade.github.io/
 
-Deploy działa automatycznie przez GitHub Actions.
-Każdy push do `main` który zmienia `client/` lub `sdk/` buduje i publikuje klient.
+Deploy runs automatically via GitHub Actions.
+Every push to `main` that changes `client/` or `sdk/` builds and publishes the client.
 
-### Jednorazowy setup
+### One-time setup
 
-1. Stwórz Personal Access Token: https://github.com/settings/tokens
-   → "Generate new token (classic)", scope: **repo**
+1. Create a Personal Access Token: https://github.com/settings/tokens
+   -> "Generate new token (classic)", scope: **repo**
 
-2. Dodaj token jako secret w repo:
+2. Add the token as a secret in the repo:
    ```bash
    gh secret set DEPLOY_TOKEN --repo ForkArcade/forkarcade-platform
    ```
-   Wklej token gdy zapyta.
+   Paste the token when prompted.
 
-3. Gotowe. Od teraz `git push` = auto-deploy.
+3. Done. From now on `git push` = auto-deploy.
 
-### Ręczny trigger (bez zmian w kodzie)
+### Manual trigger (without code changes)
 
 ```bash
 gh workflow run deploy-client.yml --repo ForkArcade/forkarcade-platform

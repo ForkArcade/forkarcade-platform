@@ -35,15 +35,15 @@ HANDLERS = {
 
 def _build_instructions():
     ctx = detect_game_context()
-    lines = ["ForkArcade MCP — narzędzia do tworzenia gier na platformę ForkArcade."]
+    lines = ["ForkArcade MCP — tools for creating games on the ForkArcade platform."]
     if ctx:
-        lines.append(f"Gra: {ctx.get('title', ctx.get('slug', '?'))} (template: {ctx.get('template', '?')})")
-        lines.append(f"Wersja: v{ctx.get('currentVersion', 0)}, SDK v{ctx.get('sdkVersion', '?')}")
+        lines.append(f"Game: {ctx.get('title', ctx.get('slug', '?'))} (template: {ctx.get('template', '?')})")
+        lines.append(f"Version: v{ctx.get('currentVersion', 0)}, SDK v{ctx.get('sdkVersion', '?')}")
         tools = [t["name"] for t in TOOLS if t["name"] not in ("list_templates", "init_game")]
-        lines.append(f"Dostępne toole ({len(tools)}): {', '.join(tools)}")
+        lines.append(f"Available tools ({len(tools)}): {', '.join(tools)}")
     else:
-        lines.append("Kontekst: platforma (nie w katalogu gry)")
-        lines.append("Dostępne: list_templates, init_game")
+        lines.append("Context: platform (not in a game directory)")
+        lines.append("Available: list_templates, init_game")
     return "\n".join(lines)
 
 

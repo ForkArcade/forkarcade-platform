@@ -29,23 +29,23 @@ def get_asset_guide(args):
         return json.dumps({"error": f"No asset guide for template: {template}"})
 
     output = f"# Asset Guide: {tmpl['name']}\n\n"
-    output += f"## Styl\n{guide['style']}\n\n"
-    output += f"## Rozmiar sprite'ów\n{guide['gridSize']}\n\n"
-    output += "## Paleta kolorów\n"
+    output += f"## Style\n{guide['style']}\n\n"
+    output += f"## Sprite Size\n{guide['gridSize']}\n\n"
+    output += "## Color Palette\n"
     for name, color in guide["palette"].items():
         output += f"- `{color}` — {name}\n"
-    output += "\n## Wymagane sprite'y\n\n"
+    output += "\n## Required Sprites\n\n"
     for cat, info in guide["categories"].items():
         output += f"### {cat}\n{info['desc']}\n"
         output += f"Sprite'y: {', '.join(info['sprites'])}\n\n"
-    output += '## Format sprite\'a\n```json\n'
+    output += '## Sprite Format\n```json\n'
     output += '{\n  "w": 8, "h": 8,\n  "palette": { "1": "#a86", "2": "#d9a" },\n'
     output += '  "pixels": [\n    "..1..1..",\n    ".11..11.",\n    ".122221.",\n    "11222211",\n'
     output += '    "11222211",\n    ".112211.",\n    ".1....1.",\n    ".1....1."\n  ]\n}\n```\n\n'
-    output += "## Integracja w renderze\n```js\n"
+    output += "## Renderer Integration\n```js\n"
     output += "var sprite = typeof getSprite === 'function' && getSprite('enemies', enemy.type)\n"
     output += "if (sprite) {\n  drawSprite(ctx, sprite, sx, sy, T)\n} else {\n  ctx.fillText(enemy.char, sx + T/2, sy + T/2)\n}\n```\n"
-    output += "\nUżyj narzędzia `create_sprite` aby tworzyć sprite'y.\n"
+    output += "\nUse the `create_sprite` tool to create sprites.\n"
     return output
 
 
@@ -97,7 +97,7 @@ def create_sprite(args):
     total = sum(len(cat) for cat in data.values())
     return json.dumps({
         "ok": True,
-        "message": f"Sprite '{sprite_name}' dodany do kategorii '{category}' ({w}x{h})",
+        "message": f"Sprite '{sprite_name}' added to category '{category}' ({w}x{h})",
         "total_sprites": total,
         "preview": "\n".join(pixels),
     })
@@ -180,7 +180,7 @@ def preview_assets(args):
 
     return json.dumps({
         "ok": True,
-        "message": f"Preview wygenerowany z {count} sprite'ami",
+        "message": f"Preview generated with {count} sprites",
         "path": str(preview_path),
         "open": f"open {preview_path}",
     })

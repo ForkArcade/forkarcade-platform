@@ -1,73 +1,73 @@
-# ForkCoin — Waluta Platformy ForkArcade
+# ForkCoin — ForkArcade Platform Currency
 
-## Koncept
+## Concept
 
-ForkCoin to wewnętrzna waluta platformy, która łączy natywne systemy scoringu i narracji w jedną cross-game ekonomię. Gracze "kopią" coiny grając w gry i odkrywając narracje. Coiny wydają na wpływanie na ewolucję gier.
+ForkCoin is an internal platform currency that connects native scoring and narrative systems into a single cross-game economy. Players "mine" coins by playing games and discovering narratives. Coins are spent to influence game evolution.
 
-## Źródła coinów
+## Coin Sources
 
 ### Score Mining
 
-Każda gra generuje coiny proporcjonalnie do zdobytych punktów.
+Each game generates coins proportional to scores earned.
 
-- Gracz zdobywa score → serwer przelicza na coiny wg kursu gry
-- **Kurs zależy od popularności**: mniej graczy = lepszy kurs → zachęta do odkrywania niszowych gier
-- **Diminishing returns**: pierwsze score'y w grze dają więcej coinów, potem maleje → zachęta do grania w różne gry zamiast grindowania jednej
-- **Nowy rekord personalny = bonus** → nagroda za progres, nie za powtarzanie
+- Player earns score -> server converts to coins at the game's rate
+- **Rate depends on popularity**: fewer players = better rate -> incentive to discover niche games
+- **Diminishing returns**: first scores in a game yield more coins, then decreasing -> incentive to play different games instead of grinding one
+- **New personal record = bonus** -> reward for progress, not repetition
 
 ### Narrative Milestones
 
-Narracja przestaje być "za darmo" — ma realną wartość.
+Narrative stops being "free" — it has real value.
 
-- Twórca gry definiuje milestones w grafie narracji (dotarcie do node'a, odblokowanie brancha, zmiana zmiennej)
-- Osiągnięcie milestone'a = jednorazowy bonus coinów
-- Eventy narracyjne (`FA_NARRATIVE_UPDATE`) już lecą do platformy — wystarczy je ewaluować server-side
+- Game creator defines milestones in the narrative graph (reaching a node, unlocking a branch, changing a variable)
+- Reaching a milestone = one-time coin bonus
+- Narrative events (`FA_NARRATIVE_UPDATE`) already flow to the platform — just need server-side evaluation
 
-### Odkrywanie
+### Discovery
 
-- Pierwsza sesja w nowej grze = bonus "Explorer"
-- Zagranie we wszystkie gry danego szablonu = bonus "Completionist"
-- Zagranie w nowo opublikowaną grę (< 48h) = bonus "Early Adopter"
+- First session in a new game = "Explorer" bonus
+- Playing all games of a given template = "Completionist" bonus
+- Playing a newly published game (< 48h) = "Early Adopter" bonus
 
-## Na co wydać coiny
+## What to Spend Coins On
 
 ### Evolve Voting (killer feature)
 
-- Każda gra ma issues na GitHub → propozycje zmian
-- Gracze głosują coinami na issue który chcą → AI (Claude Code) implementuje najwyżej ogłosowany
-- To zamyka pętlę: **grasz → zarabiasz → głosujesz → gra ewoluuje → grasz dalej**
-- Koszt głosu: np. 10 coinów per vote, bez limitu
+- Each game has GitHub issues -> change proposals
+- Players vote with coins on the issue they want -> AI (Claude Code) implements the highest-voted one
+- This closes the loop: **play -> earn -> vote -> game evolves -> play more**
+- Vote cost: e.g. 10 coins per vote, no limit
 
 ### Boost
 
-- Gracz płaci coiny żeby wywindować grę w katalogu (na stronie głównej)
-- Boost trwa X godzin, widoczny jako badge na karcie
-- Twórca gry może boostować własną grę
+- Player pays coins to boost a game in the catalog (on the home page)
+- Boost lasts X hours, visible as a badge on the card
+- Game creator can boost their own game
 
-### Profil
+### Profile
 
-- Tytuły i rangi (na podstawie coinów zarobionych lifetime)
-- Pozycja w globalnym rankingu graczy (nie per gra — cross-platform)
+- Titles and ranks (based on lifetime coins earned)
+- Position in global player ranking (not per game — cross-platform)
 
-## Monetyzacja
+## Monetization
 
 ### Free-to-play
 
-- Coiny zdobywa się wyłącznie przez granie i narracje
-- Zero pay-to-win: coiny nie dają przewagi w grach
-- Model jest fair — grind jest realny i przyjemny (bo grasz w gry)
+- Coins are earned exclusively through playing and narratives
+- Zero pay-to-win: coins don't give in-game advantages
+- Model is fair — grinding is real and enjoyable (because you play games)
 
-### Premium (opcjonalnie, na później)
+### Premium (optional, for later)
 
-- Kupno coinów za real money (shortcut, nie jedyna droga)
-- Premium szablony/gry odblokowane za coiny (zarobione LUB kupione)
-- Subskrypcja: X coinów miesięcznie + priorytet w evolve queue
+- Buy coins with real money (shortcut, not the only path)
+- Premium templates/games unlocked with coins (earned OR purchased)
+- Subscription: X coins per month + priority in evolve queue
 
-## Architektura techniczna
+## Technical Architecture
 
-### Baza danych
+### Database
 
-Jedna nowa tabela:
+One new table:
 
 ```sql
 CREATE TABLE wallets (
@@ -88,74 +88,74 @@ CREATE TABLE transactions (
 );
 ```
 
-### Nowe endpointy serwera
+### New Server Endpoints
 
-| Endpoint | Metoda | Opis |
-|----------|--------|------|
-| `/api/wallet` | GET | Saldo i lifetime gracza |
-| `/api/wallet/transactions` | GET | Historia transakcji |
-| `/api/games/:slug/vote` | POST | Głosuj coinami na issue |
-| `/api/games/:slug/boost` | POST | Boost gry w katalogu |
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/wallet` | GET | Player balance and lifetime |
+| `/api/wallet/transactions` | GET | Transaction history |
+| `/api/games/:slug/vote` | POST | Vote with coins on an issue |
+| `/api/games/:slug/boost` | POST | Boost game in catalog |
 
-Mint (zarabianie) dzieje się server-side — przy `POST /api/games/:slug/score` serwer automatycznie liczy coiny i dodaje do walleta. Klient nie decyduje ile coinów dostaje.
+Minting (earning) happens server-side — on `POST /api/games/:slug/score` the server automatically calculates coins and adds them to the wallet. The client doesn't decide how many coins to award.
 
-### PostMessage protocol (rozszerzenie SDK)
+### PostMessage Protocol (SDK extension)
 
-| Type | Kierunek | Opis |
-|------|----------|------|
-| `FA_COIN_EARNED` | platforma → gra | Informacja ile coinów gracz właśnie zarobił (fire-and-forget, opcjonalne — gra może pokazać notyfikację) |
+| Type | Direction | Description |
+|------|-----------|-------------|
+| `FA_COIN_EARNED` | platform -> game | How many coins the player just earned (fire-and-forget, optional — game can show a notification) |
 
-Gra NIE mintuje coinów — to robi serwer. Gra tylko wysyła score i narrative events jak dotychczas. Zero zmian w SDK poza opcjonalnym odbiorem `FA_COIN_EARNED`.
+The game does NOT mint coins — the server does. The game only sends score and narrative events as before. Zero SDK changes except optional `FA_COIN_EARNED` reception.
 
-### Kurs score → coin
+### Score -> Coin Rate
 
 ```
 coins = floor(score * base_rate * popularity_multiplier * diminishing_factor)
 
-base_rate          = 0.1 (konfigurowalny per szablon)
-popularity_mult    = 1 / log2(active_players + 2)   — mniej graczy = więcej coinów
-diminishing_factor = 1 / (1 + user_plays_count / 10) — maleje z każdą sesją
+base_rate          = 0.1 (configurable per template)
+popularity_mult    = 1 / log2(active_players + 2)   — fewer players = more coins
+diminishing_factor = 1 / (1 + user_plays_count / 10) — decreases with each session
 ```
 
-## Pętla wartości
+## Value Loop
 
 ```
-Gracz gra → zdobywa score/narrację
-    ↓
-Serwer mintuje coiny
-    ↓
-Gracz głosuje coinami na evolve issue
-    ↓
-AI implementuje najwyżej głosowany issue
-    ↓
-Gra ewoluuje → nowa wersja
-    ↓
-Gracz wraca grać w nową wersję
-    ↓
-(powtórz)
+Player plays -> earns score/narrative
+    |
+Server mints coins
+    |
+Player votes with coins on evolve issue
+    |
+AI implements highest-voted issue
+    |
+Game evolves -> new version
+    |
+Player returns to play new version
+    |
+(repeat)
 ```
 
-To jest flywheel: im więcej graczy, tym więcej głosów, tym szybciej gry ewoluują, tym więcej graczy wraca.
+This is a flywheel: more players = more votes = faster game evolution = more players return.
 
-## Fazy wdrożenia
+## Implementation Phases
 
-### Faza 1: Wallet + Score Mining
-- Tabela `wallets` + `transactions`
-- Mint przy score submit
-- Wyświetlanie salda w UI (toolbar)
-- Strona profilu z historią
+### Phase 1: Wallet + Score Mining
+- `wallets` + `transactions` tables
+- Mint on score submit
+- Display balance in UI (toolbar)
+- Profile page with history
 
-### Faza 2: Evolve Voting
-- Głosowanie coinami na issues
-- Integracja z GitHub Actions (evolve workflow czyta głosy)
-- UI: lista issues z liczbą głosów na GamePage
+### Phase 2: Evolve Voting
+- Vote with coins on issues
+- Integration with GitHub Actions (evolve workflow reads votes)
+- UI: issue list with vote counts on GamePage
 
-### Faza 3: Narrative Milestones + Discovery
-- Ewaluacja narrative events server-side
-- Bonusy za odkrywanie gier
+### Phase 3: Narrative Milestones + Discovery
+- Server-side evaluation of narrative events
+- Discovery bonuses
 - Achievement system
 
-### Faza 4: Boost + Monetyzacja
-- Boost gier w katalogu
-- Opcjonalny zakup coinów
-- Globalne rankingi graczy
+### Phase 4: Boost + Monetization
+- Game boost in catalog
+- Optional coin purchase
+- Global player rankings

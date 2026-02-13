@@ -1,103 +1,103 @@
 # ForkArcade Platform
 
-Platforma do tworzenia i grania w gry webowe z Claude Code. Gry publikowane na GitHub Pages, osadzone w iframe.
+A platform for creating and playing web games with Claude Code. Games published on GitHub Pages, embedded in iframes.
 
-> **TL;DR**: Powiedz Claude'owi "zrob mi gre roguelike o zombiakach" -- dostaniesz repo na GitHub z dzialajaca gra, sprite'ami i leaderboardem.
+> **TL;DR**: Tell Claude "make me a roguelike about zombies" — you get a GitHub repo with a working game, sprites, and a leaderboard.
 
 ## Quick Start
 
-### 1. Uruchom platforme
+### 1. Run the platform
 
 ```bash
-# Serwer
+# Server
 cd server && cp .env.example .env && npm install && npm run dev
 
-# Klient (osobny terminal)
+# Client (separate terminal)
 cd client && npm install && npm run dev
 ```
 
-Uzupelnij `server/.env`:
-- `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` -- z GitHub OAuth App
-- `JWT_SECRET` -- `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`
+Fill in `server/.env`:
+- `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` — from GitHub OAuth App
+- `JWT_SECRET` — `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`
 
-### 2. Podlacz MCP w Claude Code
+### 2. Connect MCP to Claude Code
 
 ```bash
-claude mcp add forkarcade /PELNA/SCIEZKA/DO/forkarcade-platform/mcp/.venv/bin/python3 /PELNA/SCIEZKA/DO/forkarcade-platform/mcp/src/main.py
+claude mcp add forkarcade /FULL/PATH/TO/forkarcade-platform/mcp/.venv/bin/python3 /FULL/PATH/TO/forkarcade-platform/mcp/src/main.py
 ```
 
-Jednorazowa konfiguracja -- Claude Code zapamięta.
+One-time setup — Claude Code will remember it.
 
-### 3. Tworz gre
-
-```
-zrob mi gre roguelike o eksploracji opuszczonego zamku
-```
-
-Claude sam wybierze szablon, sforkuje repo, zaimplementuje gre, stworzy sprite'y i opublikuje.
-
-### 4. Graj
-
-http://localhost:5173 -- gra pojawi sie w katalogu.
-
-## Jak to dziala
+### 3. Create a game
 
 ```
-Uzytkownik -> Claude Code -> MCP tools -> GitHub (repo + Pages)
-                                              |
-Platforma (iframe) <----- GitHub Pages <------+
+make me a roguelike about exploring an abandoned castle
+```
+
+Claude will pick a template, fork the repo, implement the game, create sprites, and publish it.
+
+### 4. Play
+
+http://localhost:5173 — the game will appear in the catalog.
+
+## How It Works
+
+```
+User -> Claude Code -> MCP tools -> GitHub (repo + Pages)
+                                         |
+Platform (iframe) <----- GitHub Pages <--+
      |
-     +-- Leaderboard (serwer + SQLite)
-     +-- Panel narracji (postMessage)
+     +-- Leaderboard (server + SQLite)
+     +-- Narrative panel (postMessage)
 ```
 
-1. **init_game** -- forkuje template repo do org `ForkArcade`, klonuje lokalnie, kopiuje SDK
-2. Claude implementuje gre w plikach JS (data.js, game.js, render.js, main.js)
-3. **create_sprite** -- tworzy pixel art 8x8 sprite'y
-4. **publish_game** -- pushuje na GitHub, wlacza Pages, tworzy version snapshot
+1. **init_game** — forks a template repo to the `ForkArcade` org, clones locally, copies SDK
+2. Claude implements the game in JS files (data.js, game.js, render.js, main.js)
+3. **create_sprite** — creates pixel art 8x8 sprites
+4. **publish_game** — pushes to GitHub, enables Pages, creates version snapshot
 
-## Szablony
+## Templates
 
-Szablony to repozytoria w org `ForkArcade` z topicem `forkarcade-template`. Odkrywane dynamicznie z GitHub API.
+Templates are repositories in the `ForkArcade` org with the `forkarcade-template` topic. Discovered dynamically via GitHub API.
 
-Kazdy szablon ma:
-- `.forkarcade.json` -- konfiguracja (gameFiles, template key)
-- `_assets.json` -- metadane assetow (paleta, kategorie sprite'ow)
-- Skeleton plikow gry z komentarzami
+Each template has:
+- `.forkarcade.json` — configuration (gameFiles, template key)
+- `_assets.json` — asset metadata (palette, sprite categories)
+- Skeleton game files with comments
 
-Dodanie nowego szablonu = stworzenie repo na GitHub z odpowiednimi topicami. Zero zmian w kodzie platformy.
+Adding a new template = creating a repo on GitHub with the right topics. Zero changes to platform code.
 
 ## Engine
 
-Kazdy szablon zawiera swoj zestaw modulow engine (vanilla JS, zero build stepa). Szablon jest samowystarczalny — `init_game` po prostu klonuje template repo.
+Each template contains its own set of engine modules (vanilla JS, zero build step). The template is self-contained — `init_game` simply clones the template repo.
 
-API: `window.FA` -- `FA.setState()`, `FA.getState()`, `FA.addLayer()`, `FA.draw.*`, `FA.input.*`, `FA.narrative.*`
+API: `window.FA` — `FA.setState()`, `FA.getState()`, `FA.addLayer()`, `FA.draw.*`, `FA.input.*`, `FA.narrative.*`
 
 ## MCP Tools
 
-| Narzedzie | Opis |
-|-----------|------|
-| `list_templates` | Lista szablonow z GitHub |
-| `init_game` | Fork template -> nowe repo |
-| `get_game_prompt` | Wiedza o mechanikach typu gry |
-| `get_sdk_docs` | Dokumentacja SDK |
-| `validate_game` | Walidacja przed publikacja |
+| Tool | Description |
+|------|-------------|
+| `list_templates` | List templates from GitHub |
+| `init_game` | Fork template -> new repo |
+| `get_game_prompt` | Game type mechanics knowledge |
+| `get_sdk_docs` | SDK documentation |
+| `validate_game` | Validate before publishing |
 | `publish_game` | Push + Pages + version snapshot |
-| `update_sdk` | Aktualizacja SDK w grze |
-| `get_asset_guide` | Przewodnik po sprite'ach |
-| `create_sprite` | Tworzenie pixel art 8x8 |
-| `validate_assets` | Sprawdzenie kompletnosci sprite'ow |
-| `preview_assets` | Podglad sprite'ow w HTML |
-| `get_versions` | Historia wersji gry |
+| `update_sdk` | Update SDK in the game |
+| `get_asset_guide` | Sprite guide |
+| `create_sprite` | Create pixel art 8x8 |
+| `validate_assets` | Check sprite completeness |
+| `preview_assets` | Preview sprites in HTML |
+| `get_versions` | Game version history |
 
-## Warstwa narracji
+## Narrative Layer
 
-Panel narracyjny obok gry (tab "Narrative"):
-- **Graf scenariusza** -- wizualizacja sciezek fabularnych
-- **Zmienne fabularne** -- paski postepu, checkmarki
-- **Log zdarzen** -- ostatnie 20 eventow
+Narrative panel next to the game (tab "Narrative"):
+- **Story graph** — visualization of narrative paths
+- **Story variables** — progress bars, checkmarks
+- **Event log** — last 20 events
 
-Gra raportuje przez SDK:
+Game reports via SDK:
 ```js
 ForkArcade.updateNarrative({
   variables: { karma: 3, has_key: true },
@@ -107,25 +107,24 @@ ForkArcade.updateNarrative({
 });
 ```
 
-## Ewolucja gier
+## Game Evolution
 
-Gry ewoluuja przez GitHub issues z labelem `evolve`:
-1. User tworzy issue -> GitHub Actions odpala Claude Code
-2. Claude implementuje -> PR
-3. Merge -> version snapshot w `/versions/v{N}/`
-4. Platforma wyswietla version selector + changelog
+Games evolve through GitHub issues with the `evolve` label:
+1. User creates issue -> GitHub Actions triggers Claude Code
+2. Claude implements -> PR
+3. Merge -> version snapshot in `/versions/v{N}/`
+4. Platform displays version selector + changelog
 
-## Struktura
+## Structure
 
 ```
 forkarcade-platform/
   client/           React + Vite (port 5173)
   server/           Express + SQLite (port 8787)
   mcp/src/          MCP server (Python)
-    github_templates.py   Dynamiczne szablony z GitHub API
+    github_templates.py   Dynamic templates from GitHub API
     handlers/             workflow, assets, versions
   sdk/
     forkarcade-sdk.js     SDK (postMessage)
-  prompts/          Prompt library per typ gry
   .claude/skills/   new-game
 ```
