@@ -47,11 +47,17 @@ export default function VotingPanel({
   async function loadData() {
     try {
       const [items] = await Promise.all([fetchIssues(), loadVotes()])
-      setIssues(Array.isArray(items) ? items : [])
-    } catch { setIssues([]) }
+      if (Array.isArray(items)) setIssues(items)
+    } catch {}
   }
 
-  useEffect(() => { loadData() }, [refreshKey])
+  useEffect(() => {
+    loadData()
+    const id = setInterval(loadVotes, 30_000)
+    const onVisible = () => !document.hidden && loadVotes()
+    document.addEventListener('visibilitychange', onVisible)
+    return () => { clearInterval(id); document.removeEventListener('visibilitychange', onVisible) }
+  }, [refreshKey])
 
   const sorted = [...issues].sort((a, b) =>
     (votes[b.number]?.total_votes ?? 0) - (votes[a.number]?.total_votes ?? 0)
@@ -59,15 +65,16 @@ export default function VotingPanel({
 
   async function handleVote(issueNumber) {
     // Optimistic update
+    const prevBalance = balance
     const prevVotes = { ...votes }
     const prev = votes[issueNumber] || { total_votes: 0, unique_voters: 0, voter_ids: [] }
     setVotes(v => ({ ...v, [issueNumber]: { ...prev, total_votes: prev.total_votes + 10, unique_voters: prev.unique_voters + 1 } }))
-    onBalanceChange(balance - 10)
+    onBalanceChange(prevBalance - 10)
     try {
       const r = await apiFetch(voteUrl, { method: 'POST', body: JSON.stringify({ issue_number: issueNumber, coins: 10 }) })
       if (r.ok) { onBalanceChange(r.newBalance); loadVotes() }
-      else { setVotes(prevVotes); onBalanceChange(balance) }
-    } catch { setVotes(prevVotes); onBalanceChange(balance) }
+      else { setVotes(prevVotes); onBalanceChange(prevBalance) }
+    } catch { setVotes(prevVotes); onBalanceChange(prevBalance) }
   }
 
   async function handleTrigger(issueNumber) {

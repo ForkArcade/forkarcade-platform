@@ -52,4 +52,17 @@ router.get('/api/github/proxy/*', async (req, res) => {
   }
 })
 
+// Raw file proxy — avoids unauthenticated rate limits on raw.githubusercontent.com
+router.get('/api/github/raw/*', async (req, res) => {
+  const path = req.params[0]
+  try {
+    const r = await fetch(`https://raw.githubusercontent.com/${path}`, { headers: ghHeaders() })
+    if (!r.ok) return res.status(r.status).end()
+    res.set('Content-Type', r.headers.get('content-type'))
+    res.send(Buffer.from(await r.arrayBuffer()))
+  } catch {
+    res.status(502).end()
+  }
+})
+
 export default router

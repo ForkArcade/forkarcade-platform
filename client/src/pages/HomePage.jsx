@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { T } from '../theme'
-import { GITHUB_ORG, githubFetch, fetchBuildCache } from '../api'
+import { GITHUB_ORG, githubFetch, githubRawUrl, fetchBuildCache } from '../api'
 import { PageHeader, Grid, Card, CardTitle, CardDescription, CardTags, Badge, SectionHeading, PillTabs, EmptyState } from '../components/ui'
 import NewGamePanel from '../components/NewGamePanel'
 
@@ -50,7 +50,7 @@ export default function HomePage({ user, balance, onBalanceChange }) {
         setStatus('ok')
 
         gameList.forEach((game, i) => {
-          const url = `https://raw.githubusercontent.com/${GITHUB_ORG}/${game.slug}/main/_thumbnail.png`
+          const url = githubRawUrl(`${GITHUB_ORG}/${game.slug}/main/_thumbnail.png`)
           const img = new window.Image()
           img.onload = () => {
             setGames(prev => prev.map((g, j) => j === i ? { ...g, thumbnail: url } : g))

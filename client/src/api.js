@@ -24,6 +24,10 @@ export async function fetchBuildCache(key) {
   } catch { return null }
 }
 
+export function githubRawUrl(path) {
+  return `${API}/api/github/raw/${path}`
+}
+
 export async function githubFetch(path) {
   // Repos list goes through server proxy (cached, token-authenticated)
   if (path.includes(`/orgs/${GITHUB_ORG}/repos`)) {

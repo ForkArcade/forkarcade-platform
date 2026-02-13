@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { T } from '../theme'
-import { GITHUB_ORG, githubFetch } from '../api'
+import { GITHUB_ORG, githubFetch, githubRawUrl } from '../api'
 import { Badge, ColorSwatch, EmptyState } from '../components/ui'
 import { ArrowLeft, ExternalLink } from 'lucide-react'
 
@@ -75,7 +75,7 @@ export default function TemplateDetailPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const rawBase = `https://raw.githubusercontent.com/${GITHUB_ORG}/${slug}/main`
+    const rawBase = githubRawUrl(`${GITHUB_ORG}/${slug}/main`)
 
     Promise.all([
       githubFetch(`/repos/${GITHUB_ORG}/${slug}`).catch(() => null),

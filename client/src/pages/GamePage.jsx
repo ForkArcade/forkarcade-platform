@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams } from 'react-router-dom'
-import { apiFetch, GITHUB_ORG, githubFetch } from '../api'
+import { apiFetch, GITHUB_ORG, githubFetch, githubRawUrl } from '../api'
 import { T } from '../theme'
 import { Panel, IconTabBar, Badge, SegmentedControl, EmptyState } from '../components/ui'
 import Leaderboard from '../components/Leaderboard'
@@ -46,12 +46,12 @@ export default function GamePage({ user, balance, onBalanceChange }) {
       .then(repo => setGame({ slug: repo.name, title: repo.name, description: repo.description || '', topics: repo.topics || [] }))
       .catch(() => setGame({ slug, title: slug, description: '', topics: [] }))
 
-    fetch(`https://raw.githubusercontent.com/${GITHUB_ORG}/${slug}/main/.forkarcade.json`)
-      .then(r => r.json())
-      .then(config => setVersions(config.versions || []))
+    fetch(githubRawUrl(`${GITHUB_ORG}/${slug}/main/.forkarcade.json`))
+      .then(r => r.ok ? r.json() : null)
+      .then(config => setVersions(config?.versions || []))
       .catch(() => setVersions([]))
 
-    fetch(`https://raw.githubusercontent.com/${GITHUB_ORG}/${slug}/main/CLAUDE.md`)
+    fetch(githubRawUrl(`${GITHUB_ORG}/${slug}/main/CLAUDE.md`))
       .then(r => r.ok ? r.text() : null)
       .then(text => setClaudeMd(text))
       .catch(() => setClaudeMd(null))
@@ -321,7 +321,7 @@ export default function GamePage({ user, balance, onBalanceChange }) {
                   <div
                     key={v.version}
                     onClick={() => {
-                      fetch(`https://raw.githubusercontent.com/${GITHUB_ORG}/${slug}/main/changelog/v${v.version}.md`)
+                      fetch(githubRawUrl(`${GITHUB_ORG}/${slug}/main/changelog/v${v.version}.md`))
                         .then(r => r.ok ? r.text() : null)
                         .then(text => { if (text) setChangelogPopup({ version: v.version, text }) })
                         .catch(() => {})
