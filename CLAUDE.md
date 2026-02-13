@@ -14,7 +14,7 @@ sdk/
   forkarcade-sdk.js   SDK (postMessage, scoring, auth)
   fa-narrative.js     Narrative module (graph, variables, transition)
   _platform.md        Platform golden rules (prepended to every game prompt)
-.claude/skills/  Skills: new-game
+.claude/skills/  Skills: new-game, evolve, publish
 ```
 
 ## Key Decisions
@@ -81,17 +81,35 @@ Adding a new template = creating a repo on GitHub with the appropriate topics an
 
 ## Server — Endpoints
 
+**Auth:**
 - `GET /auth/github` -> redirect to GitHub OAuth
 - `GET /auth/github/callback` -> exchange code for token, upsert user, set cookie
 - `POST /auth/logout` -> clear cookie
-- `POST /api/games/:slug/score` (auth) -> save score, mint coins
-- `GET /api/games/:slug/leaderboard` -> top 50 per game
+
+**User:**
 - `GET /api/me` (auth) -> current user
 - `GET /api/wallet` (auth) -> coin balance
+
+**Scores:**
+- `POST /api/games/:slug/score` (auth) -> save score, mint coins
+- `GET /api/games/:slug/leaderboard` -> top 50 per game
+
+**Evolve (game changes):**
 - `POST /api/games/:slug/evolve-issues` (auth) -> create `[EVOLVE]` issue on GitHub
 - `POST /api/games/:slug/vote` (auth) -> vote on evolve issue (burn coins)
 - `GET /api/games/:slug/votes` -> aggregated vote totals per issue
-- `POST /api/games/:slug/evolve-trigger` (auth) -> add `evolve` label (triggers GitHub Actions)
+- `POST /api/games/:slug/evolve-trigger` (auth) -> add `evolve` label
+
+**New Game proposals:**
+- `POST /api/new-game/issues` (auth) -> create `[NEW-GAME]` issue on platform repo
+- `POST /api/new-game/vote` (auth) -> vote on new-game issue (burn coins)
+- `GET /api/new-game/votes` -> aggregated vote totals per issue
+- `POST /api/new-game/trigger` (auth) -> add `approved` label
+
+**GitHub proxy (authenticated, avoids rate limits):**
+- `GET /api/github/repos` -> cached org repos (5-min TTL)
+- `GET /api/github/proxy/*` -> generic GitHub API proxy
+- `GET /api/github/raw/*` -> raw file proxy (raw.githubusercontent.com)
 
 ## Database (SQLite)
 
@@ -105,23 +123,31 @@ Four tables: `users`, `scores`, `wallets` (github_user_id, balance), `votes` (ga
 
 ## MCP (mcp/src/main.py)
 
-12 tools, templates fetched dynamically from GitHub API (`github_templates.py`):
+14 tools, templates fetched dynamically from GitHub API (`github_templates.py`):
 
 - **Workflow**: `list_templates`, `init_game`, `get_sdk_docs`, `get_game_prompt`, `validate_game`, `publish_game`, `update_sdk`
-- **Assets**: `get_asset_guide`, `create_sprite`, `validate_assets`, `preview_assets`
+- **Assets**: `get_asset_guide`, `create_sprite`, `validate_assets`, `preview_assets`, `create_thumbnail`
 - **Versions**: `get_versions`
+- **Evolve**: `list_evolve_issues` — lists open issues with `evolve` label ready to implement
 
 Publish sets the `forkarcade-game` topic + category topic, enables GitHub Pages, and creates a version snapshot (`/versions/v{N}/`). Asset tools create pixel art sprites in `_sprites.json` format -> generated `sprites.js`.
+
+## Skills (.claude/skills/)
+
+- `/new-game` — full game creation flow (template selection → implementation → publish)
+- `/evolve` — list evolve-ready issues, pick one, implement, publish new version
+- `/publish` — validate + publish current game
 
 ## Game Versioning
 
 Games evolve through GitHub issues. Every version is playable.
 
 ### Flow
-1. Player proposes `[EVOLVE]` issue via platform -> votes reach threshold -> `evolve` label added -> GitHub Actions triggers Claude Code
-2. Claude Code implements -> opens PR
-3. PR merge -> workflow creates snapshot in `/versions/v{N}/`
-4. Platform displays version selector + changelog
+1. Player proposes `[EVOLVE]` issue via platform -> votes reach threshold -> `evolve` label added
+2. Use `/evolve` skill (or `list_evolve_issues` MCP tool) to see ready issues
+3. Implement changes locally, create `changelog/v{N}.md`
+4. Use `/publish` to push and create version snapshot
+5. Platform displays version selector + changelog
 
 ### Version Structure in Game Repo
 ```
@@ -132,7 +158,6 @@ Games evolve through GitHub issues. Every version is playable.
 /changelog/v1.md     <- LLM reasoning log for v1
 /changelog/v2.md     <- LLM reasoning log for v2
 /.forkarcade.json    <- metadata with versions array
-/.github/workflows/  <- evolve.yml + version.yml
 ```
 
 ### Changelog Files
