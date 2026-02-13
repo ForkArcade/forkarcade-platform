@@ -222,4 +222,14 @@ Use it when the image alone doesn't clearly identify the game. Skip it when the 
             "required": ["path", "layers"],
         },
     },
+    {
+        "name": "list_evolve_issues",
+        "description": "Lists open issues with the 'evolve' label — ready to implement. Shows all games from platform context, or current game only from game context.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "slug": {"type": "string", "description": "Game slug (optional — auto-detected from game context)"},
+            },
+        },
+    },
 ]

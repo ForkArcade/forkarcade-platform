@@ -30,6 +30,7 @@ HANDLERS = {
     "get_versions": versions.get_versions,
     "update_sdk": workflow.update_sdk,
     "create_thumbnail": thumbnail.create_thumbnail,
+    "list_evolve_issues": workflow.list_evolve_issues,
 }
 
 
@@ -69,7 +70,7 @@ async def handle_call_tool(name: str, arguments: dict | None) -> list[types.Text
             args["path"] = str(Path.cwd())
         if not args.get("template") and name in ("get_game_prompt", "get_asset_guide", "validate_assets"):
             args["template"] = ctx["template"]
-        if not args.get("slug") and name == "publish_game":
+        if not args.get("slug") and name in ("publish_game", "list_evolve_issues"):
             args["slug"] = ctx["slug"]
         if not args.get("title") and name == "publish_game":
             args["title"] = ctx["title"]

@@ -6,7 +6,7 @@ import subprocess
 from datetime import date
 from pathlib import Path
 
-from github_templates import ORG, list_templates as gh_list_templates, get_template, get_template_prompt, get_template_styles
+from github_templates import ORG, _gh_api, list_templates as gh_list_templates, get_template, get_template_prompt, get_template_styles
 from sprites import generate_sprites_js
 from context import validate_game_path
 
@@ -476,5 +476,34 @@ def update_sdk(args):
         "message": f"SDK updated from v{old_version} to v{sdk_info['version']}",
         "version": sdk_info["version"],
     })
+
+
+def list_evolve_issues(args):
+    slug = args.get("slug")
+    try:
+        if slug:
+            issues = _gh_api(f"/repos/{ORG}/{slug}/issues?labels=evolve&state=open&per_page=50")
+        else:
+            data = _gh_api(f"/search/issues?q=org:{ORG}+label:evolve+is:open&per_page=50")
+            issues = data.get("items", [])
+
+        result = []
+        for issue in issues:
+            repo_name = slug or issue.get("repository_url", "").split("/")[-1]
+            result.append({
+                "slug": repo_name,
+                "number": issue["number"],
+                "title": issue["title"].replace("[EVOLVE] ", ""),
+                "body": issue.get("body") or "",
+                "labels": [l["name"] for l in issue.get("labels", []) if l["name"] != "evolve"],
+                "url": issue["html_url"],
+            })
+
+        if not result:
+            return json.dumps({"ok": True, "message": "No evolve issues ready to implement", "issues": []})
+
+        return json.dumps({"ok": True, "count": len(result), "issues": result}, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
 
 
