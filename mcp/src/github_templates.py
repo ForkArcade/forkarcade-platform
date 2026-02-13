@@ -17,7 +17,7 @@ TEMPLATE_TOPIC = "forkarcade-template"
 VALID_CATEGORIES = ["tiles", "enemies", "items", "player", "effects", "terrain", "units", "ui"]
 
 # In-memory cache
-_cache = {"templates": None, "templates_ts": 0, "assets": {}, "assets_ts": {}, "prompts": {}, "prompts_ts": {}}
+_cache = {"templates": None, "templates_ts": 0, "assets": {}, "assets_ts": {}, "prompts": {}, "prompts_ts": {}, "styles": {}, "styles_ts": {}}
 _CACHE_TTL = 300  # 5 minutes
 
 
@@ -58,6 +58,16 @@ def _fetch_templates():
             "description": repo.get("description") or "",
         })
 
+    # Enrich with style preset keys (if _styles.json exists)
+    for tmpl in templates:
+        styles_data = get_template_styles(tmpl["key"], repo=tmpl["repo"])
+        if styles_data:
+            tmpl["styles"] = list(styles_data.get("styles", {}).keys())
+            tmpl["defaultStyle"] = styles_data.get("default")
+        else:
+            tmpl["styles"] = []
+            tmpl["defaultStyle"] = None
+
     _cache["templates"] = templates
     _cache["templates_ts"] = now
     return templates
@@ -94,6 +104,35 @@ def get_template_assets(key):
         _cache["assets"][key] = assets
         _cache["assets_ts"][key] = now
         return assets
+    except Exception:
+        return None
+
+
+def get_template_styles(key, repo=None):
+    """Fetch _styles.json from a template repo. Returns dict or None.
+
+    Args:
+        key: Template key (e.g. 'space-combat').
+        repo: Optional repo full_name to avoid recursive get_template() call.
+    """
+    now = time.time()
+    if key in _cache["styles"] and (now - _cache["styles_ts"].get(key, 0)) < _CACHE_TTL:
+        return _cache["styles"][key]
+
+    if not repo:
+        tmpl = get_template(key)
+        if not tmpl:
+            return None
+        repo = tmpl["repo"]
+
+    try:
+        import base64
+        data = _gh_api(f"/repos/{repo}/contents/_styles.json")
+        content = base64.b64decode(data["content"]).decode("utf-8")
+        styles = json.loads(content)
+        _cache["styles"][key] = styles
+        _cache["styles_ts"][key] = now
+        return styles
     except Exception:
         return None
 

@@ -14,6 +14,7 @@ TOOLS = [
                 "template": {"type": "string", "description": "Template key (GitHub topic, e.g. strategy-rpg, roguelike)"},
                 "title": {"type": "string", "description": "Display name of the game"},
                 "description": {"type": "string", "description": "Short game description"},
+                "style": {"type": "string", "description": "Style preset key (e.g. dark-neon, retro-green). Uses template default if not specified."},
             },
             "required": ["slug", "template", "title"],
         },

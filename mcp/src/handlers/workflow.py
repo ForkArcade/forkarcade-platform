@@ -6,7 +6,7 @@ import subprocess
 from datetime import date
 from pathlib import Path
 
-from github_templates import ORG, list_templates as gh_list_templates, get_template, get_template_prompt
+from github_templates import ORG, list_templates as gh_list_templates, get_template, get_template_prompt, get_template_styles
 from sprites import generate_sprites_js
 from context import validate_game_path
 
@@ -76,11 +76,66 @@ def list_templates(args):
     return json.dumps(items, indent=2)
 
 
+def _apply_style(game_path, template_key, style_key=None):
+    """Apply a style preset to the game. Returns style info dict or None."""
+    styles_data = get_template_styles(template_key)
+    if not styles_data:
+        return None
+
+    styles = styles_data.get("styles", {})
+    if not styles:
+        return None
+
+    if not style_key:
+        style_key = styles_data.get("default")
+    if not style_key or style_key not in styles:
+        return None
+
+    style = styles[style_key]
+    palette = style.get("palette", {})
+    font = style.get("font", {})
+    font_family = font.get("family", "sans-serif")
+    font_fallback = font.get("fallback", "sans-serif")
+
+    # Generate style.css with CSS custom properties
+    css_vars = "\n".join(f"  --fa-{k}: {v};" for k, v in palette.items())
+    css_content = (
+        f"/* ForkArcade style: {style_key} */\n"
+        f":root {{\n{css_vars}\n  --fa-font: '{font_family}', {font_fallback};\n}}\n"
+        f"* {{ margin: 0; padding: 0; box-sizing: border-box; }}\n"
+        f"body {{ background: var(--fa-bg, #000); display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; font-family: var(--fa-font); }}\n"
+        f"canvas {{ background: var(--fa-canvas-bg, #001122); }}\n"
+    )
+    (game_path / "style.css").write_text(css_content)
+
+    # Inject font <link> into index.html
+    font_url = font.get("url")
+    if font_url:
+        index_path = game_path / "index.html"
+        if index_path.exists():
+            html = index_path.read_text()
+            font_link = f'  <link rel="stylesheet" href="{font_url}">\n'
+            if '<link rel="stylesheet" href="style.css">' in html:
+                html = html.replace(
+                    '<link rel="stylesheet" href="style.css">',
+                    font_link + '  <link rel="stylesheet" href="style.css">'
+                )
+            elif '</head>' in html:
+                html = html.replace('</head>', font_link + '</head>')
+            index_path.write_text(html)
+
+    return {
+        "style": style_key,
+        "fontFamily": f"{font_family}, {font_fallback}",
+    }
+
+
 def init_game(args):
     slug = args["slug"]
     template = args["template"]
     title = args["title"]
     description = args.get("description", "")
+    style_key = args.get("style")
 
     tmpl = get_template(template)
     if not tmpl:
@@ -107,6 +162,9 @@ def init_game(args):
         if narrative_src.exists():
             (game_path / "fa-narrative.js").write_text(narrative_src.read_text())
 
+        # Apply style preset (if template has styles)
+        style_info = _apply_style(game_path, template, style_key)
+
         config_path = game_path / ".forkarcade.json"
         game_config = {}
         if config_path.exists():
@@ -115,6 +173,9 @@ def init_game(args):
             except Exception:
                 pass
         game_config.update({"slug": slug, "title": title, "currentVersion": 0, "versions": [], "sdkVersion": sdk_info["version"]})
+        if style_info:
+            game_config["style"] = style_info["style"]
+            game_config["fontFamily"] = style_info["fontFamily"]
         game_config.setdefault("template", template)
         config_path.write_text(json.dumps(game_config, indent=2) + "\n")
 

@@ -50,6 +50,26 @@ In the renderer display the bar with `alpha = Math.min(1, state.narrativeMessage
 
 `FA.draw.sprite(category, name, x, y, size, fallbackChar, fallbackColor)` — if sprite is missing, draws text. Game MUST work without sprites.
 
+## Style Presets
+
+Games may have a style preset applied at creation time. Style data is in `.forkarcade.json`:
+- `fontFamily` — CSS font family string (e.g. `"Orbitron, monospace"`)
+- `style` — style preset key (e.g. `"dark-neon"`)
+
+CSS custom properties are available on `:root` in `style.css`:
+- `--fa-font` — font family
+- `--fa-bg` — page background
+- `--fa-canvas-bg` — canvas background
+- `--fa-text` — text color
+- `--fa-accent` — primary accent
+- `--fa-accent2` — secondary accent
+
+For canvas text rendering, use the CSS variable:
+```js
+var faFont = getComputedStyle(document.documentElement).getPropertyValue('--fa-font').trim() || 'monospace';
+ctx.font = '16px ' + faFont;
+```
+
 ## Platform Files (do not edit)
 
 - `forkarcade-sdk.js` — SDK (scoring, auth)
