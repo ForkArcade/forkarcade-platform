@@ -117,24 +117,37 @@ export function Card({ href, to, thumbnail, children }) {
         transition: 'border-color 0.2s',
       }}
     >
-      {thumbnail && (
-        <div style={{
-          borderRadius: T.radius.md,
-          overflow: 'hidden',
-          margin: T.sp[2],
-        }}>
+      <div style={{
+        borderRadius: T.radius.md,
+        overflow: 'hidden',
+        margin: T.sp[2],
+        aspectRatio: '2 / 1',
+        background: T.surface,
+      }}>
+        {thumbnail ? (
           <img
             src={thumbnail}
             alt=""
             style={{
               width: '100%',
-              height: 'auto',
+              height: '100%',
+              objectFit: 'cover',
               imageRendering: 'pixelated',
               display: 'block',
             }}
           />
-        </div>
-      )}
+        ) : (
+          <div style={{
+            width: '100%',
+            height: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}>
+            <img src="/logo.svg" alt="" width={24} height={24} style={{ opacity: 0.1 }} />
+          </div>
+        )}
+      </div>
       <div style={{ padding: `${T.sp[4]}px ${T.sp[4]}px ${T.sp[5]}px`, flex: 1 }}>
         {children}
       </div>
