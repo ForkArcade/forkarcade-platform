@@ -1,4 +1,5 @@
 import json
+import math
 import random
 import subprocess
 from pathlib import Path
@@ -10,6 +11,68 @@ PLATFORM_ROOT = _HERE.parent.parent.parent
 GAMES_DIR = PLATFORM_ROOT.parent / "games"
 
 W, H = 72, 32
+
+# Built-in 3x5 pixel font (each glyph is a list of 5 row strings, 3 chars wide)
+PIXEL_FONT = {
+    "A": [".1.", "1.1", "111", "1.1", "1.1"],
+    "B": ["11.", "1.1", "11.", "1.1", "11."],
+    "C": ["111", "1..", "1..", "1..", "111"],
+    "D": ["11.", "1.1", "1.1", "1.1", "11."],
+    "E": ["111", "1..", "111", "1..", "111"],
+    "F": ["111", "1..", "111", "1..", "1.."],
+    "G": ["111", "1..", "1.1", "1.1", "111"],
+    "H": ["1.1", "1.1", "111", "1.1", "1.1"],
+    "I": ["111", ".1.", ".1.", ".1.", "111"],
+    "J": ["111", "..1", "..1", "1.1", "111"],
+    "K": ["1.1", "1.1", "11.", "1.1", "1.1"],
+    "L": ["1..", "1..", "1..", "1..", "111"],
+    "M": ["1.1", "111", "111", "1.1", "1.1"],
+    "N": ["1.1", "111", "111", "111", "1.1"],
+    "O": ["111", "1.1", "1.1", "1.1", "111"],
+    "P": ["111", "1.1", "111", "1..", "1.."],
+    "Q": ["111", "1.1", "1.1", "111", "..1"],
+    "R": ["11.", "1.1", "11.", "1.1", "1.1"],
+    "S": ["111", "1..", "111", "..1", "111"],
+    "T": ["111", ".1.", ".1.", ".1.", ".1."],
+    "U": ["1.1", "1.1", "1.1", "1.1", "111"],
+    "V": ["1.1", "1.1", "1.1", "1.1", ".1."],
+    "W": ["1.1", "1.1", "111", "111", "1.1"],
+    "X": ["1.1", "1.1", ".1.", "1.1", "1.1"],
+    "Y": ["1.1", "1.1", ".1.", ".1.", ".1."],
+    "Z": ["111", "..1", ".1.", "1..", "111"],
+    "0": ["111", "1.1", "1.1", "1.1", "111"],
+    "1": [".1.", "11.", ".1.", ".1.", "111"],
+    "2": ["111", "..1", "111", "1..", "111"],
+    "3": ["111", "..1", "111", "..1", "111"],
+    "4": ["1.1", "1.1", "111", "..1", "..1"],
+    "5": ["111", "1..", "111", "..1", "111"],
+    "6": ["111", "1..", "111", "1.1", "111"],
+    "7": ["111", "..1", "..1", "..1", "..1"],
+    "8": ["111", "1.1", "111", "1.1", "111"],
+    "9": ["111", "1.1", "111", "..1", "111"],
+    " ": ["...", "...", "...", "...", "..."],
+    "-": ["...", "...", "111", "...", "..."],
+    ".": ["...", "...", "...", "...", ".1."],
+    ":": ["...", ".1.", "...", ".1.", "..."],
+    "!": [".1.", ".1.", ".1.", "...", ".1."],
+    "?": ["111", "..1", ".1.", "...", ".1."],
+    "'": [".1.", ".1.", "...", "...", "..."],
+}
+
+_sprites_cache = {}
+
+
+def _load_sprites(game_path):
+    """Load sprites from _sprites.json in the game directory."""
+    key = str(game_path)
+    if key in _sprites_cache:
+        return _sprites_cache[key]
+    sprites_path = game_path / "_sprites.json"
+    if not sprites_path.exists():
+        return {}
+    data = json.loads(sprites_path.read_text())
+    _sprites_cache[key] = data
+    return data
 
 RESAMPLE = {
     "nearest": Image.NEAREST,
@@ -39,7 +102,7 @@ def _hex(color):
     return (int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16), 255)
 
 
-def _draw_op(canvas, op):
+def _draw_op(canvas, op, game_path=None):
     draw = ImageDraw.Draw(canvas, "RGBA")
 
     if "fill" in op:
@@ -73,7 +136,10 @@ def _draw_op(canvas, op):
     elif "circle" in op:
         c = op["circle"]
         cx, cy, r = c["cx"], c["cy"], c["r"]
-        draw.ellipse([cx - r, cy - r, cx + r, cy + r], fill=_hex(c["color"]))
+        fill = _hex(c["color"]) if "color" in c else None
+        outline = _hex(c["outline"]) if "outline" in c else None
+        width = c.get("width", 1)
+        draw.ellipse([cx - r, cy - r, cx + r, cy + r], fill=fill, outline=outline, width=width)
 
     elif "polygon" in op:
         p = op["polygon"]
@@ -137,6 +203,121 @@ def _draw_op(canvas, op):
                     if 0 <= px < canvas.width and 0 <= py < canvas.height:
                         canvas.putpixel((px, py), color_map[ch])
 
+    elif "sprite" in op:
+        s = op["sprite"]
+        if not game_path:
+            return
+        sprites = _load_sprites(game_path)
+        category = s.get("category", "")
+        name = s.get("name", "")
+        sprite_def = sprites.get(category, {}).get(name)
+        if not sprite_def:
+            return
+        x0, y0 = s.get("x", 0), s.get("y", 0)
+        scale = s.get("scale", 1)
+        palette = sprite_def.get("palette", {})
+        pixel_rows = sprite_def.get("pixels", [])
+        color_map = {ch: _hex(c) for ch, c in palette.items()}
+        for dy, row in enumerate(pixel_rows):
+            for dx, ch in enumerate(row):
+                if ch == "." or ch not in color_map:
+                    continue
+                color = color_map[ch]
+                px_x = x0 + dx * scale
+                px_y = y0 + dy * scale
+                if scale <= 1:
+                    if 0 <= px_x < canvas.width and 0 <= px_y < canvas.height:
+                        canvas.putpixel((px_x, px_y), color)
+                else:
+                    draw.rectangle(
+                        [px_x, px_y, px_x + scale - 1, px_y + scale - 1],
+                        fill=color,
+                    )
+
+    elif "pixel_text" in op:
+        t = op["pixel_text"]
+        text = t.get("text", "").upper()
+        x0, y0 = t.get("x", 0), t.get("y", 0)
+        color = _hex(t["color"]) if "color" in t else (255, 255, 255, 255)
+        shadow = _hex(t["shadow"]) if "shadow" in t else None
+        scale = t.get("scale", 1)
+        char_w = 4 * scale  # 3 px wide + 1 px gap
+        # Draw shadow first (offset +1 scale pixel)
+        if shadow:
+            cx = x0 + scale
+            for ch in text:
+                glyph = PIXEL_FONT.get(ch, PIXEL_FONT.get(" "))
+                if not glyph:
+                    cx += char_w
+                    continue
+                for gy, row in enumerate(glyph):
+                    for gx, pixel in enumerate(row):
+                        if pixel == "1":
+                            px_x = cx + gx * scale
+                            px_y = y0 + scale + gy * scale
+                            if scale <= 1:
+                                if 0 <= px_x < canvas.width and 0 <= px_y < canvas.height:
+                                    canvas.putpixel((px_x, px_y), shadow)
+                            else:
+                                draw.rectangle(
+                                    [px_x, px_y, px_x + scale - 1, px_y + scale - 1],
+                                    fill=shadow,
+                                )
+                cx += char_w
+        # Draw main text
+        cx = x0
+        for ch in text:
+            glyph = PIXEL_FONT.get(ch, PIXEL_FONT.get(" "))
+            if not glyph:
+                cx += char_w
+                continue
+            for gy, row in enumerate(glyph):
+                for gx, pixel in enumerate(row):
+                    if pixel == "1":
+                        px_x = cx + gx * scale
+                        px_y = y0 + gy * scale
+                        if scale <= 1:
+                            if 0 <= px_x < canvas.width and 0 <= px_y < canvas.height:
+                                canvas.putpixel((px_x, px_y), color)
+                        else:
+                            draw.rectangle(
+                                [px_x, px_y, px_x + scale - 1, px_y + scale - 1],
+                                fill=color,
+                            )
+            cx += char_w
+
+    elif "hex_grid" in op:
+        g = op["hex_grid"]
+        cols = g.get("cols", 8)
+        rows = g.get("rows", 6)
+        hex_size = g.get("hex_size", 4)
+        x0, y0 = g.get("x", 0), g.get("y", 0)
+        terrain = g.get("terrain", [])
+        colors = g.get("colors", {})
+        outline_color = _hex(g["outline"]) if "outline" in g else None
+        outline_width = g.get("outline_width", 1)
+        default_color = _hex(g.get("default_color", "#5a8c3c"))
+        hex_w = hex_size * math.sqrt(3)
+        hex_h = hex_size * 2
+        for r in range(rows):
+            for c in range(cols):
+                cx = x0 + c * hex_w + (hex_w / 2 if r % 2 == 1 else 0) + hex_w / 2
+                cy = y0 + r * hex_h * 0.75 + hex_h / 2
+                # Get terrain color
+                fill = default_color
+                if r < len(terrain) and c < len(terrain[r]):
+                    t_name = terrain[r][c]
+                    if t_name in colors:
+                        fill = _hex(colors[t_name])
+                corners = []
+                for i in range(6):
+                    angle = math.radians(60 * i - 30)
+                    corners.append((
+                        cx + (hex_size - 1) * math.cos(angle),
+                        cy + (hex_size - 1) * math.sin(angle),
+                    ))
+                draw.polygon(corners, fill=fill, outline=outline_color, width=outline_width)
+
 
 def create_thumbnail(args):
     game_path = _validate_game_path(args["path"])
@@ -145,7 +326,7 @@ def create_thumbnail(args):
     out_h = args.get("h", H)
 
     if not layers:
-        return json.dumps({"error": "layers is required — lista warstw [{res, aa, ops}, ...]"})
+        return json.dumps({"error": "layers is required — list of layers [{res, aa, ops}, ...]"})
 
     final = Image.new("RGBA", (out_w, out_h), (0, 0, 0, 0))
 
@@ -160,7 +341,7 @@ def create_thumbnail(args):
         canvas = Image.new("RGBA", (lw, lh), (0, 0, 0, 0))
 
         for op in ops:
-            _draw_op(canvas, op)
+            _draw_op(canvas, op, game_path=game_path)
 
         if (lw, lh) != (out_w, out_h):
             canvas = canvas.resize((out_w, out_h), resample)
