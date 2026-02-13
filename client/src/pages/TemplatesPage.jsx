@@ -1,16 +1,19 @@
 import { useState, useEffect } from 'react'
-import { GITHUB_ORG, TEMPLATE_TOPIC, githubFetch } from '../api'
+import { GITHUB_ORG, TEMPLATE_TOPIC, githubFetch, fetchBuildCache } from '../api'
 import { PageHeader, Grid, Card, CardTitle, CardTags, Badge, EmptyState } from '../components/ui'
 
 export default function TemplatesPage() {
   const [templates, setTemplates] = useState([])
-  const [status, setStatus] = useState('loading') // loading | ok | error
+  const [status, setStatus] = useState('loading')
 
   useEffect(() => {
-    setStatus('loading')
+    fetchBuildCache('templates').then(data => {
+      if (data) { setTemplates(data); setStatus('ok') }
+    })
+
     githubFetch(`/orgs/${GITHUB_ORG}/repos?type=public&per_page=100`)
       .then(repos => {
-        setTemplates(repos
+        const list = repos
           .filter(r => r.topics?.includes(TEMPLATE_TOPIC))
           .map(r => ({
             slug: r.name,
@@ -18,13 +21,10 @@ export default function TemplatesPage() {
             url: r.html_url,
             topics: r.topics.filter(t => t !== TEMPLATE_TOPIC),
           }))
-        )
+        setTemplates(list)
         setStatus('ok')
       })
-      .catch(() => {
-        setTemplates([])
-        setStatus('error')
-      })
+      .catch(() => {})
   }, [])
 
   return (

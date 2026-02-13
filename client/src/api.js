@@ -15,6 +15,14 @@ export async function apiFetch(path, options = {}) {
   return res.json()
 }
 
+export async function fetchBuildCache(key) {
+  try {
+    const res = await fetch(`/cache/${key}.json`)
+    if (!res.ok) return null
+    return res.json()
+  } catch { return null }
+}
+
 export async function githubFetch(path) {
   // Repos list goes through server proxy (cached, token-authenticated)
   if (path.includes(`/orgs/${GITHUB_ORG}/repos`)) {

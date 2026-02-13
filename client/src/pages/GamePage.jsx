@@ -5,9 +5,10 @@ import { T } from '../theme'
 import { Panel, IconTabBar, Badge, SegmentedControl, EmptyState } from '../components/ui'
 import Leaderboard from '../components/Leaderboard'
 import NarrativePanel from '../components/NarrativePanel'
-import { Trophy, BookOpen, Clock, Loader, AlertCircle } from 'lucide-react'
+import { Trophy, BookOpen, Clock, Info, Loader, AlertCircle } from 'lucide-react'
 
 const TAB_ICONS = {
+  info: { label: 'Info', icon: Info },
   leaderboard: { label: 'Leaderboard', icon: Trophy },
   narrative: { label: 'Narrative', icon: BookOpen },
   changelog: { label: 'Changelog', icon: Clock },
@@ -17,11 +18,12 @@ export default function GamePage({ user }) {
   const { slug } = useParams()
   const [game, setGame] = useState(null)
   const [leaderboard, setLeaderboard] = useState([])
-  const [tab, setTab] = useState('leaderboard')
+  const [tab, setTab] = useState('info')
   const [narrativeState, setNarrativeState] = useState({ variables: {}, currentNode: null, graph: null, events: [] })
   const [versions, setVersions] = useState([])
   const [selectedVersion, setSelectedVersion] = useState(null)
   const [gameStatus, setGameStatus] = useState('loading') // loading | ready | unavailable
+  const [focused, setFocused] = useState(false)
   const iframeRef = useRef(null)
 
   const currentVersion = selectedVersion || (versions.length > 0 ? versions[versions.length - 1].version : null)
@@ -35,8 +37,8 @@ export default function GamePage({ user }) {
 
   useEffect(() => {
     githubFetch(`/repos/${GITHUB_ORG}/${slug}`)
-      .then(repo => setGame({ slug: repo.name, title: repo.description || repo.name, topics: repo.topics || [] }))
-      .catch(() => setGame({ slug, title: slug, topics: [] }))
+      .then(repo => setGame({ slug: repo.name, title: repo.name, description: repo.description || '', topics: repo.topics || [] }))
+      .catch(() => setGame({ slug, title: slug, description: '', topics: [] }))
 
     fetch(`https://raw.githubusercontent.com/${GITHUB_ORG}/${slug}/main/.forkarcade.json`)
       .then(r => r.json())
@@ -52,8 +54,21 @@ export default function GamePage({ user }) {
     ? `${iframeOrigin}/${slug}/versions/v${selectedVersion}/`
     : `${iframeOrigin}/${slug}/`
 
+  const wrapperRef = useRef(null)
+
+  useEffect(() => {
+    const onMouseDown = (e) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+        setFocused(false)
+      }
+    }
+    document.addEventListener('mousedown', onMouseDown)
+    return () => document.removeEventListener('mousedown', onMouseDown)
+  }, [])
+
   useEffect(() => {
     setGameStatus('loading')
+    setFocused(false)
     fetch(iframeUrl, { method: 'HEAD', mode: 'no-cors' })
       .then(() => {
         // no-cors always resolves — rely on FA_READY timeout
@@ -113,14 +128,14 @@ export default function GamePage({ user }) {
 
   if (!game) return <EmptyState>Loading...</EmptyState>
 
-  const tabKeys = ['leaderboard', 'narrative']
+  const tabKeys = ['info', 'leaderboard', 'narrative']
   if (versions.length > 0) tabKeys.push('changelog')
 
   const iconTabs = tabKeys.map(k => ({ key: k, ...TAB_ICONS[k] }))
 
   return (
     <div style={{ display: 'flex', height: '100%', gap: T.sp[4] }}>
-      <div style={{
+      <div ref={wrapperRef} style={{
         flex: 1,
         background: '#000',
         border: `1px solid ${T.border}`,
@@ -135,6 +150,37 @@ export default function GamePage({ user }) {
           style={{ width: '100%', height: '100%', border: 'none', display: 'block' }}
           title={game.title}
         />
+        {gameStatus === 'ready' && !focused && (
+          <div
+            onClick={() => {
+              setFocused(true)
+              iframeRef.current?.focus()
+            }}
+            style={{
+              position: 'absolute',
+              inset: 0,
+              background: 'radial-gradient(circle, rgba(0,0,0,0.4) 0%, rgba(0,0,0,1) 100%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              zIndex: 1,
+            }}
+          >
+            <span style={{
+              fontSize: T.fontSize.sm,
+              color: T.textBright,
+              letterSpacing: T.tracking.wider,
+              textTransform: 'uppercase',
+              padding: `${T.sp[4]}px ${T.sp[6]}px`,
+              border: `1px solid ${T.border}`,
+              borderRadius: T.radius.md,
+              background: T.surface,
+            }}>
+              Click to focus
+            </span>
+          </div>
+        )}
         {gameStatus !== 'ready' && (
           <div style={{
             position: 'absolute',
@@ -173,7 +219,6 @@ export default function GamePage({ user }) {
         <div style={{
           display: 'flex',
           alignItems: 'center',
-          gap: T.sp[3],
           padding: `${T.sp[3]}px ${T.sp[4]}px`,
           borderBottom: `1px solid ${T.border}`,
           minHeight: 36,
@@ -184,13 +229,9 @@ export default function GamePage({ user }) {
             color: T.muted,
             textTransform: 'uppercase',
             letterSpacing: T.tracking.widest,
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
           }}>
-            {game.title}
+            {slug}
           </span>
-          {game.topics.filter(t => t !== 'forkarcade-game').map(t => <Badge key={t}>{t}</Badge>)}
         </div>
         {versions.length > 0 && (
           <div style={{ padding: `${T.sp[3]}px ${T.sp[4]}px`, borderBottom: `1px solid ${T.border}` }}>
@@ -206,6 +247,23 @@ export default function GamePage({ user }) {
         )}
         <IconTabBar tabs={iconTabs} active={tab} onChange={setTab} />
         <div style={{ flex: 1, overflow: 'auto', padding: T.sp[5] }}>
+            {tab === 'info' && (
+              <div>
+                <div style={{ fontSize: T.fontSize.base, fontWeight: T.weight.semibold, color: T.textBright, marginBottom: T.sp[4] }}>
+                  {game.title}
+                </div>
+                {game.description && (
+                  <div style={{ fontSize: T.fontSize.xs, color: T.text, lineHeight: T.leading.relaxed, marginBottom: T.sp[5] }}>
+                    {game.description}
+                  </div>
+                )}
+                {game.topics.filter(t => t !== 'forkarcade-game').length > 0 && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: T.sp[2] }}>
+                    {game.topics.filter(t => t !== 'forkarcade-game').map(t => <Badge key={t}>{t}</Badge>)}
+                  </div>
+                )}
+              </div>
+            )}
             {tab === 'leaderboard' && <Leaderboard rows={leaderboard} />}
             {tab === 'narrative' && <NarrativePanel narrativeState={narrativeState} />}
             {tab === 'changelog' && (

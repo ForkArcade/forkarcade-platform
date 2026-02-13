@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { T } from '../theme'
-import { GITHUB_ORG, githubFetch } from '../api'
+import { GITHUB_ORG, githubFetch, fetchBuildCache } from '../api'
 import { PageHeader, Grid, Card, CardTitle, CardDescription, CardTags, Badge, SectionHeading, PillTabs, EmptyState } from '../components/ui'
 
 const GAME_TOPIC = 'forkarcade-game'
@@ -25,11 +25,14 @@ const ABOUT_CONTENT = {
 
 export default function HomePage() {
   const [games, setGames] = useState([])
-  const [status, setStatus] = useState('loading') // loading | ok | error
+  const [status, setStatus] = useState('loading')
   const [aboutTab, setAboutTab] = useState('general')
 
   useEffect(() => {
-    setStatus('loading')
+    fetchBuildCache('games').then(data => {
+      if (data) { setGames(data); setStatus('ok') }
+    })
+
     githubFetch(`/orgs/${GITHUB_ORG}/repos?type=public&per_page=100`)
       .then(repos => {
         const gameList = repos
@@ -53,10 +56,7 @@ export default function HomePage() {
           img.src = url
         })
       })
-      .catch(() => {
-        setGames([])
-        setStatus('error')
-      })
+      .catch(() => {})
   }, [])
 
   return (
