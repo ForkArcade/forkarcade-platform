@@ -5,10 +5,7 @@ import subprocess
 from pathlib import Path
 
 from PIL import Image, ImageDraw
-
-_HERE = Path(__file__).resolve().parent
-PLATFORM_ROOT = _HERE.parent.parent.parent
-GAMES_DIR = PLATFORM_ROOT.parent / "games"
+from context import validate_game_path
 
 W, H = 72, 32
 
@@ -81,14 +78,6 @@ RESAMPLE = {
     "lanczos": Image.LANCZOS,
 }
 
-
-def _validate_game_path(path_str):
-    game_path = Path(path_str).resolve()
-    try:
-        game_path.relative_to(GAMES_DIR.resolve())
-    except ValueError:
-        raise ValueError(f"Path must be within games directory: {GAMES_DIR}")
-    return game_path
 
 
 def _hex(color):
@@ -320,7 +309,7 @@ def _draw_op(canvas, op, game_path=None):
 
 
 def create_thumbnail(args):
-    game_path = _validate_game_path(args["path"])
+    game_path = validate_game_path(args["path"])
     layers = args.get("layers", [])
     out_w = args.get("w", W)
     out_h = args.get("h", H)
@@ -360,15 +349,18 @@ def create_thumbnail(args):
     def_path = game_path / "_thumbnail.json"
     def_path.write_text(json.dumps(args, indent=2))
 
+    pushed = False
     try:
-        subprocess.run(["git", "add", "_thumbnail.png", "_thumbnail.json"], cwd=game_path, capture_output=True)
-        subprocess.run(["git", "commit", "-m", "Update thumbnail"], cwd=game_path, capture_output=True)
-        subprocess.run(["git", "push"], cwd=game_path, capture_output=True)
+        subprocess.run(["git", "add", "_thumbnail.png", "_thumbnail.json"], cwd=game_path, capture_output=True, timeout=10)
+        subprocess.run(["git", "commit", "-m", "Update thumbnail"], cwd=game_path, capture_output=True, timeout=10)
+        r = subprocess.run(["git", "push"], cwd=game_path, capture_output=True, timeout=30)
+        pushed = r.returncode == 0
     except Exception:
         pass
 
+    git_msg = "Pushed to GitHub." if pushed else "Git push failed or skipped."
     return json.dumps({
         "ok": True,
-        "message": f"Thumbnail saved ({out_w}x{out_h}, {len(layers)} layers). Pushed to GitHub.",
+        "message": f"Thumbnail saved ({out_w}x{out_h}, {len(layers)} layers). {git_msg}",
         "path": str(out_path),
     })

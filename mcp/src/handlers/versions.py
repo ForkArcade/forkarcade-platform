@@ -1,9 +1,9 @@
 import json
-from pathlib import Path
+from context import validate_game_path
 
 
 def get_versions(args):
-    game_path = Path(args["path"]).resolve()
+    game_path = validate_game_path(args["path"])
     config_path = game_path / ".forkarcade.json"
 
     if not config_path.exists():

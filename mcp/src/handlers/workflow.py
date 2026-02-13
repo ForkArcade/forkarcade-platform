@@ -8,6 +8,7 @@ from pathlib import Path
 
 from github_templates import ORG, list_templates as gh_list_templates, get_template, get_template_prompt
 from sprites import generate_sprites_js
+from context import validate_game_path
 
 _HERE = Path(__file__).resolve().parent
 PLATFORM_ROOT = _HERE.parent.parent.parent
@@ -57,16 +58,6 @@ def run_shell(cmd, cwd=None):
     if result.returncode != 0:
         raise RuntimeError(result.stderr.strip() or f"Command failed: {cmd}")
     return result.stdout.strip()
-
-
-def _validate_game_path(path_str):
-    """Validate that path resolves within GAMES_DIR. Returns resolved Path or raises."""
-    game_path = Path(path_str).resolve()
-    try:
-        game_path.relative_to(GAMES_DIR.resolve())
-    except ValueError:
-        raise ValueError(f"Path must be within games directory: {GAMES_DIR}")
-    return game_path
 
 
 
@@ -233,7 +224,7 @@ def get_game_prompt(args):
 
 
 def validate_game(args):
-    game_path = _validate_game_path(args["path"])
+    game_path = validate_game_path(args["path"])
     issues = []
     warnings = []
 
@@ -312,7 +303,7 @@ def validate_game(args):
 
 
 def publish_game(args):
-    game_path = _validate_game_path(args["path"])
+    game_path = validate_game_path(args["path"])
     slug = args["slug"]
     title = args["title"]
     description = args.get("description", "")
@@ -395,7 +386,7 @@ def publish_game(args):
 
 
 def update_sdk(args):
-    game_path = _validate_game_path(args["path"])
+    game_path = validate_game_path(args["path"])
     sdk_info = _get_sdk_info()
 
     sdk_local = game_path / "forkarcade-sdk.js"

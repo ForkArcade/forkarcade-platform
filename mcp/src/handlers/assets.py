@@ -4,21 +4,7 @@ from pathlib import Path
 
 from github_templates import VALID_CATEGORIES, get_template, get_template_assets
 from sprites import generate_sprites_js, generate_preview_html
-from context import detect_game_context, get_categories_for_template
-
-_HERE = Path(__file__).resolve().parent
-PLATFORM_ROOT = _HERE.parent.parent.parent
-GAMES_DIR = PLATFORM_ROOT.parent / "games"
-
-
-def _validate_game_path(path_str):
-    """Validate that path resolves within GAMES_DIR."""
-    game_path = Path(path_str).resolve()
-    try:
-        game_path.relative_to(GAMES_DIR.resolve())
-    except ValueError:
-        raise ValueError(f"Path must be within games directory: {GAMES_DIR}")
-    return game_path
+from context import validate_game_path, detect_game_context, get_categories_for_template
 
 
 def get_asset_guide(args):
@@ -50,14 +36,14 @@ def get_asset_guide(args):
 
 
 def create_sprite(args):
-    game_path = _validate_game_path(args["path"])
+    game_path = validate_game_path(args["path"])
     category = args["category"]
     sprite_name = args["name"]
     palette = args["palette"]
     pixels = args["pixels"]
     json_path = game_path / "_sprites.json"
 
-    game_ctx = detect_game_context()
+    game_ctx = detect_game_context(args["path"])
     allowed = get_categories_for_template(game_ctx["template"]) if game_ctx else VALID_CATEGORIES
     if category not in allowed:
         ctx_name = game_ctx["template"] if game_ctx else "all"
@@ -104,7 +90,7 @@ def create_sprite(args):
 
 
 def validate_assets(args):
-    game_path = _validate_game_path(args["path"])
+    game_path = validate_game_path(args["path"])
     json_path = game_path / "_sprites.json"
     template = args.get("template")
 
@@ -159,7 +145,7 @@ def validate_assets(args):
 
 
 def preview_assets(args):
-    game_path = _validate_game_path(args["path"])
+    game_path = validate_game_path(args["path"])
     json_path = game_path / "_sprites.json"
 
     if not json_path.exists():

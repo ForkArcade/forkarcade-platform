@@ -4,7 +4,7 @@ import json
 def generate_sprites_js(data):
     lines = [
         "// sprites.js — ForkArcade pixel art sprites",
-        "// Wygenerowany z _sprites.json przez create_sprite tool",
+        "// Generated from _sprites.json by create_sprite tool",
         "",
         "var SPRITE_DEFS = " + json.dumps(data, indent=2),
         "",
