@@ -29,25 +29,6 @@ export function Panel({ children, style, ...props }) {
   )
 }
 
-export function StatusBar({ children }) {
-  return (
-    <div style={{
-      height: T.sp[8],       // 32
-      display: 'flex',
-      alignItems: 'center',
-      padding: `0 ${T.sp[6]}px`,  // 0 16
-      background: T.surface,
-      borderTop: `1px solid ${T.border}`,
-      fontSize: T.fontSize.xs,
-      color: T.muted,
-      fontFamily: T.mono,
-      gap: T.sp[5],          // 12
-    }}>
-      {children}
-    </div>
-  )
-}
-
 // --- Typography ---
 
 export function PageHeader({ children }) {
@@ -201,7 +182,7 @@ export function CardTags({ children }) {
 // --- Controls ---
 
 export function Button({ children, variant, active, size, onClick, style, ...props }) {
-  const h = size === 'sm' ? T.sp[8] : T.sp[8]    // 32
+  const h = size === 'sm' ? T.sp[7] : T.sp[8]    // 24 / 32
   const px = size === 'sm' ? T.sp[4] : T.sp[5]    // 8 / 12
   const base = {
     height: h,
@@ -226,35 +207,6 @@ export function Button({ children, variant, active, size, onClick, style, ...pro
 }
 
 // --- Tabs ---
-
-export function TabBar({ tabs, active, onChange }) {
-  return (
-    <div style={{ display: 'flex', borderBottom: `1px solid ${T.border}` }}>
-      {tabs.map(t => (
-        <button
-          key={t}
-          onClick={() => onChange(t)}
-          style={{
-            height: T.sp[9],    // 48
-            padding: `0 ${T.sp[6]}px`,  // 0 16
-            background: 'transparent',
-            color: active === t ? T.accentColor : T.text,
-            border: 'none',
-            borderBottom: active === t ? `2px solid ${T.accentColor}` : '2px solid transparent',
-            cursor: 'pointer',
-            fontSize: T.fontSize.sm,
-            fontFamily: T.font,
-            fontWeight: active === t ? T.weight.medium : T.weight.normal,
-            textTransform: 'uppercase',
-            letterSpacing: T.tracking.wider,
-          }}
-        >
-          {t}
-        </button>
-      ))}
-    </div>
-  )
-}
 
 export function IconTabBar({ tabs, active, onChange }) {
   return (
@@ -384,67 +336,6 @@ export function Badge({ children, color }) {
 }
 
 // --- Data Display ---
-
-export function FileCard({ name, size, accent, label }) {
-  return (
-    <div style={{
-      background: T.surface,
-      border: `1px solid ${T.border}`,
-      borderLeft: `3px solid ${accent || T.accentColor}`,
-      borderRadius: T.radius.md,
-      padding: `${T.sp[4]}px ${T.sp[5]}px`,
-      display: 'flex',
-      flexDirection: 'column',
-      gap: T.sp[1],
-    }}>
-      <span style={{
-        fontFamily: T.mono,
-        fontSize: T.fontSize.sm,
-        color: T.textBright,
-        fontWeight: T.weight.medium,
-      }}>
-        {name}
-      </span>
-      <div style={{ display: 'flex', alignItems: 'center', gap: T.sp[3] }}>
-        {size != null && (
-          <span style={{ fontFamily: T.mono, fontSize: T.fontSize.xs, color: T.muted }}>
-            {(size / 1024).toFixed(1)} KB
-          </span>
-        )}
-        {label && <Badge>{label}</Badge>}
-      </div>
-    </div>
-  )
-}
-
-export function KeyValue({ label, value }) {
-  return (
-    <div style={{
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'baseline',
-      padding: `${T.sp[2]}px 0`,
-      borderBottom: `1px solid ${T.border}`,
-    }}>
-      <span style={{
-        fontSize: T.fontSize.xs,
-        color: T.muted,
-        textTransform: 'uppercase',
-        letterSpacing: T.tracking.wider,
-      }}>
-        {label}
-      </span>
-      <span style={{
-        fontSize: T.fontSize.xs,
-        color: T.textBright,
-        fontFamily: T.mono,
-        fontWeight: T.weight.medium,
-      }}>
-        {value}
-      </span>
-    </div>
-  )
-}
 
 export function ColorSwatch({ name, color }) {
   return (

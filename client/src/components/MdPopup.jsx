@@ -58,7 +58,7 @@ export function MdPopup({ title, text, onClose, footer }) {
   )
 }
 
-export function SimpleMd({ text }) {
+function SimpleMd({ text }) {
   const lines = text.split('\n')
   const elements = []
   let i = 0

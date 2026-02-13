@@ -12,6 +12,7 @@ export async function apiFetch(path, options = {}) {
       ...(options.headers || {}),
     },
   })
+  if (!res.ok) throw new Error(`API ${res.status}`)
   return res.json()
 }
 
@@ -19,7 +20,7 @@ export async function fetchBuildCache(key) {
   try {
     const res = await fetch(`/cache/${key}.json`)
     if (!res.ok) return null
-    return res.json()
+    return await res.json()
   } catch { return null }
 }
 
