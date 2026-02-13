@@ -203,7 +203,11 @@ OPERATIONS (in ops):
 5. ATMOSPHERE (res [9,4], aa lanczos, opacity 0.08-0.15)
    dither — fog, smoke, haze. density 0.3-0.5, limited to bottom half.
    fill or gradient — subtle color overlay on bottom = depth.
-   This is the last layer — enhances atmospheric perspective.""",
+   This is the last layer — enhances atmospheric perspective.
+
+== TITLE ==
+Title text (pixel_text) is OPTIONAL. Not every thumbnail needs a title overlay.
+Use it when the image alone doesn't clearly identify the game. Skip it when the scene is strong enough on its own — let the art speak.""",
         "inputSchema": {
             "type": "object",
             "properties": {
