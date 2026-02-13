@@ -146,3 +146,4 @@ Scores have a `version` column — SDK automatically includes the version. Leade
 - **SDK is local** — `forkarcade-sdk.js` copied to the game repo by `init_game`, updated by `update_sdk`. Source of truth: `sdk/forkarcade-sdk.js`
 - **Engine is in the template** — engine files come from the template repo. Each template is self-contained.
 - **Narrative is in the platform** — `fa-narrative.js` copied from `sdk/` by `init_game`. Platform mission.
+- **English only** — all code, comments, docs, CLAUDE.md, prompts, commit messages, and generated content must be in English, regardless of the language the user communicates in.
