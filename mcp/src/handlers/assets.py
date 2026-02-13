@@ -16,14 +16,14 @@ def get_asset_guide(args):
 
     output = f"# Asset Guide: {tmpl['name']}\n\n"
     output += f"## Style\n{guide['style']}\n\n"
-    output += f"## Sprite Size\n{guide['gridSize']}\n\n"
     output += "## Color Palette\n"
     for name, color in guide["palette"].items():
         output += f"- `{color}` — {name}\n"
     output += "\n## Required Sprites\n\n"
     for cat, info in guide["categories"].items():
-        output += f"### {cat}\n{info['desc']}\n"
-        output += f"Sprite'y: {', '.join(info['sprites'])}\n\n"
+        size = info.get("size", guide.get("gridSize", "8x8"))
+        output += f"### {cat} ({size})\n{info['desc']}\n"
+        output += f"Sprites: {', '.join(info['sprites'])}\n\n"
     output += '## Sprite Format\n```json\n'
     output += '{\n  "w": 8, "h": 8,\n  "palette": { "1": "#a86", "2": "#d9a" },\n'
     output += '  "pixels": [\n    "..1..1..",\n    ".11..11.",\n    ".122221.",\n    "11222211",\n'
