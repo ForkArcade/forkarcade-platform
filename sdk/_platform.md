@@ -46,7 +46,23 @@ In the renderer display the bar with `alpha = Math.min(1, state.narrativeMessage
 - `ForkArcade.submitScore(score)` — call at end of game
 - `ForkArcade.updateNarrative(data)` — report narrative state to the platform
 
-## Sprite Fallback
+## Sprites
+
+Sprites support multiple frames and an origin (anchor) point. Format:
+```json
+{ "w": 8, "h": 16, "palette": {...}, "origin": [4, 15], "frames": [[...], [...]] }
+```
+
+- `frames` — array of pixel grids (animation, behavior variants, tile variants)
+- `origin` — `[ox, oy]` anchor point in pixel coords. `drawSprite` positions the sprite so that origin aligns with (x, y). Default `[0, 0]` (top-left). Use `[w/2, h-1]` for bottom-center (isometric objects, characters, trees).
+
+```js
+var sprite = getSprite('enemies', 'rat');
+drawSprite(ctx, sprite, x, y, T);           // draws frame 0, origin-aligned
+drawSprite(ctx, sprite, x, y, T, 2);        // draws frame 2
+var count = spriteFrames(sprite);            // number of frames
+// Animation: drawSprite(ctx, sprite, x, y, T, Math.floor(t / 200) % count)
+```
 
 `FA.draw.sprite(category, name, x, y, size, fallbackChar, fallbackColor)` — if sprite is missing, draws text. Game MUST work without sprites.
 
@@ -99,4 +115,4 @@ This file is committed as part of the evolve PR. The platform displays it in the
 
 - `forkarcade-sdk.js` — SDK (scoring, auth)
 - `fa-narrative.js` — narrative module (graph, variables, transition)
-- `sprites.js` — generated from `_sprites.json`
+- `sprites.js` — generated from `_sprites.json` (matrix format: frames per sprite)

@@ -40,6 +40,23 @@ Claude will pick a template, fork the repo, implement the game, create sprites, 
 
 http://localhost:5173 — the game will appear in the catalog.
 
+## Skills
+
+| Command | Context | Description |
+|---------|---------|-------------|
+| `/new-game` | `cd forkarcade-platform && claude` | Create a new game from template |
+| (edit) | `cd ../games/<slug> && claude` | Edit an existing game |
+| `/evolve` | `cd ../games/<slug> && claude` | Implement voted evolve issue |
+| `/publish` | `cd ../games/<slug> && claude` | Validate and publish |
+
+## MCP Tools
+
+**Workflow**: `list_templates` `init_game` `validate_game` `publish_game` `get_sdk_docs` `get_game_prompt` `update_sdk` `list_evolve_issues`
+
+**Assets**: `get_asset_guide` `create_sprite` `validate_assets` `preview_assets`
+
+**Other**: `get_versions` `create_thumbnail`
+
 ## How It Works
 
 ```
@@ -53,7 +70,7 @@ Platform (iframe) <----- GitHub Pages <--+
 
 1. **init_game** — forks a template repo to the `ForkArcade` org, clones locally, copies SDK
 2. Claude implements the game in JS files (data.js, game.js, render.js, main.js)
-3. **create_sprite** — creates pixel art 8x8 sprites
+3. **create_sprite** — creates pixel art sprites (matrix format: frames + origin)
 4. **publish_game** — pushes to GitHub, enables Pages, creates version snapshot
 
 ## Templates
@@ -72,23 +89,6 @@ Adding a new template = creating a repo on GitHub with the right topics. Zero ch
 Each template contains its own set of engine modules (vanilla JS, zero build step). The template is self-contained — `init_game` simply clones the template repo.
 
 API: `window.FA` — `FA.setState()`, `FA.getState()`, `FA.addLayer()`, `FA.draw.*`, `FA.input.*`, `FA.narrative.*`
-
-## MCP Tools
-
-| Tool | Description |
-|------|-------------|
-| `list_templates` | List templates from GitHub |
-| `init_game` | Fork template -> new repo |
-| `get_game_prompt` | Game type mechanics knowledge |
-| `get_sdk_docs` | SDK documentation |
-| `validate_game` | Validate before publishing |
-| `publish_game` | Push + Pages + version snapshot |
-| `update_sdk` | Update SDK in the game |
-| `get_asset_guide` | Sprite guide |
-| `create_sprite` | Create pixel art 8x8 |
-| `validate_assets` | Check sprite completeness |
-| `preview_assets` | Preview sprites in HTML |
-| `get_versions` | Game version history |
 
 ## Narrative Layer
 
@@ -110,9 +110,9 @@ ForkArcade.updateNarrative({
 ## Game Evolution
 
 Games evolve through GitHub issues with the `evolve` label:
-1. User creates issue -> GitHub Actions triggers Claude Code
-2. Claude implements -> PR
-3. Merge -> version snapshot in `/versions/v{N}/`
+1. Player proposes `[EVOLVE]` issue via platform -> votes reach threshold -> `evolve` label added
+2. Use `/evolve` skill to see ready issues and implement
+3. Create `changelog/v{N}.md`, then `/publish` to push + snapshot
 4. Platform displays version selector + changelog
 
 ## Structure
@@ -126,5 +126,7 @@ forkarcade-platform/
     handlers/             workflow, assets, versions
   sdk/
     forkarcade-sdk.js     SDK (postMessage)
-  .claude/skills/   new-game
+    fa-narrative.js       Narrative module
+    _platform.md          Platform golden rules
+  .claude/skills/   new-game, evolve, publish
 ```

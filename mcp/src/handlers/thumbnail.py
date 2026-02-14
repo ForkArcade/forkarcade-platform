@@ -6,6 +6,7 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw
 from context import validate_game_path
+from sprites import migrate_sprite_data
 
 W, H = 72, 32
 
@@ -67,7 +68,7 @@ def _load_sprites(game_path):
     sprites_path = game_path / "_sprites.json"
     if not sprites_path.exists():
         return {}
-    data = json.loads(sprites_path.read_text())
+    data = migrate_sprite_data(json.loads(sprites_path.read_text()))
     _sprites_cache[key] = data
     return data
 
@@ -204,16 +205,23 @@ def _draw_op(canvas, op, game_path=None):
             return
         x0, y0 = s.get("x", 0), s.get("y", 0)
         scale = s.get("scale", 1)
+        frame = s.get("frame", 0)
         palette = sprite_def.get("palette", {})
-        pixel_rows = sprite_def.get("pixels", [])
+        origin = sprite_def.get("origin", [0, 0])
+        frames = sprite_def.get("frames", [])
+        if not frames:
+            return
+        pixel_rows = frames[frame % len(frames)]
         color_map = {ch: _hex(c) for ch, c in palette.items()}
+        ox = origin[0] * scale
+        oy = origin[1] * scale
         for dy, row in enumerate(pixel_rows):
             for dx, ch in enumerate(row):
                 if ch == "." or ch not in color_map:
                     continue
                 color = color_map[ch]
-                px_x = x0 + dx * scale
-                px_y = y0 + dy * scale
+                px_x = x0 - ox + dx * scale
+                px_y = y0 - oy + dy * scale
                 if scale <= 1:
                     if 0 <= px_x < canvas.width and 0 <= px_y < canvas.height:
                         canvas.putpixel((px_x, px_y), color)

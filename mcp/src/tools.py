@@ -73,7 +73,7 @@ TOOLS = [
     },
     {
         "name": "create_sprite",
-        "description": "Creates a pixel art sprite — validates, saves to _sprites.json, generates sprites.js",
+        "description": "Creates a pixel art sprite frame — validates, saves to _sprites.json, generates sprites.js. Call multiple times with frame param to add animation frames.",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -81,7 +81,9 @@ TOOLS = [
                 "category": {"type": "string", "description": "Category: tiles, enemies, items, player, effects, terrain, units, ui"},
                 "name": {"type": "string", "description": 'Sprite name, e.g. "rat", "wallLit", "warrior"'},
                 "palette": {"type": "object", "description": 'Character-to-hex color map: { "1": "#a86", "2": "#d9a" }'},
-                "pixels": {"type": "array", "items": {"type": "string"}, "description": 'Pixel grid — each row is a string, "." = transparent'},
+                "pixels": {"type": "array", "items": {"type": "string"}, "description": 'Pixel grid for one frame — each row is a string, "." = transparent'},
+                "frame": {"type": "integer", "description": "Frame index (0-based). If omitted, appends a new frame. Use to build animation: frame 0, 1, 2..."},
+                "origin": {"type": "array", "items": {"type": "integer"}, "description": "Anchor point [ox, oy] in pixel coords. Default [0,0] (top-left). Use [w/2, h-1] for bottom-center (isometric objects, characters)."},
             },
             "required": ["path", "category", "name", "palette", "pixels"],
         },
@@ -173,7 +175,7 @@ OPERATIONS (in ops):
 - {"scatter": {"color":, "count":, "seed":, x, y, w, h}}
 - {"dither": {"color":, "density":, "seed":, x, y, w, h}}
 - {"pixels": {"palette":{"char":"#hex"}, "rows":["..."], x, y}}
-- {"sprite": {"category":, "name":, "x":, "y":, "scale":}} — render sprite from game's _sprites.json. category+name lookup (e.g. "units"/"warrior"). scale=pixel size (1=1:1, 2=2x, etc.)
+- {"sprite": {"category":, "name":, "x":, "y":, "scale":, "frame":}} — render sprite from game's _sprites.json. category+name lookup (e.g. "units"/"warrior"). scale=pixel size (1=1:1, 2=2x, etc.). frame=index (default 0).
 - {"pixel_text": {"text":, "x":, "y":, "color":, "shadow":, "scale":}} — built-in 3x5 pixel font (A-Z, 0-9, space, punctuation). shadow=offset color. scale=pixel size.
 - {"hex_grid": {"cols":, "rows":, "hex_size":, "x":, "y":, "terrain":[[row of terrain names]], "colors":{"name":"#hex"}, "outline":, "outline_width":, "default_color":}} — hex grid with terrain coloring. Odd rows offset right.
 '.' = transparent. Colors with alpha: "#rrggbbaa".

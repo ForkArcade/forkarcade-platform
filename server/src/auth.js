@@ -96,18 +96,4 @@ router.post('/auth/logout', (_req, res) => {
   res.json({ ok: true })
 })
 
-// Mock login (development only)
-if (process.env.NODE_ENV !== 'production') {
-  router.post('/auth/github/mock', async (req, res) => {
-    const { id, login } = req.body
-    await db.execute({
-      sql: 'INSERT OR REPLACE INTO users (github_user_id, login) VALUES (?, ?)',
-      args: [id, login],
-    })
-    const token = sign({ github_user_id: id, login })
-    res.cookie(process.env.COOKIE_NAME, token, cookieOptions())
-    res.json({ ok: true })
-  })
-}
-
 export default router

@@ -2,6 +2,7 @@ import 'dotenv/config'
 import express from 'express'
 import cookieParser from 'cookie-parser'
 import cors from 'cors'
+import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
 
@@ -26,24 +27,15 @@ app.use(scoresRouter)
 app.use(githubRouter)
 app.use(walletRouter)
 
-const C = '\x1b[36m', Y = '\x1b[33m', D = '\x1b[2m', R = '\x1b[0m'
-const banner = [
-  '',
-  C + '  █▀▀ █▀█ █▀█ █▄▀',
-  '  █▀  █▄█ █▀▄ █ █',
-  '',
-  '      ▄▀█ █▀█ █▀▀ ▄▀█ █▀▄ █▀▀',
-  '      █▀█ █▀▄ █▄▄ █▀█ █▄▀ ██▄' + R,
-  '',
-  `  ${Y}API${R}  http://localhost:${process.env.PORT}`,
-  '',
-  `  ${D}Nowa gra:${R}     cd forkarcade-platform ${D}&&${R} claude ${D}then${R} /new-game`,
-  `  ${D}Edycja gry:${R}   cd ../games/<slug> ${D}&&${R} claude`,
-  '',
-]
-
 initDb().then(() => {
-  app.listen(process.env.PORT, () => console.log(banner.join('\n')))
+  app.listen(process.env.PORT, () => {
+    const readmePath = path.join(__dirname, '../../README.md')
+    try {
+      console.log('\n' + fs.readFileSync(readmePath, 'utf-8'))
+    } catch {
+      console.log(`ForkArcade API running on http://localhost:${process.env.PORT}`)
+    }
+  })
 }).catch(err => {
   console.error('Failed to initialize database:', err)
   process.exit(1)
