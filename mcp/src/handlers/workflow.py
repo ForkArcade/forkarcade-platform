@@ -462,6 +462,14 @@ def update_sdk(args):
 
     sdk_local.write_text(sdk_info["content"])
 
+    # Also update narrative module (platform infrastructure)
+    narrative_src = SDK_DIR / "fa-narrative.js"
+    narrative_dst = game_path / "fa-narrative.js"
+    narrative_updated = False
+    if narrative_src.exists():
+        narrative_dst.write_text(narrative_src.read_text())
+        narrative_updated = True
+
     config_path = game_path / ".forkarcade.json"
     if config_path.exists():
         try:
@@ -471,9 +479,13 @@ def update_sdk(args):
         except Exception:
             pass
 
+    msg = f"SDK updated from v{old_version} to v{sdk_info['version']}"
+    if narrative_updated:
+        msg += ", fa-narrative.js updated"
+
     return json.dumps({
         "ok": True,
-        "message": f"SDK updated from v{old_version} to v{sdk_info['version']}",
+        "message": msg,
         "version": sdk_info["version"],
     })
 

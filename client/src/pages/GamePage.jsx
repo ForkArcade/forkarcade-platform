@@ -80,17 +80,36 @@ export default function GamePage({ user, balance, onBalanceChange }) {
   useEffect(() => {
     setGameStatus('loading')
     setFocused(false)
-    fetch(iframeUrl, { method: 'HEAD', mode: 'no-cors' })
-      .then(() => {
-        // no-cors always resolves — rely on FA_READY timeout
-      })
-      .catch(() => setGameStatus('unavailable'))
 
-    const timeout = setTimeout(() => {
-      setGameStatus(prev => prev === 'loading' ? 'unavailable' : prev)
-    }, 8000)
+    // Retry: 4s → 8s → 16s (28s total, covers GitHub Pages deploy time)
+    const delays = [4000, 8000, 16000]
+    let attempt = 0
+    let timer = null
+    let cancelled = false
 
-    return () => clearTimeout(timeout)
+    function scheduleRetry() {
+      if (cancelled || attempt >= delays.length) {
+        if (!cancelled) setGameStatus(prev => prev === 'loading' ? 'unavailable' : prev)
+        return
+      }
+      timer = setTimeout(() => {
+        if (cancelled) return
+        setGameStatus(prev => {
+          if (prev !== 'loading') return prev
+          if (iframeRef.current) iframeRef.current.src = iframeUrl
+          return prev
+        })
+        attempt++
+        scheduleRetry()
+      }, delays[attempt])
+    }
+
+    scheduleRetry()
+
+    return () => {
+      cancelled = true
+      if (timer) clearTimeout(timer)
+    }
   }, [iframeUrl])
 
   useEffect(() => {

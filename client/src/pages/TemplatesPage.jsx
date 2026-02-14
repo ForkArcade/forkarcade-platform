@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { GITHUB_ORG, TEMPLATE_TOPIC, githubFetch, fetchBuildCache } from '../api'
+import { GITHUB_ORG, TEMPLATE_TOPIC, githubFetch } from '../api'
 import { PageHeader, Grid, Card, CardTitle, CardTags, Badge, EmptyState } from '../components/ui'
 
 export default function TemplatesPage() {
@@ -7,10 +7,6 @@ export default function TemplatesPage() {
   const [status, setStatus] = useState('loading')
 
   useEffect(() => {
-    fetchBuildCache('templates').then(data => {
-      if (data) { setTemplates(data); setStatus('ok') }
-    })
-
     githubFetch(`/orgs/${GITHUB_ORG}/repos?type=public&per_page=100`)
       .then(repos => {
         const list = repos

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { T } from '../theme'
-import { GITHUB_ORG, githubFetch, githubRawUrl, fetchBuildCache } from '../api'
+import { GITHUB_ORG, githubFetch, githubRawUrl } from '../api'
 import { PageHeader, Grid, Card, CardTitle, CardDescription, CardTags, Badge, SectionHeading, PillTabs, EmptyState } from '../components/ui'
 import NewGamePanel from '../components/NewGamePanel'
 
@@ -31,10 +31,6 @@ export default function HomePage({ user, balance, onBalanceChange }) {
   const [aboutTab, setAboutTab] = useState('general')
 
   useEffect(() => {
-    fetchBuildCache('games').then(data => {
-      if (data) { setGames(data); setStatus('ok') }
-    })
-
     githubFetch(`/orgs/${GITHUB_ORG}/repos?type=public&per_page=100`)
       .then(repos => {
         const gameList = repos

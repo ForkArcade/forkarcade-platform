@@ -16,14 +16,6 @@ export async function apiFetch(path, options = {}) {
   return res.json()
 }
 
-export async function fetchBuildCache(key) {
-  try {
-    const res = await fetch(`/cache/${key}.json`)
-    if (!res.ok) return null
-    return await res.json()
-  } catch { return null }
-}
-
 export function githubRawUrl(path) {
   return `${API}/api/github/raw/${path}`
 }

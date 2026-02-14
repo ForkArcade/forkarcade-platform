@@ -4,8 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "prebuild": "node prebuild.js",
-    "build": "node prebuild.js && vite build",
+    "build": "vite build",
     "preview": "vite preview"
   },
   "dependencies": {
