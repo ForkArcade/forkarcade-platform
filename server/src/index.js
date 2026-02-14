@@ -2,7 +2,6 @@ import 'dotenv/config'
 import express from 'express'
 import cookieParser from 'cookie-parser'
 import cors from 'cors'
-import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
 
@@ -27,15 +26,33 @@ app.use(scoresRouter)
 app.use(githubRouter)
 app.use(walletRouter)
 
+const C = '\x1b[36m', Y = '\x1b[33m', D = '\x1b[2m', R = '\x1b[0m'
+const banner = [
+  '',
+  C + '  █▀▀ █▀█ █▀█ █▄▀',
+  '  █▀  █▄█ █▀▄ █ █',
+  '',
+  '      ▄▀█ █▀█ █▀▀ ▄▀█ █▀▄ █▀▀',
+  '      █▀█ █▀▄ █▄▄ █▀█ █▄▀ ██▄' + R,
+  '',
+  `  ${Y}API${R}  http://localhost:${process.env.PORT}`,
+  '',
+  `  ${Y}Skills${R}`,
+  `  ${D}New game:${R}     cd forkarcade-platform ${D}&&${R} claude ${D}then${R} /new-game`,
+  `  ${D}Edit game:${R}    cd ../games/<slug> ${D}&&${R} claude`,
+  `  ${D}Evolve:${R}       cd ../games/<slug> ${D}&&${R} claude ${D}then${R} /evolve`,
+  `  ${D}Publish:${R}      cd ../games/<slug> ${D}&&${R} claude ${D}then${R} /publish`,
+  '',
+  `  ${Y}MCP Tools${R}`,
+  `  ${D}Workflow:${R}      list_templates  init_game  validate_game  publish_game`,
+  `  ${D}             ${R} get_sdk_docs  get_game_prompt  update_sdk  list_evolve_issues`,
+  `  ${D}Assets:${R}       get_asset_guide  create_sprite  validate_assets  preview_assets`,
+  `  ${D}Other:${R}        get_versions  create_thumbnail`,
+  '',
+]
+
 initDb().then(() => {
-  app.listen(process.env.PORT, () => {
-    const readmePath = path.join(__dirname, '../../README.md')
-    try {
-      console.log('\n' + fs.readFileSync(readmePath, 'utf-8'))
-    } catch {
-      console.log(`ForkArcade API running on http://localhost:${process.env.PORT}`)
-    }
-  })
+  app.listen(process.env.PORT, () => console.log(banner.join('\n')))
 }).catch(err => {
   console.error('Failed to initialize database:', err)
   process.exit(1)
