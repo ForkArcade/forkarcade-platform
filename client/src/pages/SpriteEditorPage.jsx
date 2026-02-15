@@ -1,26 +1,13 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { GITHUB_ORG, githubRawUrl } from '../api'
 import { T } from '../theme'
 import { SectionHeading } from '../components/ui'
-import { spriteToDataUrl } from '../utils/sprite'
-import { ArrowLeft, Clipboard, Check, Plus, Trash2, Copy } from 'lucide-react'
-
-function nextPaletteKey(palette) {
-  const letters = 'abcdefghijklmnopqrstuvwxyz'
-  for (const ch of letters) {
-    if (!palette[ch]) return ch
-  }
-  for (let i = 1; i <= 9; i++) {
-    if (!palette[String(i)]) return String(i)
-  }
-  return null
-}
-
-function setPixel(frame, row, col, ch) {
-  const line = frame[row]
-  return line.substring(0, col) + ch + line.substring(col + 1)
-}
+import { spriteToDataUrl, nextPaletteKey, setPixel } from '../utils/sprite'
+import PixelGrid from '../components/PixelGrid'
+import PalettePanel from '../components/PalettePanel'
+import FramesPanel from '../components/FramesPanel'
+import SpriteSidebar from '../components/SpriteSidebar'
 
 const inputStyle = {
   width: 48,
@@ -35,222 +22,6 @@ const inputStyle = {
   textAlign: 'center',
   outline: 'none',
 }
-
-const btnStyle = {
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  gap: T.sp[2],
-  padding: `${T.sp[2]}px ${T.sp[3]}px`,
-  height: 26,
-  background: T.elevated,
-  color: T.text,
-  border: `1px solid ${T.border}`,
-  borderRadius: T.radius.sm,
-  cursor: 'pointer',
-  fontSize: T.fontSize.xs,
-  fontFamily: T.mono,
-}
-
-// --- Pixel Grid ---
-
-function PixelGrid({ def, frameIdx, activeColor, onPaint }) {
-  const cellSize = def.w <= 8 ? 32 : def.w <= 16 ? 24 : 16
-  const gridW = def.w * cellSize
-  const gridH = def.h * cellSize
-  const painting = useRef(false)
-  const frame = def.frames[frameIdx]
-  if (!frame) return null
-
-  const handlePaint = (e) => {
-    const rect = e.currentTarget.getBoundingClientRect()
-    const col = Math.floor((e.clientX - rect.left) / cellSize)
-    const row = Math.floor((e.clientY - rect.top) / cellSize)
-    if (col >= 0 && col < def.w && row >= 0 && row < def.h) {
-      onPaint(row, col, activeColor)
-    }
-  }
-
-  return (
-    <div
-      onMouseDown={(e) => { e.preventDefault(); painting.current = true; handlePaint(e) }}
-      onMouseMove={(e) => { if (painting.current) handlePaint(e) }}
-      onMouseUp={() => { painting.current = false }}
-      onMouseLeave={() => { painting.current = false }}
-      onContextMenu={(e) => e.preventDefault()}
-      style={{
-        width: gridW,
-        height: gridH,
-        display: 'grid',
-        gridTemplateColumns: `repeat(${def.w}, ${cellSize}px)`,
-        gridTemplateRows: `repeat(${def.h}, ${cellSize}px)`,
-        border: `1px solid ${T.border}`,
-        borderRadius: T.radius.md,
-        overflow: 'hidden',
-        cursor: 'crosshair',
-        userSelect: 'none',
-      }}
-    >
-      {frame.map((line, row) =>
-        Array.from({ length: def.w }, (_, col) => {
-          const ch = line[col] || '.'
-          const color = ch === '.' ? null : def.palette[ch]
-          return (
-            <div
-              key={`${row}-${col}`}
-              style={{
-                width: cellSize,
-                height: cellSize,
-                background: color || 'transparent',
-                boxShadow: `inset 0 0 0 0.5px ${T.border}`,
-              }}
-            />
-          )
-        })
-      )}
-    </div>
-  )
-}
-
-// --- Palette Panel ---
-
-function PalettePanel({ palette, activeColor, onSelect, onColorChange, onAdd, onRemove }) {
-  const keys = Object.keys(palette)
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: T.sp[2] }}>
-      {/* Transparent */}
-      <div
-        onClick={() => onSelect('.')}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: T.sp[3],
-          padding: `${T.sp[2]}px ${T.sp[3]}px`,
-          borderRadius: T.radius.sm,
-          cursor: 'pointer',
-          background: activeColor === '.' ? T.elevated : 'transparent',
-          border: activeColor === '.' ? `1px solid ${T.accentColor}` : `1px solid transparent`,
-        }}
-      >
-        <div style={{
-          width: 20,
-          height: 20,
-          borderRadius: T.radius.sm,
-          border: `1px solid ${T.border}`,
-          background: `repeating-conic-gradient(${T.border} 0% 25%, transparent 0% 50%) 50% / 10px 10px`,
-        }} />
-        <span style={{ fontFamily: T.mono, fontSize: T.fontSize.xs, color: T.muted }}>. transparent</span>
-      </div>
-
-      {/* Colors */}
-      {keys.map(key => (
-        <div
-          key={key}
-          onClick={() => onSelect(key)}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: T.sp[3],
-            padding: `${T.sp[2]}px ${T.sp[3]}px`,
-            borderRadius: T.radius.sm,
-            cursor: 'pointer',
-            background: activeColor === key ? T.elevated : 'transparent',
-            border: activeColor === key ? `1px solid ${T.accentColor}` : `1px solid transparent`,
-          }}
-        >
-          <input
-            type="color"
-            value={palette[key]}
-            onClick={(e) => e.stopPropagation()}
-            onChange={(e) => onColorChange(key, e.target.value)}
-            style={{
-              width: 20,
-              height: 20,
-              padding: 0,
-              border: `1px solid ${T.border}`,
-              borderRadius: T.radius.sm,
-              cursor: 'pointer',
-              background: 'none',
-            }}
-          />
-          <span style={{ fontFamily: T.mono, fontSize: T.fontSize.xs, color: T.textBright }}>{key}</span>
-          <span style={{ fontFamily: T.mono, fontSize: 9, color: T.muted }}>{palette[key]}</span>
-          {keys.length > 1 && (
-            <button
-              onClick={(e) => { e.stopPropagation(); onRemove(key) }}
-              style={{ ...btnStyle, padding: 2, height: 18, width: 18, marginLeft: 'auto', border: 'none', background: 'transparent', color: T.muted }}
-            >
-              <Trash2 size={10} />
-            </button>
-          )}
-        </div>
-      ))}
-
-      {/* Add color */}
-      <button onClick={onAdd} style={{ ...btnStyle, marginTop: T.sp[2] }}>
-        <Plus size={12} /> Add color
-      </button>
-    </div>
-  )
-}
-
-// --- Frames Panel ---
-
-function FramesPanel({ def, activeFrame, onSelect, onAdd, onDuplicate, onRemove }) {
-  const thumbSize = 48
-  const thumbUrls = useMemo(() =>
-    def.frames.map((_, i) => spriteToDataUrl(def, thumbSize, i)),
-    [def]
-  )
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: T.sp[3] }}>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: T.sp[2] }}>
-        {def.frames.map((_, i) => {
-          const url = thumbUrls[i]
-          return (
-            <div
-              key={i}
-              onClick={() => onSelect(i)}
-              style={{
-                textAlign: 'center',
-                cursor: 'pointer',
-                border: i === activeFrame ? `2px solid ${T.accentColor}` : `2px solid transparent`,
-                borderRadius: T.radius.sm,
-                padding: 1,
-              }}
-            >
-              <div style={{
-                width: thumbSize,
-                height: thumbSize,
-                background: '#000',
-                borderRadius: T.radius.sm,
-                overflow: 'hidden',
-              }}>
-                {url && <img src={url} alt={`f${i}`} width={thumbSize} height={thumbSize} style={{ display: 'block', imageRendering: 'pixelated' }} />}
-              </div>
-              <span style={{ fontSize: 9, color: i === activeFrame ? T.accentColor : T.muted }}>f{i}</span>
-            </div>
-          )
-        })}
-      </div>
-      <div style={{ display: 'flex', gap: T.sp[2] }}>
-        <button onClick={onAdd} style={btnStyle} title="Add empty frame">
-          <Plus size={12} /> New
-        </button>
-        <button onClick={onDuplicate} style={btnStyle} title="Duplicate current frame">
-          <Copy size={12} /> Dup
-        </button>
-        {def.frames.length > 1 && (
-          <button onClick={onRemove} style={{ ...btnStyle, color: T.danger }} title="Delete current frame">
-            <Trash2 size={12} />
-          </button>
-        )}
-      </div>
-    </div>
-  )
-}
-
-// --- Main Editor ---
 
 export default function SpriteEditorPage() {
   const { slug } = useParams()
@@ -281,9 +52,7 @@ export default function SpriteEditorPage() {
   activeColorRef.current = activeColor
 
   const def = sprites && activeCat && activeName ? sprites[activeCat]?.[activeName] : null
-  const categories = sprites ? Object.keys(sprites) : []
 
-  // Pre-compute sidebar thumbnails — only recomputes when sprites data changes
   const sidebarThumbs = useMemo(() => {
     if (!sprites) return {}
     const result = {}
@@ -296,7 +65,6 @@ export default function SpriteEditorPage() {
     return result
   }, [sprites])
 
-  // Reset frame and fix palette color when switching sprites
   useEffect(() => {
     if (!sprites || !activeCat || !activeName) return
     const d = sprites[activeCat]?.[activeName]
@@ -352,7 +120,6 @@ export default function SpriteEditorPage() {
   const handleRemoveColor = useCallback((key) => {
     update(d => {
       delete d.palette[key]
-      // Replace removed color in all frames with '.'
       for (let f = 0; f < d.frames.length; f++) {
         d.frames[f] = d.frames[f].map(line => line.split('').map(ch => ch === key ? '.' : ch).join(''))
       }
@@ -399,52 +166,27 @@ export default function SpriteEditorPage() {
     })
   }, [sprites])
 
+  const handleSelectSprite = useCallback((cat, name) => {
+    setActiveCat(cat)
+    setActiveName(name)
+  }, [])
+
   if (!sprites) {
     return <div style={{ padding: T.sp[7], color: T.muted, fontSize: T.fontSize.sm }}>Loading sprites...</div>
   }
 
   return (
     <div style={{ display: 'flex', height: '100%', gap: 0 }}>
-      {/* LEFT: Sprite list */}
-      <div style={{
-        width: 200,
-        minWidth: 200,
-        borderRight: `1px solid ${T.border}`,
-        overflow: 'auto',
-        display: 'flex',
-        flexDirection: 'column',
-      }}>
-        <div style={{ padding: `${T.sp[3]}px ${T.sp[4]}px`, borderBottom: `1px solid ${T.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Link to={`/play/${slug}`} style={{ display: 'flex', alignItems: 'center', gap: T.sp[2], color: T.text, textDecoration: 'none', fontSize: T.fontSize.xs }}><ArrowLeft size={14} /> {slug}</Link>
-          <button onClick={handleCopy} style={{ ...btnStyle, padding: `${T.sp[1]}px ${T.sp[3]}px`, height: 22 }}>{copied ? <Check size={10} /> : <Clipboard size={10} />}</button>
-        </div>
-
-        {/* Sprite list by category */}
-        <div style={{ flex: 1, overflow: 'auto', padding: `${T.sp[3]}px 0` }}>
-          {categories.map(cat => {
-            const names = Object.keys(sprites[cat]).filter(n => sprites[cat][n]?.frames)
-            if (names.length === 0) return null
-            return (
-              <div key={cat}>
-                <div style={{ padding: `${T.sp[2]}px ${T.sp[4]}px`, fontSize: 9, color: T.muted, textTransform: 'uppercase', letterSpacing: T.tracking.widest, marginTop: T.sp[2] }}>
-                  {cat}
-                </div>
-                {names.map(name => {
-                  const isActive = activeCat === cat && activeName === name
-                  const thumb = sidebarThumbs[`${cat}/${name}`]
-                  return (
-                    <div key={name} onClick={() => { setActiveCat(cat); setActiveName(name) }}
-                      style={{ display: 'flex', alignItems: 'center', gap: T.sp[3], padding: `${T.sp[1]}px ${T.sp[4]}px`, cursor: 'pointer', background: isActive ? T.elevated : 'transparent', borderLeft: isActive ? `2px solid ${T.accentColor}` : '2px solid transparent' }}>
-                      {thumb && <img src={thumb} alt="" width={24} height={24} style={{ imageRendering: 'pixelated', borderRadius: 2, background: '#000', flexShrink: 0 }} />}
-                      <span style={{ fontSize: T.fontSize.xs, fontFamily: T.mono, color: isActive ? T.textBright : T.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
-                    </div>
-                  )
-                })}
-              </div>
-            )
-          })}
-        </div>
-      </div>
+      <SpriteSidebar
+        slug={slug}
+        sprites={sprites}
+        sidebarThumbs={sidebarThumbs}
+        activeCat={activeCat}
+        activeName={activeName}
+        onSelect={handleSelectSprite}
+        onCopy={handleCopy}
+        copied={copied}
+      />
 
       {/* CENTER: Pixel Grid */}
       <div style={{ flex: 1, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: T.sp[6], overflow: 'auto' }}>
@@ -454,12 +196,7 @@ export default function SpriteEditorPage() {
               <span style={{ fontSize: T.fontSize.sm, fontWeight: T.weight.semibold, color: T.textBright, fontFamily: T.mono }}>{activeName}</span>
               <span style={{ fontSize: T.fontSize.xs, color: T.muted }}>{def.w}x{def.h} — frame {activeFrame}</span>
             </div>
-            <PixelGrid
-              def={def}
-              frameIdx={activeFrame}
-              activeColor={activeColor}
-              onPaint={handlePaint}
-            />
+            <PixelGrid def={def} frameIdx={activeFrame} activeColor={activeColor} onPaint={handlePaint} />
           </div>
         ) : (
           <div style={{ color: T.muted, fontSize: T.fontSize.sm }}>Select a sprite</div>
@@ -478,7 +215,6 @@ export default function SpriteEditorPage() {
           flexDirection: 'column',
           gap: T.sp[5],
         }}>
-          {/* Palette */}
           <div>
             <SectionHeading>Palette</SectionHeading>
             <PalettePanel
@@ -491,7 +227,6 @@ export default function SpriteEditorPage() {
             />
           </div>
 
-          {/* Origin */}
           <div>
             <SectionHeading>Origin</SectionHeading>
             <div style={{ display: 'flex', alignItems: 'center', gap: T.sp[3] }}>
@@ -516,7 +251,6 @@ export default function SpriteEditorPage() {
             </div>
           </div>
 
-          {/* Frames */}
           <div>
             <SectionHeading>Frames ({def.frames.length})</SectionHeading>
             <FramesPanel

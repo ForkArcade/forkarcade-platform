@@ -1,3 +1,19 @@
+export function nextPaletteKey(palette) {
+  const letters = 'abcdefghijklmnopqrstuvwxyz'
+  for (const ch of letters) {
+    if (!palette[ch]) return ch
+  }
+  for (let i = 1; i <= 9; i++) {
+    if (!palette[String(i)]) return String(i)
+  }
+  return null
+}
+
+export function setPixel(frame, row, col, ch) {
+  const line = frame[row]
+  return line.substring(0, col) + ch + line.substring(col + 1)
+}
+
 export function spriteToDataUrl(def, size, frameIdx = 0) {
   if (!def?.w || !def?.h || !def?.frames || !def?.palette) return null
   try {
