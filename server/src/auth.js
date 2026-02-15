@@ -29,7 +29,7 @@ function cookieOptions() {
   return {
     httpOnly: true,
     sameSite: crossOrigin ? 'none' : 'lax',
-    secure: process.env.NODE_ENV === 'production',
+    secure: crossOrigin || process.env.NODE_ENV === 'production',
     maxAge: 30 * 24 * 60 * 60 * 1000,
   }
 }
@@ -72,7 +72,15 @@ router.get('/auth/github/callback', async (req, res) => {
         Accept: 'application/vnd.github+json',
       },
     })
+    if (!userRes.ok) {
+      console.error('GitHub user fetch failed:', userRes.status)
+      return res.status(502).send('Failed to fetch GitHub user info')
+    }
     const ghUser = await userRes.json()
+    if (!ghUser.id || !ghUser.login) {
+      console.error('Invalid GitHub user response:', ghUser)
+      return res.status(502).send('Invalid GitHub user data')
+    }
 
     await db.execute({
       sql: `INSERT INTO users (github_user_id, login, avatar)

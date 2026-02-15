@@ -2,7 +2,7 @@ import { Router } from 'express'
 
 const router = Router()
 
-const GITHUB_ORG = 'ForkArcade'
+export const GITHUB_ORG = 'ForkArcade'
 const REPOS_TTL = 5 * 60 * 1000  // 5 min — repos list
 const PROXY_TTL = 2 * 60 * 1000  // 2 min — API proxy (repo info, trees)
 const RAW_TTL   = 5 * 60 * 1000  // 5 min — raw files (rarely change)
@@ -24,7 +24,7 @@ function cacheSet(key, data, contentType) {
   cache.set(key, { data, ts: Date.now(), contentType })
 }
 
-function ghHeaders() {
+export function ghHeaders() {
   const h = { Accept: 'application/vnd.github+json' }
   if (process.env.GITHUB_TOKEN) {
     h.Authorization = `Bearer ${process.env.GITHUB_TOKEN}`
@@ -57,6 +57,9 @@ router.get('/api/github/repos', async (_req, res) => {
 // Generic proxy for any GitHub API path (authenticated, cached)
 router.get('/api/github/proxy/*', async (req, res) => {
   const ghPath = req.params[0]
+  if (!ghPath.startsWith(`repos/${GITHUB_ORG}/`) && !ghPath.startsWith(`orgs/${GITHUB_ORG}/`)) {
+    return res.status(403).json({ error: 'forbidden' })
+  }
   const key = `proxy:${ghPath}`
   const cached = cacheGet(key, PROXY_TTL)
   if (cached) return res.json(cached.data)
@@ -77,6 +80,9 @@ router.get('/api/github/proxy/*', async (req, res) => {
 // Raw file proxy — cached, authenticated
 router.get('/api/github/raw/*', async (req, res) => {
   const path = req.params[0]
+  if (!path.startsWith(`${GITHUB_ORG}/`)) {
+    return res.status(403).json({ error: 'forbidden' })
+  }
   const key = `raw:${path}`
   const cached = cacheGet(key, RAW_TTL)
   if (cached) {

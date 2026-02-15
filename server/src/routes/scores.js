@@ -6,7 +6,9 @@ const router = Router()
 
 router.post('/api/games/:slug/score', auth, async (req, res) => {
   const { score, version } = req.body
-  if (typeof score !== 'number') return res.status(400).json({ error: 'invalid_score' })
+  if (typeof score !== 'number' || !Number.isFinite(score) || score < 0 || score > 1_000_000_000) {
+    return res.status(400).json({ error: 'invalid_score' })
+  }
 
   try {
     // Get personal best + insert score + mint coins in one batch (single round-trip to Turso)
@@ -40,7 +42,8 @@ router.get('/api/games/:slug/leaderboard', async (req, res) => {
              FROM scores s JOIN users u ON u.github_user_id = s.github_user_id
              WHERE s.game_slug = ?`
   const args = [req.params.slug]
-  if (version) { sql += ` AND s.version = ?`; args.push(parseInt(version)) }
+  const v = version ? parseInt(version) : NaN
+  if (!Number.isNaN(v)) { sql += ` AND s.version = ?`; args.push(v) }
   sql += ` GROUP BY s.github_user_id ORDER BY best DESC LIMIT 50`
 
   try {

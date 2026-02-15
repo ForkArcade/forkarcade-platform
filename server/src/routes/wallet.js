@@ -1,15 +1,9 @@
 import { Router } from 'express'
 import db from '../db.js'
 import { auth } from '../auth.js'
+import { GITHUB_ORG, ghHeaders } from './github.js'
 
 const router = Router()
-const GITHUB_ORG = 'ForkArcade'
-
-function ghHeaders() {
-  const h = { Accept: 'application/vnd.github+json' }
-  if (process.env.GITHUB_TOKEN) h.Authorization = `Bearer ${process.env.GITHUB_TOKEN}`
-  return h
-}
 
 // GET /api/wallet — current user's balance
 router.get('/api/wallet', auth, async (req, res) => {
@@ -72,20 +66,22 @@ router.post('/api/games/:slug/vote', auth, async (req, res) => {
   }
 
   try {
-    // Deduct coins atomically (issue already verified client-side)
     const deduct = await db.execute({
       sql: 'UPDATE wallets SET balance = balance - ? WHERE github_user_id = ? AND balance >= ?',
       args: [coins, req.user.sub, coins],
     })
     if (deduct.rowsAffected === 0) return res.status(400).json({ error: 'insufficient_coins' })
 
-    // Record vote + get new balance in one batch
-    const results = await db.batch([
-      { sql: 'INSERT INTO votes (github_user_id, game_slug, issue_number, coins_spent, created_at) VALUES (?, ?, ?, ?, ?)', args: [req.user.sub, slug, issue_number, coins, new Date().toISOString()] },
-      { sql: 'SELECT balance FROM wallets WHERE github_user_id = ?', args: [req.user.sub] },
-    ])
-
-    res.json({ ok: true, newBalance: results[1].rows[0]?.balance ?? 0 })
+    try {
+      const results = await db.batch([
+        { sql: 'INSERT INTO votes (github_user_id, game_slug, issue_number, coins_spent, created_at) VALUES (?, ?, ?, ?, ?)', args: [req.user.sub, slug, issue_number, coins, new Date().toISOString()] },
+        { sql: 'SELECT balance FROM wallets WHERE github_user_id = ?', args: [req.user.sub] },
+      ])
+      res.json({ ok: true, newBalance: results[1].rows[0]?.balance ?? 0 })
+    } catch (insertErr) {
+      await db.execute({ sql: 'UPDATE wallets SET balance = balance + ? WHERE github_user_id = ?', args: [coins, req.user.sub] }).catch(() => {})
+      throw insertErr
+    }
   } catch (err) {
     console.error('Vote error:', err.message)
     res.status(500).json({ error: 'db_error' })
@@ -211,12 +207,16 @@ router.post('/api/new-game/vote', auth, async (req, res) => {
     })
     if (deduct.rowsAffected === 0) return res.status(400).json({ error: 'insufficient_coins' })
 
-    const results = await db.batch([
-      { sql: 'INSERT INTO votes (github_user_id, game_slug, issue_number, coins_spent, created_at) VALUES (?, ?, ?, ?, ?)', args: [req.user.sub, NEW_GAME_SLUG, issue_number, coins, new Date().toISOString()] },
-      { sql: 'SELECT balance FROM wallets WHERE github_user_id = ?', args: [req.user.sub] },
-    ])
-
-    res.json({ ok: true, newBalance: results[1].rows[0]?.balance ?? 0 })
+    try {
+      const results = await db.batch([
+        { sql: 'INSERT INTO votes (github_user_id, game_slug, issue_number, coins_spent, created_at) VALUES (?, ?, ?, ?, ?)', args: [req.user.sub, NEW_GAME_SLUG, issue_number, coins, new Date().toISOString()] },
+        { sql: 'SELECT balance FROM wallets WHERE github_user_id = ?', args: [req.user.sub] },
+      ])
+      res.json({ ok: true, newBalance: results[1].rows[0]?.balance ?? 0 })
+    } catch (insertErr) {
+      await db.execute({ sql: 'UPDATE wallets SET balance = balance + ? WHERE github_user_id = ?', args: [coins, req.user.sub] }).catch(() => {})
+      throw insertErr
+    }
   } catch (err) {
     console.error('New game vote error:', err.message)
     res.status(500).json({ error: 'db_error' })
