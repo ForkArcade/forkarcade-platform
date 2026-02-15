@@ -44,9 +44,7 @@ export default function App() {
           <>
             <Link to="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: T.sp[3] }}>
               <img src="/logo.svg" alt="" width={28} height={28} />
-              <span style={{ color: T.accent, fontSize: T.fontSize.lg, fontWeight: T.weight.bold, letterSpacing: T.tracking.tighter }}>
-                ForkArcade
-              </span>
+              <span style={{ color: T.accent, fontSize: T.fontSize.lg, fontWeight: T.weight.bold, letterSpacing: T.tracking.tighter }}>ForkArcade</span>
             </Link>
             <NavLink to="/" end style={({ isActive }) => navStyle(isActive)}>Games</NavLink>
             <NavLink to="/templates" style={({ isActive }) => navStyle(isActive)}>Templates</NavLink>
@@ -56,9 +54,7 @@ export default function App() {
           !user ? <LoginButton /> : (
             <>
               {walletBalance != null && walletBalance > 0 && (
-                <span style={{ fontFamily: T.mono, fontSize: T.fontSize.xs, color: T.gold, fontWeight: T.weight.medium }}>
-                  {walletBalance}c
-                </span>
+                <span style={{ fontFamily: T.mono, fontSize: T.fontSize.xs, color: T.gold, fontWeight: T.weight.medium }}>{walletBalance}c</span>
               )}
               {user.avatar && <img src={user.avatar} alt="" width={24} height={24} style={{ borderRadius: '50%' }} />}
               <span style={{ fontSize: T.fontSize.sm, color: T.text }}>@{user.login}</span>
@@ -81,27 +77,15 @@ export default function App() {
           <Route path="/sprites/:slug" element={<SpriteEditorPage />} />
         </Routes>
       </div>
-      <footer style={{
-        borderTop: `1px solid ${T.border}`,
-        padding: `${T.sp[6]}px ${T.sp[7]}px`,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-      }}>
+      <footer style={{ borderTop: `1px solid ${T.border}`, padding: `${T.sp[6]}px ${T.sp[7]}px`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: T.sp[3] }}>
           <img src="/logo.svg" alt="" width={14} height={14} style={{ opacity: 0.5 }} />
-          <span style={{ fontSize: T.fontSize.xs, color: T.muted, letterSpacing: T.tracking.wide }}>
-            ForkArcade
-          </span>
+          <span style={{ fontSize: T.fontSize.xs, color: T.muted, letterSpacing: T.tracking.wide }}>ForkArcade</span>
         </div>
         <div style={{ display: 'flex', gap: T.sp[5], fontSize: T.fontSize.xs }}>
-          <a href="https://github.com/ForkArcade" target="_blank" rel="noopener noreferrer" style={{ color: T.muted, textDecoration: 'none' }}>
-            GitHub
-          </a>
+          <a href="https://github.com/ForkArcade" target="_blank" rel="noopener noreferrer" style={{ color: T.muted, textDecoration: 'none' }}>GitHub</a>
           <Separator />
-          <span style={{ color: T.muted }}>
-            Built with Claude Code
-          </span>
+          <span style={{ color: T.muted }}>Built with Claude Code</span>
         </div>
       </footer>
     </div>

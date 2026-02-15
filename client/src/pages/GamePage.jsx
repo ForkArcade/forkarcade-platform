@@ -173,11 +173,8 @@ export default function GamePage({ user, balance, onBalanceChange }) {
 
   if (!game) return <EmptyState>Loading...</EmptyState>
 
-  const tabKeys = ['info', 'leaderboard', 'narrative', 'evolve']
-  if (sprites) tabKeys.push('sprites')
-  if (versions.length > 0) tabKeys.push('changelog')
-
-  const iconTabs = tabKeys.map(k => ({ key: k, ...TAB_ICONS[k] }))
+  const iconTabs = ['info', 'leaderboard', 'narrative', 'evolve', sprites && 'sprites', versions.length > 0 && 'changelog']
+    .filter(Boolean).map(k => ({ key: k, ...TAB_ICONS[k] }))
 
   return (
     <div style={{ display: 'flex', height: '100%', gap: T.sp[4] }}>
@@ -197,166 +194,50 @@ export default function GamePage({ user, balance, onBalanceChange }) {
           title={game.title}
         />
         {gameStatus === 'ready' && !focused && (
-          <div
-            onClick={() => {
-              setFocused(true)
-              iframeRef.current?.focus()
-            }}
-            style={{
-              position: 'absolute',
-              inset: 0,
-              background: 'radial-gradient(circle, rgba(0,0,0,0.4) 0%, rgba(0,0,0,1) 100%)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              zIndex: 1,
-            }}
-          >
-            <span style={{
-              fontSize: T.fontSize.sm,
-              color: T.textBright,
-              letterSpacing: T.tracking.wider,
-              textTransform: 'uppercase',
-              padding: `${T.sp[4]}px ${T.sp[6]}px`,
-              border: `1px solid ${T.border}`,
-              borderRadius: T.radius.md,
-              background: T.surface,
-            }}>
+          <div onClick={() => { setFocused(true); iframeRef.current?.focus() }}
+            style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle, rgba(0,0,0,0.4) 0%, rgba(0,0,0,1) 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 1 }}>
+            <span style={{ fontSize: T.fontSize.sm, color: T.textBright, letterSpacing: T.tracking.wider, textTransform: 'uppercase', padding: `${T.sp[4]}px ${T.sp[6]}px`, border: `1px solid ${T.border}`, borderRadius: T.radius.md, background: T.surface }}>
               Click to focus
             </span>
           </div>
         )}
         {gameStatus !== 'ready' && (
-          <div style={{
-            position: 'absolute',
-            inset: 0,
-            background: T.bg,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: T.sp[5],
-          }}>
+          <div style={{ position: 'absolute', inset: 0, background: T.bg, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: T.sp[5] }}>
             <img src="/logo.svg" alt="" width={48} height={48} style={{ opacity: gameStatus === 'loading' ? 0.3 : 0.15 }} />
-            {gameStatus === 'loading' ? (
-              <>
-                <Loader size={16} color={T.muted} style={{ animation: 'spin 1.5s linear infinite' }} />
-                <span style={{ fontSize: T.fontSize.xs, color: T.muted, letterSpacing: T.tracking.wider, textTransform: 'uppercase' }}>
-                  Loading game
-                </span>
-              </>
-            ) : (
-              <>
-                <AlertCircle size={16} color={T.muted} />
-                <span style={{ fontSize: T.fontSize.xs, color: T.muted, letterSpacing: T.tracking.wider, textTransform: 'uppercase' }}>
-                  Game unavailable
-                </span>
-                <span style={{ fontSize: T.fontSize.xs, color: T.border, maxWidth: 240, textAlign: 'center', lineHeight: T.leading.relaxed }}>
-                  GitHub Pages not deployed yet or currently rebuilding
-                </span>
-              </>
-            )}
+            {gameStatus === 'loading'
+              ? <><Loader size={16} color={T.muted} style={{ animation: 'spin 1.5s linear infinite' }} /><span style={{ fontSize: T.fontSize.xs, color: T.muted, letterSpacing: T.tracking.wider, textTransform: 'uppercase' }}>Loading game</span></>
+              : <><AlertCircle size={16} color={T.muted} /><span style={{ fontSize: T.fontSize.xs, color: T.muted, letterSpacing: T.tracking.wider, textTransform: 'uppercase' }}>Game unavailable</span><span style={{ fontSize: T.fontSize.xs, color: T.border, maxWidth: 240, textAlign: 'center', lineHeight: T.leading.relaxed }}>GitHub Pages not deployed yet or currently rebuilding</span></>
+            }
           </div>
         )}
       </div>
 
       <Panel style={{ width: 260, minWidth: 260, display: 'flex', flexDirection: 'column' }}>
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          padding: `${T.sp[3]}px ${T.sp[4]}px`,
-          borderBottom: `1px solid ${T.border}`,
-          minHeight: 36,
-        }}>
-          <span style={{
-            fontSize: T.fontSize.xs,
-            fontWeight: T.weight.medium,
-            color: T.muted,
-            textTransform: 'uppercase',
-            letterSpacing: T.tracking.widest,
-          }}>
-            {slug}
-          </span>
+        <div style={{ display: 'flex', alignItems: 'center', padding: `${T.sp[3]}px ${T.sp[4]}px`, borderBottom: `1px solid ${T.border}`, minHeight: 36 }}>
+          <span style={{ fontSize: T.fontSize.xs, fontWeight: T.weight.medium, color: T.muted, textTransform: 'uppercase', letterSpacing: T.tracking.widest }}>{slug}</span>
         </div>
         {versions.length > 0 && (
           <div style={{ padding: `${T.sp[3]}px ${T.sp[4]}px`, borderBottom: `1px solid ${T.border}` }}>
-            <select
-              value={selectedVersion ?? ''}
-              onChange={e => setSelectedVersion(e.target.value ? Number(e.target.value) : null)}
-              style={{
-                width: '100%',
-                height: 28,
-                background: T.surface,
-                color: T.textBright,
-                border: `1px solid ${T.border}`,
-                borderRadius: T.radius.md,
-                padding: `0 ${T.sp[3]}px`,
-                fontSize: T.fontSize.xs,
-                fontFamily: T.mono,
-                letterSpacing: T.tracking.wide,
-                cursor: 'pointer',
-                outline: 'none',
-              }}
-            >
+            <select value={selectedVersion ?? ''} onChange={e => setSelectedVersion(e.target.value ? Number(e.target.value) : null)}
+              style={{ width: '100%', height: 28, background: T.surface, color: T.textBright, border: `1px solid ${T.border}`, borderRadius: T.radius.md, padding: `0 ${T.sp[3]}px`, fontSize: T.fontSize.xs, fontFamily: T.mono, letterSpacing: T.tracking.wide, cursor: 'pointer', outline: 'none' }}>
               <option value="">Latest (v{versions[versions.length - 1].version})</option>
-              {versions.slice(0, -1).reverse().map(v => (
-                <option key={v.version} value={v.version}>v{v.version} — {v.description}</option>
-              ))}
+              {versions.slice(0, -1).reverse().map(v => <option key={v.version} value={v.version}>v{v.version} — {v.description}</option>)}
             </select>
           </div>
         )}
         <IconTabBar tabs={iconTabs} active={tab} onChange={setTab} />
-        <div style={{
-          padding: `${T.sp[3]}px ${T.sp[5]}px`,
-          borderBottom: `1px solid ${T.border}`,
-          fontSize: T.fontSize.xs,
-          fontWeight: T.weight.medium,
-          color: T.muted,
-          textTransform: 'uppercase',
-          letterSpacing: T.tracking.widest,
-        }}>
+        <div style={{ padding: `${T.sp[3]}px ${T.sp[5]}px`, borderBottom: `1px solid ${T.border}`, fontSize: T.fontSize.xs, fontWeight: T.weight.medium, color: T.muted, textTransform: 'uppercase', letterSpacing: T.tracking.widest }}>
           {TAB_ICONS[tab]?.label}
         </div>
         <div style={{ flex: 1, overflow: 'auto', padding: T.sp[5] }}>
             {tab === 'info' && (
               <div>
-                <div style={{ fontSize: T.fontSize.base, fontWeight: T.weight.semibold, color: T.textBright, marginBottom: T.sp[4] }}>
-                  {game.title}
-                </div>
-                {game.description && (
-                  <div style={{ fontSize: T.fontSize.xs, color: T.text, lineHeight: T.leading.relaxed, marginBottom: T.sp[5] }}>
-                    {game.description}
-                  </div>
-                )}
-                {(() => {
-                  const tags = game.topics.filter(t => t !== GAME_TOPIC)
-                  return tags.length > 0 && (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: T.sp[2], marginBottom: T.sp[5] }}>
-                      {tags.map(t => <Badge key={t}>{t}</Badge>)}
-                    </div>
-                  )
-                })()}
+                <div style={{ fontSize: T.fontSize.base, fontWeight: T.weight.semibold, color: T.textBright, marginBottom: T.sp[4] }}>{game.title}</div>
+                {game.description && <div style={{ fontSize: T.fontSize.xs, color: T.text, lineHeight: T.leading.relaxed, marginBottom: T.sp[5] }}>{game.description}</div>}
+                {(() => { const tags = game.topics.filter(t => t !== GAME_TOPIC); return tags.length > 0 && <div style={{ display: 'flex', flexWrap: 'wrap', gap: T.sp[2], marginBottom: T.sp[5] }}>{tags.map(t => <Badge key={t}>{t}</Badge>)}</div> })()}
                 {claudeMd && (
-                  <button
-                    onClick={() => setClaudeMdPopup(true)}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: T.sp[3],
-                      padding: `${T.sp[3]}px ${T.sp[4]}px`,
-                      background: T.elevated,
-                      border: `1px solid ${T.border}`,
-                      borderRadius: T.radius.md,
-                      color: T.text,
-                      fontSize: T.fontSize.xs,
-                      fontFamily: T.mono,
-                      cursor: 'pointer',
-                      width: '100%',
-                    }}
-                  >
-                    <FileText size={14} />
-                    CLAUDE.md
+                  <button onClick={() => setClaudeMdPopup(true)} style={{ display: 'flex', alignItems: 'center', gap: T.sp[3], padding: `${T.sp[3]}px ${T.sp[4]}px`, background: T.elevated, border: `1px solid ${T.border}`, borderRadius: T.radius.md, color: T.text, fontSize: T.fontSize.xs, fontFamily: T.mono, cursor: 'pointer', width: '100%' }}>
+                    <FileText size={14} /> CLAUDE.md
                   </button>
                 )}
               </div>
@@ -368,46 +249,19 @@ export default function GamePage({ user, balance, onBalanceChange }) {
             {tab === 'changelog' && (
               <div>
                 {versions.slice().reverse().map(v => (
-                  <div
-                    key={v.version}
-                    onClick={() => {
-                      const cacheKey = `v${v.version}`
-                      if (changelogCache.current[cacheKey]) {
-                        setChangelogPopup({ version: v.version, text: changelogCache.current[cacheKey] })
-                        return
-                      }
-                      fetch(githubRawUrl(`${GITHUB_ORG}/${slug}/main/changelog/v${v.version}.md`))
-                        .then(r => r.ok ? r.text() : null)
-                        .then(text => {
-                          if (text) {
-                            changelogCache.current[cacheKey] = text
-                            setChangelogPopup({ version: v.version, text })
-                          }
-                        })
-                        .catch(() => {})
-                    }}
-                    style={{
-                      marginBottom: T.sp[5],
-                      borderLeft: `2px solid ${T.border}`,
-                      paddingLeft: T.sp[4],
-                      cursor: 'pointer',
-                    }}
-                  >
+                  <div key={v.version} onClick={() => {
+                    const ck = `v${v.version}`
+                    if (changelogCache.current[ck]) { setChangelogPopup({ version: v.version, text: changelogCache.current[ck] }); return }
+                    fetch(githubRawUrl(`${GITHUB_ORG}/${slug}/main/changelog/v${v.version}.md`))
+                      .then(r => r.ok ? r.text() : null)
+                      .then(text => { if (text) { changelogCache.current[ck] = text; setChangelogPopup({ version: v.version, text }) } })
+                      .catch(() => {})
+                  }} style={{ marginBottom: T.sp[5], borderLeft: `2px solid ${T.border}`, paddingLeft: T.sp[4], cursor: 'pointer' }}>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: T.sp[3] }}>
                       <span style={{ color: T.accentColor, fontFamily: T.mono, fontSize: T.fontSize.xs }}>v{v.version}</span>
-                      <span style={{ color: T.muted, fontSize: T.fontSize.xs }}>{v.date}</span>
-                      {v.issue && (
-                        <span style={{ fontSize: T.fontSize.xs, color: T.muted }}>#{v.issue}</span>
-                      )}
+                      <span style={{ color: T.muted, fontSize: T.fontSize.xs }}>{v.date}{v.issue && ` #${v.issue}`}</span>
                     </div>
-                    <div style={{
-                      fontSize: T.fontSize.xs,
-                      color: T.text,
-                      marginTop: T.sp[1],
-                      lineHeight: T.leading.normal,
-                    }}>
-                      {v.description}
-                    </div>
+                    <div style={{ fontSize: T.fontSize.xs, color: T.text, marginTop: T.sp[1], lineHeight: T.leading.normal }}>{v.description}</div>
                   </div>
                 ))}
                 {versions.length === 0 && <EmptyState>No versions yet</EmptyState>}

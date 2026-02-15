@@ -2,33 +2,13 @@ import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { T } from '../theme'
 import { GITHUB_ORG, TEMPLATE_TOPIC, githubFetch, githubRawUrl } from '../api'
-import { Badge, ColorSwatch, EmptyState } from '../components/ui'
+import { Badge, ColorSwatch, Section, EmptyState } from '../components/ui'
 import SimpleMd from '../components/SimpleMd'
 import { ArrowLeft, ExternalLink } from 'lucide-react'
 
 function formatSize(bytes) {
   if (bytes < 1024) return `${bytes} B`
   return `${(bytes / 1024).toFixed(1)} KB`
-}
-
-function Section({ title, children }) {
-  return (
-    <div style={{ marginBottom: T.sp[7] }}>
-      <h3 style={{
-        fontSize: T.fontSize.xs,
-        fontWeight: T.weight.medium,
-        color: T.muted,
-        textTransform: 'uppercase',
-        letterSpacing: T.tracking.widest,
-        margin: `0 0 ${T.sp[4]}px`,
-        paddingBottom: T.sp[3],
-        borderBottom: `1px solid ${T.border}`,
-      }}>
-        {title}
-      </h3>
-      {children}
-    </div>
-  )
 }
 
 function FileRow({ name, size, accent }) {
@@ -87,26 +67,14 @@ export default function TemplateDetailPage() {
   const sizeMap = Object.fromEntries(tree.map(f => [f.path, f.size]))
   const findSize = (name) => sizeMap[name] ?? tree.find(f => f.path.endsWith('/' + name))?.size
 
+  const crumbStyle = { display: 'flex', alignItems: 'center', gap: T.sp[2], color: T.muted, textDecoration: 'none', fontSize: T.fontSize.xs, letterSpacing: T.tracking.wider, textTransform: 'uppercase' }
+
   return (
     <div>
-      {/* Breadcrumb */}
       <div style={{ display: 'flex', alignItems: 'center', marginBottom: T.sp[8] }}>
-        <Link to="/templates" style={{
-          display: 'flex', alignItems: 'center', gap: T.sp[2],
-          color: T.muted, textDecoration: 'none', fontSize: T.fontSize.xs,
-          letterSpacing: T.tracking.wider, textTransform: 'uppercase',
-        }}>
-          <ArrowLeft size={12} />
-          Templates
-        </Link>
+        <Link to="/templates" style={crumbStyle}><ArrowLeft size={12} /> Templates</Link>
         <div style={{ flex: 1 }} />
-        <a href={repo.html_url} target="_blank" rel="noopener noreferrer" style={{
-          display: 'flex', alignItems: 'center', gap: T.sp[2],
-          color: T.muted, textDecoration: 'none', fontSize: T.fontSize.xs,
-          letterSpacing: T.tracking.wider, textTransform: 'uppercase',
-        }}>
-          GitHub <ExternalLink size={12} />
-        </a>
+        <a href={repo.html_url} target="_blank" rel="noopener noreferrer" style={crumbStyle}>GitHub <ExternalLink size={12} /></a>
       </div>
 
       {/* Hero */}
@@ -167,28 +135,10 @@ export default function TemplateDetailPage() {
         <div>
           {(categories.length > 0 || assets?.gridSize) && (
             <Section title="Sprite Categories">
-              {assets?.gridSize && (
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'baseline',
-                  padding: `${T.sp[2]}px 0`,
-                }}>
-                  <span style={{ fontSize: T.fontSize.xs, color: T.textBright }}>Grid size</span>
-                  <span style={{ fontSize: T.fontSize.xs, color: T.muted, fontFamily: T.mono }}>{assets.gridSize}px</span>
-                </div>
-              )}
-              {categories.map(([cat, info]) => (
-                <div key={cat} style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'baseline',
-                  padding: `${T.sp[2]}px 0`,
-                }}>
-                  <span style={{ fontSize: T.fontSize.xs, color: T.textBright }}>{cat}</span>
-                  <span style={{ fontSize: T.fontSize.xs, color: T.muted, fontFamily: T.mono }}>
-                    {typeof info === 'string' ? info : info.description || ''}
-                  </span>
+              {[...(assets?.gridSize ? [['Grid size', `${assets.gridSize}px`]] : []), ...categories.map(([cat, info]) => [cat, typeof info === 'string' ? info : info.description || ''])].map(([label, val]) => (
+                <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: `${T.sp[2]}px 0` }}>
+                  <span style={{ fontSize: T.fontSize.xs, color: T.textBright }}>{label}</span>
+                  <span style={{ fontSize: T.fontSize.xs, color: T.muted, fontFamily: T.mono }}>{val}</span>
                 </div>
               ))}
             </Section>

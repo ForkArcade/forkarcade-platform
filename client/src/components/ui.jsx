@@ -49,7 +49,7 @@ export function PageHeader({ children }) {
   )
 }
 
-export function SectionHeading({ children }) {
+export function SectionHeading({ children, bordered }) {
   return (
     <h4 style={{
       margin: `0 0 ${T.sp[4]}px`,
@@ -59,10 +59,15 @@ export function SectionHeading({ children }) {
       textTransform: 'uppercase',
       letterSpacing: T.tracking.wider,
       lineHeight: T.leading.normal,
+      ...(bordered && { paddingBottom: T.sp[3], borderBottom: `1px solid ${T.border}` }),
     }}>
       {children}
     </h4>
   )
+}
+
+export function Section({ title, children }) {
+  return <div style={{ marginBottom: T.sp[7] }}><SectionHeading bordered>{title}</SectionHeading>{children}</div>
 }
 
 // --- Grid ---

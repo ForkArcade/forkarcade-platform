@@ -89,18 +89,9 @@ export default function SimpleMd({ text }) {
       continue
     }
 
-    if (line.startsWith('### ')) {
-      elements.push(<h4 key={elements.length} style={{ color: T.textBright, fontSize: T.fontSize.sm, fontWeight: T.weight.semibold, margin: `${T.sp[5]}px 0 ${T.sp[2]}px` }}>{inline(line.slice(4))}</h4>)
-      i++; continue
-    }
-    if (line.startsWith('## ')) {
-      elements.push(<h3 key={elements.length} style={{ color: T.textBright, fontSize: T.fontSize.base, fontWeight: T.weight.semibold, margin: `${T.sp[5]}px 0 ${T.sp[2]}px` }}>{inline(line.slice(3))}</h3>)
-      i++; continue
-    }
-    if (line.startsWith('# ')) {
-      elements.push(<h2 key={elements.length} style={{ color: T.textBright, fontSize: T.fontSize.md, fontWeight: T.weight.bold, margin: `${T.sp[5]}px 0 ${T.sp[3]}px` }}>{inline(line.slice(2))}</h2>)
-      i++; continue
-    }
+    const hdg = [['### ', 'h4', T.fontSize.sm, T.weight.semibold, T.sp[2]], ['## ', 'h3', T.fontSize.base, T.weight.semibold, T.sp[2]], ['# ', 'h2', T.fontSize.md, T.weight.bold, T.sp[3]]]
+    const h = hdg.find(([p]) => line.startsWith(p))
+    if (h) { const Tag = h[1]; elements.push(<Tag key={elements.length} style={{ color: T.textBright, fontSize: h[2], fontWeight: h[3], margin: `${T.sp[5]}px 0 ${h[4]}px` }}>{inline(line.slice(h[0].length))}</Tag>); i++; continue }
 
     if (/^[-*] /.test(line)) {
       elements.push(
