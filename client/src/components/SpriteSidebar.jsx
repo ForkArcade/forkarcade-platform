@@ -1,22 +1,7 @@
 import { Link } from 'react-router-dom'
 import { T } from '../theme'
+import { smallBtnStyle } from './ui'
 import { ArrowLeft, Clipboard, Check } from 'lucide-react'
-
-const btnStyle = {
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  gap: T.sp[2],
-  padding: `${T.sp[2]}px ${T.sp[3]}px`,
-  height: 26,
-  background: T.elevated,
-  color: T.text,
-  border: `1px solid ${T.border}`,
-  borderRadius: T.radius.sm,
-  cursor: 'pointer',
-  fontSize: T.fontSize.xs,
-  fontFamily: T.mono,
-}
 
 export default function SpriteSidebar({ slug, sprites, sidebarThumbs, activeCat, activeName, onSelect, onCopy, copied }) {
   const categories = Object.keys(sprites)
@@ -32,7 +17,7 @@ export default function SpriteSidebar({ slug, sprites, sidebarThumbs, activeCat,
     }}>
       <div style={{ padding: `${T.sp[3]}px ${T.sp[4]}px`, borderBottom: `1px solid ${T.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <Link to={`/play/${slug}`} style={{ display: 'flex', alignItems: 'center', gap: T.sp[2], color: T.text, textDecoration: 'none', fontSize: T.fontSize.xs }}><ArrowLeft size={14} /> {slug}</Link>
-        <button onClick={onCopy} style={{ ...btnStyle, padding: `${T.sp[1]}px ${T.sp[3]}px`, height: 22 }}>{copied ? <Check size={10} /> : <Clipboard size={10} />}</button>
+        <button onClick={onCopy} style={{ ...smallBtnStyle, padding: `${T.sp[1]}px ${T.sp[3]}px`, height: 22 }}>{copied ? <Check size={10} /> : <Clipboard size={10} />}</button>
       </div>
 
       <div style={{ flex: 1, overflow: 'auto', padding: `${T.sp[3]}px 0` }}>

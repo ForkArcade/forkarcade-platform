@@ -1,23 +1,8 @@
 import { useMemo } from 'react'
 import { T } from '../theme'
+import { smallBtnStyle } from './ui'
 import { spriteToDataUrl } from '../utils/sprite'
 import { Plus, Copy, Trash2 } from 'lucide-react'
-
-const btnStyle = {
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  gap: T.sp[2],
-  padding: `${T.sp[2]}px ${T.sp[3]}px`,
-  height: 26,
-  background: T.elevated,
-  color: T.text,
-  border: `1px solid ${T.border}`,
-  borderRadius: T.radius.sm,
-  cursor: 'pointer',
-  fontSize: T.fontSize.xs,
-  fontFamily: T.mono,
-}
 
 export default function FramesPanel({ def, activeFrame, onSelect, onAdd, onDuplicate, onRemove }) {
   const thumbSize = 48
@@ -57,14 +42,14 @@ export default function FramesPanel({ def, activeFrame, onSelect, onAdd, onDupli
         })}
       </div>
       <div style={{ display: 'flex', gap: T.sp[2] }}>
-        <button onClick={onAdd} style={btnStyle} title="Add empty frame">
+        <button onClick={onAdd} style={smallBtnStyle} title="Add empty frame">
           <Plus size={12} /> New
         </button>
-        <button onClick={onDuplicate} style={btnStyle} title="Duplicate current frame">
+        <button onClick={onDuplicate} style={smallBtnStyle} title="Duplicate current frame">
           <Copy size={12} /> Dup
         </button>
         {def.frames.length > 1 && (
-          <button onClick={onRemove} style={{ ...btnStyle, color: T.danger }} title="Delete current frame">
+          <button onClick={onRemove} style={{ ...smallBtnStyle, color: T.danger }} title="Delete current frame">
             <Trash2 size={12} />
           </button>
         )}

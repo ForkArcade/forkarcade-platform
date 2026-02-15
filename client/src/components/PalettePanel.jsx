@@ -1,21 +1,6 @@
 import { T } from '../theme'
+import { smallBtnStyle } from './ui'
 import { Trash2, Plus } from 'lucide-react'
-
-const btnStyle = {
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  gap: T.sp[2],
-  padding: `${T.sp[2]}px ${T.sp[3]}px`,
-  height: 26,
-  background: T.elevated,
-  color: T.text,
-  border: `1px solid ${T.border}`,
-  borderRadius: T.radius.sm,
-  cursor: 'pointer',
-  fontSize: T.fontSize.xs,
-  fontFamily: T.mono,
-}
 
 export default function PalettePanel({ palette, activeColor, onSelect, onColorChange, onAdd, onRemove }) {
   const keys = Object.keys(palette)
@@ -81,7 +66,7 @@ export default function PalettePanel({ palette, activeColor, onSelect, onColorCh
           {keys.length > 1 && (
             <button
               onClick={(e) => { e.stopPropagation(); onRemove(key) }}
-              style={{ ...btnStyle, padding: 2, height: 18, width: 18, marginLeft: 'auto', border: 'none', background: 'transparent', color: T.muted }}
+              style={{ ...smallBtnStyle, padding: 2, height: 18, width: 18, marginLeft: 'auto', border: 'none', background: 'transparent', color: T.muted }}
             >
               <Trash2 size={10} />
             </button>
@@ -90,7 +75,7 @@ export default function PalettePanel({ palette, activeColor, onSelect, onColorCh
       ))}
 
       {/* Add color */}
-      <button onClick={onAdd} style={{ ...btnStyle, marginTop: T.sp[2] }}>
+      <button onClick={onAdd} style={{ ...smallBtnStyle, marginTop: T.sp[2] }}>
         <Plus size={12} /> Add color
       </button>
     </div>
