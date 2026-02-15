@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useParams } from 'react-router-dom'
 import { GITHUB_ORG, githubRawUrl } from '../api'
 import { T } from '../theme'
@@ -26,18 +26,20 @@ const inputStyle = {
 export default function SpriteEditorPage() {
   const { slug } = useParams()
   const [sprites, setSprites] = useState(null)
+  const [loadError, setLoadError] = useState(false)
   const [activeCat, setActiveCat] = useState(null)
   const [activeName, setActiveName] = useState(null)
   const [activeFrame, setActiveFrame] = useState(0)
   const [activeColor, setActiveColor] = useState('.')
-  const activeColorRef = useRef('.')
   const [copied, setCopied] = useState(false)
 
   useEffect(() => {
+    setSprites(null)
+    setLoadError(false)
     fetch(githubRawUrl(`${GITHUB_ORG}/${slug}/main/_sprites.json`))
       .then(r => r.ok ? r.json() : null)
       .then(data => {
-        if (!data) return
+        if (!data) { setLoadError(true); return }
         setSprites(data)
         const cats = Object.keys(data)
         if (cats.length > 0) {
@@ -46,10 +48,8 @@ export default function SpriteEditorPage() {
           if (names.length > 0) setActiveName(names[0])
         }
       })
-      .catch(() => setSprites(null))
+      .catch(() => setLoadError(true))
   }, [slug])
-
-  activeColorRef.current = activeColor
 
   const def = sprites && activeCat && activeName ? sprites[activeCat]?.[activeName] : null
 
@@ -64,18 +64,6 @@ export default function SpriteEditorPage() {
     }
     return result
   }, [sprites])
-
-  useEffect(() => {
-    if (!sprites || !activeCat || !activeName) return
-    const d = sprites[activeCat]?.[activeName]
-    if (d?.palette) {
-      const keys = Object.keys(d.palette)
-      if (keys.length > 0 && activeColorRef.current !== '.' && !d.palette[activeColorRef.current]) {
-        setActiveColor(keys[0])
-      }
-    }
-    setActiveFrame(0)
-  }, [activeCat, activeName, sprites])
 
   const update = useCallback((mutator) => {
     setSprites(prev => {
@@ -169,8 +157,17 @@ export default function SpriteEditorPage() {
   const handleSelectSprite = useCallback((cat, name) => {
     setActiveCat(cat)
     setActiveName(name)
-  }, [])
+    setActiveFrame(0)
+    const d = sprites?.[cat]?.[name]
+    if (d?.palette && activeColor !== '.' && !d.palette[activeColor]) {
+      const keys = Object.keys(d.palette)
+      if (keys.length > 0) setActiveColor(keys[0])
+    }
+  }, [sprites, activeColor])
 
+  if (loadError) {
+    return <div style={{ padding: T.sp[7], color: T.muted, fontSize: T.fontSize.sm }}>No _sprites.json found for {slug}</div>
+  }
   if (!sprites) {
     return <div style={{ padding: T.sp[7], color: T.muted, fontSize: T.fontSize.sm }}>Loading sprites...</div>
   }
