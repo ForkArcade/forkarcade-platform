@@ -6,18 +6,34 @@ function NodeList({ graph, currentNode }) {
     return <EmptyState>No narrative graph yet</EmptyState>
   }
 
+  const edgeMap = {}
+  if (graph.edges) {
+    graph.edges.forEach(e => {
+      if (!edgeMap[e.from]) edgeMap[e.from] = []
+      edgeMap[e.from].push(e.to)
+    })
+  }
+
   return (
     <div style={{ fontSize: T.fontSize.xs, fontFamily: T.mono }}>
       {graph.nodes.map(node => {
         const active = node.id === currentNode
         const color = T.nodeColors[node.type] || T.text
+        const targets = edgeMap[node.id]
         return (
-          <div key={node.id} style={{ padding: `${T.sp[1]}px 0`, display: 'flex', gap: T.sp[3], alignItems: 'center' }}>
-            <span style={{ color, fontSize: 9 }}>{node.type === 'choice' ? '\u25c6' : node.type === 'condition' ? '\u25b2' : '\u25a0'}</span>
-            <span style={{ color: active ? T.textBright : T.text, fontWeight: active ? T.weight.bold : T.weight.normal }}>
-              {node.label || node.id}
-            </span>
-            {active && <span style={{ color: T.accentColor, fontSize: 9 }}>{'\u25c0'}</span>}
+          <div key={node.id} style={{ padding: `${T.sp[1]}px 0` }}>
+            <div style={{ display: 'flex', gap: T.sp[3], alignItems: 'center' }}>
+              <span style={{ color, fontSize: 9 }}>{node.type === 'choice' ? '\u25c6' : node.type === 'condition' ? '\u25b2' : '\u25a0'}</span>
+              <span style={{ color: active ? T.textBright : T.text, fontWeight: active ? T.weight.bold : T.weight.normal }}>
+                {node.label || node.id}
+              </span>
+              {active && <span style={{ color: T.accentColor, fontSize: 9 }}>{'\u25c0'}</span>}
+            </div>
+            {targets && (
+              <div style={{ marginLeft: 18, color: T.muted, fontSize: 9 }}>
+                {'\u2192'} {targets.join(', ')}
+              </div>
+            )}
           </div>
         )
       })}

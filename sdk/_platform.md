@@ -14,10 +14,37 @@ Every game MUST have at least 3 screens (`screen` state):
 
 Narrative is the platform's mission — dev focuses on the game, narrative comes for free. But the player MUST see it in the game.
 
+- Define a narrative graph with **nodes AND edges** in `FA.narrative.init()`
 - Register narrative texts: `FA.register('narrativeText', nodeId, { text, color })`
 - Display them in the game (e.g. bar at the top of the screen with fade out)
 - Call `showNarrative(nodeId)` at key moments
 - End screen shows appropriate narrative text
+
+Narrative graph format:
+```js
+FA.narrative.init({
+  startNode: 'awakening',
+  variables: { hasKey: false, bossDefeated: false },
+  graph: {
+    nodes: [
+      { id: 'awakening', type: 'scene', label: 'Awakening' },
+      { id: 'explore', type: 'scene', label: 'Exploration' },
+      { id: 'boss', type: 'choice', label: 'Boss Fight' },
+      { id: 'victory', type: 'scene', label: 'Victory' },
+      { id: 'defeat', type: 'scene', label: 'Defeat' }
+    ],
+    edges: [
+      { from: 'awakening', to: 'explore' },
+      { from: 'explore', to: 'boss' },
+      { from: 'boss', to: 'victory' },
+      { from: 'boss', to: 'defeat' },
+      { from: 'defeat', to: 'explore' }
+    ]
+  }
+});
+```
+
+Edges define valid transitions. `transition()` warns in console if no edge exists from the current node to the target. The platform renders edges as `→ target1, target2` under each node in the Narrative panel.
 
 `showNarrative` pattern:
 ```js

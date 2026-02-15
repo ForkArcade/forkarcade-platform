@@ -20,6 +20,19 @@
     },
 
     transition: function(nodeId, event) {
+      var edges = this.graph.edges;
+      if (edges && edges.length > 0 && this.currentNode) {
+        var valid = false;
+        for (var i = 0; i < edges.length; i++) {
+          if (edges[i].from === this.currentNode && edges[i].to === nodeId) {
+            valid = true;
+            break;
+          }
+        }
+        if (!valid) {
+          console.warn('[FA.narrative] No edge from "' + this.currentNode + '" to "' + nodeId + '"');
+        }
+      }
       var prev = this.currentNode;
       this.currentNode = nodeId;
       if (event) {
