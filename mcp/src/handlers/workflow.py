@@ -374,6 +374,21 @@ def publish_game(args):
         return json.dumps({"error": "Slug must be lowercase alphanumeric with hyphens"})
 
     try:
+        # Cache bust: add ?v=N to script/link tags in index.html
+        try:
+            config_path_cb = game_path / ".forkarcade.json"
+            if config_path_cb.exists():
+                cb_cfg = json.loads(config_path_cb.read_text())
+                cb_ver = (cb_cfg.get("currentVersion") or 0) + 1
+                index_path = game_path / "index.html"
+                if index_path.exists():
+                    html = index_path.read_text()
+                    html = re.sub(r'(src="[^"]+?\.js)(\?v=\d+)?(")', rf'\1?v={cb_ver}\3', html)
+                    html = re.sub(r'(href="[^"]+?\.css)(\?v=\d+)?(")', rf'\1?v={cb_ver}\3', html)
+                    index_path.write_text(html)
+        except Exception:
+            pass
+
         try:
             run_shell('git add -A && git commit -m "Publish game"', cwd=game_path)
         except Exception:
