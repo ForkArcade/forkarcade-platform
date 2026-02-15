@@ -13,24 +13,14 @@ export function sign(user) {
 }
 
 export function auth(req, res, next) {
-  const t = req.cookies[process.env.COOKIE_NAME]
+  const hdr = req.headers.authorization
+  const t = (hdr && hdr.startsWith('Bearer ')) ? hdr.slice(7) : req.cookies[process.env.COOKIE_NAME]
   if (!t) return res.status(401).json({ error: 'no_auth' })
   try {
     req.user = jwt.verify(t, process.env.JWT_SECRET)
     next()
   } catch {
     res.status(401).json({ error: 'invalid' })
-  }
-}
-
-function cookieOptions() {
-  const crossOrigin = process.env.CLIENT_ORIGIN && process.env.SERVER_ORIGIN
-    && new URL(process.env.CLIENT_ORIGIN).origin !== new URL(process.env.SERVER_ORIGIN).origin
-  return {
-    httpOnly: true,
-    sameSite: crossOrigin ? 'none' : 'lax',
-    secure: crossOrigin || process.env.NODE_ENV === 'production',
-    maxAge: 30 * 24 * 60 * 60 * 1000,
   }
 }
 
@@ -90,17 +80,16 @@ router.get('/auth/github/callback', async (req, res) => {
     })
 
     const token = sign({ github_user_id: ghUser.id, login: ghUser.login })
-    res.cookie(process.env.COOKIE_NAME, token, cookieOptions())
-    res.redirect(process.env.CLIENT_ORIGIN || 'http://localhost:5173')
+    const clientOrigin = process.env.CLIENT_ORIGIN || 'http://localhost:5173'
+    res.redirect(`${clientOrigin}?token=${encodeURIComponent(token)}`)
   } catch (err) {
     console.error('OAuth callback error:', err)
     res.status(500).send('Authentication failed')
   }
 })
 
-// Logout
+// Logout (kept for backward compat, token cleared client-side)
 router.post('/auth/logout', (_req, res) => {
-  res.clearCookie(process.env.COOKIE_NAME, cookieOptions())
   res.json({ ok: true })
 })
 

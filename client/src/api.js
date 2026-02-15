@@ -9,11 +9,18 @@ export function formatSlug(slug) {
   return slug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
 }
 
+const TOKEN_KEY = 'fa_token'
+
+export function getToken() { return localStorage.getItem(TOKEN_KEY) }
+export function setToken(t) { localStorage.setItem(TOKEN_KEY, t) }
+export function clearToken() { localStorage.removeItem(TOKEN_KEY) }
+
 export async function apiFetch(path, options = {}) {
   const headers = { ...(options.headers || {}) }
   if (options.body) headers['Content-Type'] = 'application/json'
+  const token = getToken()
+  if (token) headers['Authorization'] = `Bearer ${token}`
   const res = await fetch(API + path, {
-    credentials: 'include',
     ...options,
     headers,
   })

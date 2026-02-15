@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Routes, Route, Link, NavLink, useLocation } from 'react-router-dom'
-import { apiFetch } from './api'
+import { apiFetch, setToken, clearToken, getToken } from './api'
 import { T } from './theme'
 import { Toolbar, Button, Separator } from './components/ui'
 import HomePage from './pages/HomePage'
@@ -32,10 +32,18 @@ export default function App() {
         setUser(j.user)
         apiFetch('/api/wallet').then(w => setWalletBalance(w.balance ?? 0)).catch(() => {})
       }
-    } catch {}
+    } catch (err) { console.warn('Auth check failed:', err.message) }
   }
 
-  useEffect(() => { me() }, [])
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const token = params.get('token')
+    if (token) {
+      setToken(token)
+      window.history.replaceState({}, '', window.location.pathname)
+    }
+    if (getToken()) me()
+  }, [])
 
   return (
     <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -60,7 +68,7 @@ export default function App() {
               <span style={{ fontSize: T.fontSize.sm, color: T.text }}>@{user.login}</span>
               <Button
                 variant="ghost"
-                onClick={() => { setUser(null); apiFetch('/auth/logout', { method: 'POST' }).catch(() => {}) }}
+                onClick={() => { clearToken(); setUser(null); setWalletBalance(null) }}
               >
                 Logout
               </Button>
