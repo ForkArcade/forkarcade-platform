@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useParams } from 'react-router-dom'
 import { GITHUB_ORG, githubRawUrl } from '../api'
 import { T } from '../theme'
@@ -53,13 +53,23 @@ export default function SpriteEditorPage() {
 
   const def = sprites && activeCat && activeName ? sprites[activeCat]?.[activeName] : null
 
+  const thumbCacheRef = useRef({})
   const sidebarThumbs = useMemo(() => {
     if (!sprites) return {}
+    const cache = thumbCacheRef.current
     const result = {}
     for (const cat of Object.keys(sprites)) {
       for (const name of Object.keys(sprites[cat])) {
         const d = sprites[cat][name]
-        if (d?.frames) result[`${cat}/${name}`] = spriteToDataUrl(d, 24, 0)
+        if (!d?.frames) continue
+        const key = `${cat}/${name}`
+        if (cache[key]?.def === d) {
+          result[key] = cache[key].url
+        } else {
+          const url = spriteToDataUrl(d, 24, 0)
+          result[key] = url
+          cache[key] = { def: d, url }
+        }
       }
     }
     return result
