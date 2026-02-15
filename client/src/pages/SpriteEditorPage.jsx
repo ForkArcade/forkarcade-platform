@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useParams } from 'react-router-dom'
-import { GITHUB_ORG, githubRawUrl } from '../api'
+import { apiFetch, GITHUB_ORG, githubRawUrl } from '../api'
 import { T } from '../theme'
 import { SectionHeading, smallBtnStyle } from '../components/ui'
 import { spriteToDataUrl, nextPaletteKey, setPixel } from '../utils/sprite'
@@ -26,7 +26,7 @@ const inputStyle = {
   outline: 'none',
 }
 
-export default function SpriteEditorPage() {
+export default function SpriteEditorPage({ user }) {
   const { slug } = useParams()
   const [sprites, setSprites] = useState(null)
   const [loadError, setLoadError] = useState(false)
@@ -35,7 +35,6 @@ export default function SpriteEditorPage() {
   const [activeName, setActiveName] = useState(null)
   const [activeFrame, setActiveFrame] = useState(0)
   const [activeColor, setActiveColor] = useState('.')
-  const [copied, setCopied] = useState(false)
   const initialLoadRef = useRef(true)
 
   function initSelection(data) {
@@ -206,13 +205,136 @@ export default function SpriteEditorPage() {
     })
   }, [update])
 
-  const handleCopy = useCallback(() => {
-    if (!sprites) return
-    navigator.clipboard.writeText(JSON.stringify(sprites, null, 2)).then(() => {
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+  // Paste image from clipboard → extract colors → build palette → update frame
+  useEffect(() => {
+    const PALETTE_KEYS = '123456789abcdefghijklmnopqrstuvwxyz'
+
+    function rgbToHex(r, g, b) {
+      return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)
+    }
+
+    function colorDist(a, b) {
+      return (a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2 + (a[2] - b[2]) ** 2
+    }
+
+    // Merge closest pair of colors until count fits maxColors
+    function reduceColors(colors, maxColors) {
+      const entries = colors.map(c => ({ rgb: c, count: 1 }))
+      while (entries.length > maxColors) {
+        let bestI = 0, bestJ = 1, bestDist = Infinity
+        for (let i = 0; i < entries.length; i++) {
+          for (let j = i + 1; j < entries.length; j++) {
+            const d = colorDist(entries[i].rgb, entries[j].rgb)
+            if (d < bestDist) { bestDist = d; bestI = i; bestJ = j }
+          }
+        }
+        // Weighted average merge
+        const a = entries[bestI], b = entries[bestJ]
+        const total = a.count + b.count
+        a.rgb = [
+          Math.round((a.rgb[0] * a.count + b.rgb[0] * b.count) / total),
+          Math.round((a.rgb[1] * a.count + b.rgb[1] * b.count) / total),
+          Math.round((a.rgb[2] * a.count + b.rgb[2] * b.count) / total),
+        ]
+        a.count = total
+        entries.splice(bestJ, 1)
+      }
+      return entries.map(e => e.rgb)
+    }
+
+    function onPaste(e) {
+      if (!def || e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return
+      const items = e.clipboardData?.items
+      if (!items) return
+      let imageItem = null
+      for (const item of items) {
+        if (item.type.startsWith('image/')) { imageItem = item; break }
+      }
+      if (!imageItem) return
+      e.preventDefault()
+
+      const blob = imageItem.getAsFile()
+      const img = new Image()
+      img.onload = () => {
+        const cv = document.createElement('canvas')
+        cv.width = def.w
+        cv.height = def.h
+        const cc = cv.getContext('2d')
+        cc.imageSmoothingEnabled = false
+        cc.drawImage(img, 0, 0, def.w, def.h)
+        const imgData = cc.getImageData(0, 0, def.w, def.h).data
+
+        // Collect unique opaque colors
+        const seen = new Map() // "r,g,b" → [r, g, b]
+        for (let i = 0; i < imgData.length; i += 4) {
+          if (imgData[i + 3] < 128) continue
+          const key = `${imgData[i]},${imgData[i + 1]},${imgData[i + 2]}`
+          if (!seen.has(key)) seen.set(key, [imgData[i], imgData[i + 1], imgData[i + 2]])
+        }
+
+        let uniqueColors = [...seen.values()]
+        if (uniqueColors.length === 0) {
+          update(d => {
+            d.frames[activeFrame] = Array.from({ length: def.h }, () => '.'.repeat(def.w))
+          })
+          URL.revokeObjectURL(img.src)
+          return
+        }
+
+        // Reduce if too many colors for palette keys
+        const maxColors = PALETTE_KEYS.length
+        if (uniqueColors.length > maxColors) {
+          uniqueColors = reduceColors(uniqueColors, maxColors)
+        }
+
+        // Build new palette
+        const newPalette = {}
+        const finalColors = uniqueColors.map((rgb, i) => ({
+          key: PALETTE_KEYS[i],
+          rgb,
+          hex: rgbToHex(...rgb),
+        }))
+        for (const c of finalColors) newPalette[c.key] = c.hex
+
+        // Map pixels to nearest palette color
+        const newLines = []
+        for (let row = 0; row < def.h; row++) {
+          let line = ''
+          for (let col = 0; col < def.w; col++) {
+            const i = (row * def.w + col) * 4
+            if (imgData[i + 3] < 128) { line += '.'; continue }
+            const rgb = [imgData[i], imgData[i + 1], imgData[i + 2]]
+            let best = finalColors[0]
+            let bestDist = Infinity
+            for (const c of finalColors) {
+              const d = colorDist(rgb, c.rgb)
+              if (d < bestDist) { bestDist = d; best = c }
+            }
+            line += best.key
+          }
+          newLines.push(line)
+        }
+
+        update(d => {
+          d.palette = newPalette
+          d.frames[activeFrame] = newLines
+        })
+        URL.revokeObjectURL(img.src)
+      }
+      img.src = URL.createObjectURL(blob)
+    }
+
+    document.addEventListener('paste', onPaste)
+    return () => document.removeEventListener('paste', onPaste)
+  }, [def, activeFrame, update])
+
+  const handlePropose = useCallback(async (title) => {
+    const body = `Sprite changes proposed from the editor.\n\n<details>\n<summary>_sprites.json</summary>\n\n\`\`\`json\n${JSON.stringify(sprites, null, 2)}\n\`\`\`\n\n</details>`
+    return apiFetch(`/api/games/${slug}/evolve-issues`, {
+      method: 'POST',
+      body: JSON.stringify({ title, body, category: 'visual' }),
     })
-  }, [sprites])
+  }, [slug, sprites])
 
   const handleSelectSprite = useCallback((cat, name) => {
     setActiveCat(cat)
@@ -241,8 +363,10 @@ export default function SpriteEditorPage() {
         activeCat={activeCat}
         activeName={activeName}
         onSelect={handleSelectSprite}
-        onCopy={handleCopy}
-        copied={copied}
+        hasLocalEdits={hasLocalEdits}
+        onReset={handleDiscard}
+        user={user}
+        onPropose={handlePropose}
       />
 
       {/* CENTER: Pixel Grid */}

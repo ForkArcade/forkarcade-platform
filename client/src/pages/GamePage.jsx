@@ -122,6 +122,21 @@ export default function GamePage({ user, balance, onBalanceChange }) {
     }
   }, [iframeUrl])
 
+  // Hot-reload sprites when editor saves to localStorage (cross-tab)
+  useEffect(() => {
+    const key = `fa-sprites-${slug}`
+    function onStorage(e) {
+      if (e.key !== key || !e.newValue || gameStatusRef.current !== 'ready') return
+      try {
+        iframeRef.current?.contentWindow.postMessage(
+          { type: 'FA_SPRITES_UPDATE', sprites: JSON.parse(e.newValue) }, IFRAME_ORIGIN
+        )
+      } catch (err) {}
+    }
+    window.addEventListener('storage', onStorage)
+    return () => window.removeEventListener('storage', onStorage)
+  }, [slug])
+
   useEffect(() => {
     function handleMessage(event) {
       const { data } = event
