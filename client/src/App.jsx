@@ -7,6 +7,7 @@ import HomePage from './pages/HomePage'
 import GamePage from './pages/GamePage'
 import TemplatesPage from './pages/TemplatesPage'
 import TemplateDetailPage from './pages/TemplateDetailPage'
+import SpriteEditorPage from './pages/SpriteEditorPage'
 import LoginButton from './components/LoginButton'
 
 const navStyle = (isActive) => ({
@@ -22,7 +23,7 @@ export default function App() {
   const [user, setUser] = useState(null)
   const [walletBalance, setWalletBalance] = useState(null)
   const location = useLocation()
-  const isGamePage = location.pathname.startsWith('/play/')
+  const isGamePage = location.pathname.startsWith('/play/') || location.pathname.startsWith('/sprites/')
 
   async function me() {
     try {
@@ -77,6 +78,7 @@ export default function App() {
           <Route path="/templates" element={<TemplatesPage />} />
           <Route path="/templates/:slug" element={<TemplateDetailPage />} />
           <Route path="/play/:slug" element={<GamePage user={user} balance={walletBalance ?? 0} onBalanceChange={setWalletBalance} />} />
+          <Route path="/sprites/:slug" element={<SpriteEditorPage />} />
         </Routes>
       </div>
       <footer style={{

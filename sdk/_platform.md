@@ -64,7 +64,7 @@ var count = spriteFrames(sprite);            // number of frames
 // Animation: drawSprite(ctx, sprite, x, y, T, Math.floor(t / 200) % count)
 ```
 
-`FA.draw.sprite(category, name, x, y, size, fallbackChar, fallbackColor)` — if sprite is missing, draws text. Game MUST work without sprites.
+`FA.draw.sprite(category, name, x, y, size, fallbackChar, fallbackColor, frame)` — renders sprite frame (frame index selects variant), or fallback text when no sprite exists. Variants = frames within one sprite.
 
 ## Style Presets
 

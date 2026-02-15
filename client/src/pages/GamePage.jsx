@@ -2,11 +2,12 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams } from 'react-router-dom'
 import { apiFetch, GITHUB_ORG, githubFetch, githubRawUrl } from '../api'
 import { T } from '../theme'
-import { Panel, IconTabBar, Badge, SegmentedControl, EmptyState } from '../components/ui'
+import { Panel, IconTabBar, Badge, EmptyState } from '../components/ui'
 import Leaderboard from '../components/Leaderboard'
 import NarrativePanel from '../components/NarrativePanel'
-import { Trophy, BookOpen, Clock, Info, Loader, AlertCircle, FileText, Zap } from 'lucide-react'
+import { Trophy, BookOpen, Clock, Info, Loader, AlertCircle, FileText, Zap, Palette } from 'lucide-react'
 import EvolvePanel from '../components/EvolvePanel'
+import SpritePanel from '../components/SpritePanel'
 import { MdPopup } from '../components/MdPopup'
 
 const TAB_ICONS = {
@@ -14,6 +15,7 @@ const TAB_ICONS = {
   leaderboard: { label: 'Leaderboard', icon: Trophy },
   narrative: { label: 'Narrative', icon: BookOpen },
   evolve: { label: 'Evolve', icon: Zap },
+  sprites: { label: 'Sprites', icon: Palette },
   changelog: { label: 'Changelog', icon: Clock },
 }
 
@@ -27,6 +29,7 @@ export default function GamePage({ user, balance, onBalanceChange }) {
   const [selectedVersion, setSelectedVersion] = useState(null)
   const [gameStatus, setGameStatus] = useState('loading') // loading | ready | unavailable
   const [focused, setFocused] = useState(false)
+  const [sprites, setSprites] = useState(null)
   const [claudeMd, setClaudeMd] = useState(null)
   const [showClaudeMd, setShowClaudeMd] = useState(false)
   const [changelogPopup, setChangelogPopup] = useState(null) // { version, text } | null
@@ -50,6 +53,11 @@ export default function GamePage({ user, balance, onBalanceChange }) {
       .then(r => r.ok ? r.json() : null)
       .then(config => setVersions(config?.versions || []))
       .catch(() => setVersions([]))
+
+    fetch(githubRawUrl(`${GITHUB_ORG}/${slug}/main/_sprites.json`))
+      .then(r => r.ok ? r.json() : null)
+      .then(data => setSprites(data))
+      .catch(() => setSprites(null))
 
     fetch(githubRawUrl(`${GITHUB_ORG}/${slug}/main/CLAUDE.md`))
       .then(r => r.ok ? r.text() : null)
@@ -163,6 +171,7 @@ export default function GamePage({ user, balance, onBalanceChange }) {
   if (!game) return <EmptyState>Loading...</EmptyState>
 
   const tabKeys = ['info', 'leaderboard', 'narrative', 'evolve']
+  if (sprites) tabKeys.push('sprites')
   if (versions.length > 0) tabKeys.push('changelog')
 
   const iconTabs = tabKeys.map(k => ({ key: k, ...TAB_ICONS[k] }))
@@ -269,14 +278,29 @@ export default function GamePage({ user, balance, onBalanceChange }) {
         </div>
         {versions.length > 0 && (
           <div style={{ padding: `${T.sp[3]}px ${T.sp[4]}px`, borderBottom: `1px solid ${T.border}` }}>
-            <SegmentedControl
-              items={[
-                { value: null, label: 'Latest' },
-                ...versions.map(v => ({ value: v.version, label: `v${v.version}`, title: v.description })),
-              ]}
-              active={selectedVersion}
-              onChange={setSelectedVersion}
-            />
+            <select
+              value={selectedVersion ?? ''}
+              onChange={e => setSelectedVersion(e.target.value ? Number(e.target.value) : null)}
+              style={{
+                width: '100%',
+                height: 28,
+                background: T.surface,
+                color: T.textBright,
+                border: `1px solid ${T.border}`,
+                borderRadius: T.radius.md,
+                padding: `0 ${T.sp[3]}px`,
+                fontSize: T.fontSize.xs,
+                fontFamily: T.mono,
+                letterSpacing: T.tracking.wide,
+                cursor: 'pointer',
+                outline: 'none',
+              }}
+            >
+              <option value="">Latest (v{versions[versions.length - 1].version})</option>
+              {versions.slice().reverse().map(v => (
+                <option key={v.version} value={v.version}>v{v.version} — {v.description}</option>
+              ))}
+            </select>
           </div>
         )}
         <IconTabBar tabs={iconTabs} active={tab} onChange={setTab} />
@@ -334,6 +358,7 @@ export default function GamePage({ user, balance, onBalanceChange }) {
             {tab === 'leaderboard' && <Leaderboard rows={leaderboard} />}
             {tab === 'narrative' && <NarrativePanel narrativeState={narrativeState} />}
             {tab === 'evolve' && <EvolvePanel slug={slug} user={user} balance={balance} onBalanceChange={onBalanceChange} />}
+            {tab === 'sprites' && <SpritePanel sprites={sprites} slug={slug} />}
             {tab === 'changelog' && (
               <div>
                 {versions.slice().reverse().map(v => (
