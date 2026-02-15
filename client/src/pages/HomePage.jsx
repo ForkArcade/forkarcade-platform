@@ -4,6 +4,7 @@ import { T } from '../theme'
 import { GITHUB_ORG, GAME_TOPIC, formatSlug, githubFetch, githubRawUrl } from '../api'
 import { PageHeader, Grid, Card, CardTitle, CardDescription, CardTags, Badge, SectionHeading, PillTabs, EmptyState } from '../components/ui'
 import NewGamePanel from '../components/NewGamePanel'
+import LoginButton from '../components/LoginButton'
 
 const ABOUT_TABS = [
   { key: 'general', label: 'General' },
@@ -97,6 +98,29 @@ export default function HomePage({ user, balance, onBalanceChange }) {
         <SectionHeading>Propose New Game</SectionHeading>
         <NewGamePanel user={user} balance={balance} onBalanceChange={onBalanceChange} />
       </aside>
+
+      {!user && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 1000,
+          background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <div style={{
+            background: T.surface, border: `1px solid ${T.border}`,
+            borderRadius: T.radius.xl, padding: `${T.sp[9]}px ${T.sp[8]}px`,
+            textAlign: 'center', maxWidth: 360,
+          }}>
+            <img src="/logo.svg" alt="" width={48} height={48} style={{ marginBottom: T.sp[5] }} />
+            <h2 style={{ color: T.textBright, fontSize: T.fontSize.lg, fontWeight: T.weight.bold, margin: `0 0 ${T.sp[3]}px` }}>
+              Welcome to ForkArcade
+            </h2>
+            <p style={{ color: T.text, fontSize: T.fontSize.sm, lineHeight: T.leading.relaxed, margin: `0 0 ${T.sp[7]}px` }}>
+              Sign in with GitHub to play games, earn coins, and shape what gets built next.
+            </p>
+            <LoginButton />
+          </div>
+        </div>
+      )}
     </div>
   )
 }

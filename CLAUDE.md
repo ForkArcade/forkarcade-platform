@@ -8,7 +8,7 @@ A platform for creating and playing web games published on GitHub Pages.
 
 ```
 client/              React + Vite (port 5173)
-  src/pages/         HomePage, GamePage, TemplatesPage, TemplateDetailPage
+  src/pages/         HomePage, GamePage, TemplatesPage, TemplateDetailPage, SpriteEditorPage
   src/components/    ui.jsx (shared), Leaderboard, NarrativePanel, EvolvePanel, VotingPanel, etc.
   src/theme.js       Design tokens (colors, spacing, typography) — imported as T everywhere
   src/api.js         API client (apiFetch, githubFetch, githubRawUrl)
@@ -128,7 +128,8 @@ Four tables: `users`, `scores` (game_slug, score, version), `wallets` (github_us
 - `/` -> HomePage — game catalog from GitHub API (topic `forkarcade-game`) + about sidebar (General/Coins/Evolve/Propose tabs)
 - `/templates` -> TemplatesPage — template catalog from GitHub API (topic `forkarcade-template`)
 - `/templates/:slug` -> TemplateDetailPage — template details (_prompt.md + engine/game files + palette + sprites)
-- `/play/:slug` -> GamePage — iframe + tabs (Info | Leaderboard | Narrative | Evolve | Changelog) + version selector
+- `/play/:slug` -> GamePage — iframe + tabs (Info | Leaderboard | Narrative | Evolve | Sprites | Changelog) + version selector
+- `/sprites/:slug` -> SpriteEditorPage — pixel editor for `_sprites.json`. Saves to localStorage, hot-reloads in game iframe (cross-tab via storage event). Ctrl+V pastes image with color extraction. Propose evolve creates `[EVOLVE]` issue with category `visual`.
 
 ## MCP (mcp/src/main.py)
 
