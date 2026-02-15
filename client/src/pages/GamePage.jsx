@@ -133,6 +133,14 @@ export default function GamePage({ user, balance, onBalanceChange }) {
           setGameStatus('ready')
           gameStatusRef.current = 'ready'
           iframeRef.current?.contentWindow.postMessage({ type: 'FA_INIT', slug, version: currentVersion }, IFRAME_ORIGIN)
+          try {
+            const savedSprites = localStorage.getItem(`fa-sprites-${slug}`)
+            if (savedSprites) {
+              iframeRef.current?.contentWindow.postMessage(
+                { type: 'FA_SPRITES_UPDATE', sprites: JSON.parse(savedSprites) }, IFRAME_ORIGIN
+              )
+            }
+          } catch (e) {}
           break
         case 'FA_SUBMIT_SCORE':
           apiFetch(`/api/games/${slug}/score`, {

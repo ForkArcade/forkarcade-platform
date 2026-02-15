@@ -2,12 +2,15 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useParams } from 'react-router-dom'
 import { GITHUB_ORG, githubRawUrl } from '../api'
 import { T } from '../theme'
-import { SectionHeading } from '../components/ui'
+import { SectionHeading, smallBtnStyle } from '../components/ui'
 import { spriteToDataUrl, nextPaletteKey, setPixel } from '../utils/sprite'
 import PixelGrid from '../components/PixelGrid'
 import PalettePanel from '../components/PalettePanel'
 import FramesPanel from '../components/FramesPanel'
 import SpriteSidebar from '../components/SpriteSidebar'
+import { Undo2 } from 'lucide-react'
+
+const LS_KEY = slug => `fa-sprites-${slug}`
 
 const inputStyle = {
   width: 48,
@@ -27,28 +30,75 @@ export default function SpriteEditorPage() {
   const { slug } = useParams()
   const [sprites, setSprites] = useState(null)
   const [loadError, setLoadError] = useState(false)
+  const [hasLocalEdits, setHasLocalEdits] = useState(false)
   const [activeCat, setActiveCat] = useState(null)
   const [activeName, setActiveName] = useState(null)
   const [activeFrame, setActiveFrame] = useState(0)
   const [activeColor, setActiveColor] = useState('.')
   const [copied, setCopied] = useState(false)
+  const initialLoadRef = useRef(true)
+
+  function initSelection(data) {
+    const cats = Object.keys(data)
+    if (cats.length > 0) {
+      setActiveCat(cats[0])
+      const names = Object.keys(data[cats[0]])
+      if (names.length > 0) setActiveName(names[0])
+    }
+  }
 
   useEffect(() => {
     setSprites(null)
     setLoadError(false)
+    initialLoadRef.current = true
+
+    // Try localStorage first
+    const saved = localStorage.getItem(LS_KEY(slug))
+    if (saved) {
+      try {
+        const data = JSON.parse(saved)
+        setSprites(data)
+        setHasLocalEdits(true)
+        initSelection(data)
+        initialLoadRef.current = false
+        return
+      } catch (e) {
+        localStorage.removeItem(LS_KEY(slug))
+      }
+    }
+
     fetch(githubRawUrl(`${GITHUB_ORG}/${slug}/main/_sprites.json`))
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         if (!data) { setLoadError(true); return }
         setSprites(data)
-        const cats = Object.keys(data)
-        if (cats.length > 0) {
-          setActiveCat(cats[0])
-          const names = Object.keys(data[cats[0]])
-          if (names.length > 0) setActiveName(names[0])
-        }
+        setHasLocalEdits(false)
+        initSelection(data)
+        initialLoadRef.current = false
       })
       .catch(() => setLoadError(true))
+  }, [slug])
+
+  // Save to localStorage on every edit (skip initial load)
+  useEffect(() => {
+    if (!sprites || initialLoadRef.current) return
+    localStorage.setItem(LS_KEY(slug), JSON.stringify(sprites))
+    setHasLocalEdits(true)
+  }, [sprites, slug])
+
+  const handleDiscard = useCallback(() => {
+    localStorage.removeItem(LS_KEY(slug))
+    setHasLocalEdits(false)
+    initialLoadRef.current = true
+    fetch(githubRawUrl(`${GITHUB_ORG}/${slug}/main/_sprites.json`))
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (!data) return
+        setSprites(data)
+        initSelection(data)
+        initialLoadRef.current = false
+      })
+      .catch(() => {})
   }, [slug])
 
   const def = sprites && activeCat && activeName ? sprites[activeCat]?.[activeName] : null
@@ -199,9 +249,17 @@ export default function SpriteEditorPage() {
       <div style={{ flex: 1, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: T.sp[6], overflow: 'auto' }}>
         {def ? (
           <div>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: T.sp[3], marginBottom: T.sp[4] }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: T.sp[3], marginBottom: T.sp[4] }}>
               <span style={{ fontSize: T.fontSize.sm, fontWeight: T.weight.semibold, color: T.textBright, fontFamily: T.mono }}>{activeName}</span>
               <span style={{ fontSize: T.fontSize.xs, color: T.muted }}>{def.w}x{def.h} — frame {activeFrame}</span>
+              {hasLocalEdits && (
+                <>
+                  <span style={{ fontSize: 9, color: T.accentColor, fontFamily: T.mono, marginLeft: 'auto' }}>local edits</span>
+                  <button onClick={handleDiscard} style={{ ...smallBtnStyle, height: 22, padding: `0 ${T.sp[3]}px`, color: T.muted }} title="Discard local edits">
+                    <Undo2 size={11} /> Discard
+                  </button>
+                </>
+              )}
             </div>
             <PixelGrid def={def} frameIdx={activeFrame} activeColor={activeColor} onPaint={handlePaint} />
           </div>

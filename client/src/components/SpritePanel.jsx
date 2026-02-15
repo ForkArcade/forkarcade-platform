@@ -1,8 +1,9 @@
-import { useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { T } from '../theme'
-import { SectionHeading } from './ui'
+import { SectionHeading, smallBtnStyle } from './ui'
 import { spriteToDataUrl } from '../utils/sprite'
+import { Undo2 } from 'lucide-react'
 
 function SpriteThumb({ name, def }) {
   const size = 48
@@ -38,10 +39,37 @@ function SpriteThumb({ name, def }) {
 }
 
 export default function SpritePanel({ sprites, slug }) {
-  if (!sprites) return null
+  const lsKey = `fa-sprites-${slug}`
+  const [localSprites, setLocalSprites] = useState(() => {
+    try {
+      const saved = localStorage.getItem(lsKey)
+      return saved ? JSON.parse(saved) : null
+    } catch { return null }
+  })
+
+  const displaySprites = localSprites || sprites
+  if (!displaySprites) return null
+
+  const handleDiscard = () => {
+    localStorage.removeItem(lsKey)
+    setLocalSprites(null)
+  }
 
   return (
     <div>
+      {localSprites && (
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          marginBottom: T.sp[4], padding: `${T.sp[2]}px ${T.sp[3]}px`,
+          border: `1px solid ${T.accentColor}30`, borderRadius: T.radius.md,
+          background: `${T.accentColor}08`,
+        }}>
+          <span style={{ fontSize: 9, color: T.accentColor, fontFamily: T.mono }}>local edits</span>
+          <button onClick={handleDiscard} style={{ ...smallBtnStyle, height: 20, padding: `0 ${T.sp[2]}px`, fontSize: 9, color: T.muted }}>
+            <Undo2 size={10} /> Discard
+          </button>
+        </div>
+      )}
       {slug && (
         <Link
           to={`/sprites/${slug}`}
@@ -61,7 +89,7 @@ export default function SpritePanel({ sprites, slug }) {
           Open editor
         </Link>
       )}
-      {Object.entries(sprites).map(([cat, defs]) => (
+      {Object.entries(displaySprites).map(([cat, defs]) => (
         <div key={cat} style={{ marginBottom: T.sp[5] }}>
           <SectionHeading>{cat}</SectionHeading>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: T.sp[2] }}>

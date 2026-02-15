@@ -84,6 +84,7 @@ Adding a new template = creating a repo on GitHub with the appropriate topics an
 | `FA_PLAYER_INFO` | platform -> game | Response (requestId) |
 | `FA_NARRATIVE_UPDATE` | game -> platform | Narrative state (fire-and-forget) |
 | `FA_COIN_EARNED` | platform -> game | Coins earned after score submit (fire-and-forget) |
+| `FA_SPRITES_UPDATE` | platform -> game | Hot-reload sprite definitions (fire-and-forget) |
 
 ## Server — Endpoints
 
