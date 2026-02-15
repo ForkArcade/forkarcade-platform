@@ -60,18 +60,6 @@ def generate_sprites_js(data):
         "  return spriteDef ? spriteDef.frames.length : 0",
         "}",
         "",
-        "window.addEventListener('message', function(event) {",
-        "  var data = event.data",
-        "  if (data && data.type === 'FA_SPRITES_UPDATE' && data.sprites) {",
-        "    SPRITE_DEFS = data.sprites",
-        "    for (var cat in SPRITE_DEFS) {",
-        "      for (var name in SPRITE_DEFS[cat]) {",
-        "        if (SPRITE_DEFS[cat][name]._c) delete SPRITE_DEFS[cat][name]._c",
-        "      }",
-        "    }",
-        "  }",
-        "})",
-        "",
     ]
     return "\n".join(lines)
 
