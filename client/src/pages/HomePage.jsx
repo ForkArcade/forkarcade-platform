@@ -1,15 +1,9 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { T } from '../theme'
-import { GITHUB_ORG, githubFetch, githubRawUrl } from '../api'
+import { GITHUB_ORG, GAME_TOPIC, formatSlug, githubFetch, githubRawUrl } from '../api'
 import { PageHeader, Grid, Card, CardTitle, CardDescription, CardTags, Badge, SectionHeading, PillTabs, EmptyState } from '../components/ui'
 import NewGamePanel from '../components/NewGamePanel'
-
-const GAME_TOPIC = 'forkarcade-game'
-
-function formatSlug(slug) {
-  return slug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
-}
 
 const ABOUT_TABS = [
   { key: 'general', label: 'General' },
@@ -45,16 +39,28 @@ export default function HomePage({ user, balance, onBalanceChange }) {
         setGames(gameList)
         setStatus('ok')
 
+        const thumbs = {}
+        let loaded = 0
         gameList.forEach((game, i) => {
           const url = githubRawUrl(`${GITHUB_ORG}/${game.slug}/main/_thumbnail.png`)
           const img = new window.Image()
           img.onload = () => {
-            setGames(prev => prev.map((g, j) => j === i ? { ...g, thumbnail: url } : g))
+            thumbs[i] = url
+            loaded++
+            if (loaded === gameList.length) {
+              setGames(prev => prev.map((g, j) => thumbs[j] ? { ...g, thumbnail: thumbs[j] } : g))
+            }
+          }
+          img.onerror = () => {
+            loaded++
+            if (loaded === gameList.length) {
+              setGames(prev => prev.map((g, j) => thumbs[j] ? { ...g, thumbnail: thumbs[j] } : g))
+            }
           }
           img.src = url
         })
       })
-      .catch(() => {})
+      .catch(() => setStatus('error'))
   }, [])
 
   return (

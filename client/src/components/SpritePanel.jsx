@@ -1,33 +1,8 @@
 import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { T } from '../theme'
-
-function spriteToDataUrl(def, size) {
-  if (!def || !def.w || !def.h || !def.frames || !def.palette) return null
-  try {
-    const canvas = document.createElement('canvas')
-    canvas.width = size
-    canvas.height = size
-    const ctx = canvas.getContext('2d')
-    const pw = size / def.w
-    const ph = size / def.h
-    const pixels = def.frames[0]
-    if (!pixels) return null
-    for (let row = 0; row < def.h; row++) {
-      const line = pixels[row]
-      if (!line) continue
-      for (let col = 0; col < def.w; col++) {
-        const ch = line[col]
-        if (ch === '.') continue
-        const color = def.palette[ch]
-        if (!color) continue
-        ctx.fillStyle = color
-        ctx.fillRect(col * pw, row * ph, Math.ceil(pw), Math.ceil(ph))
-      }
-    }
-    return canvas.toDataURL()
-  } catch { return null }
-}
+import { SectionHeading } from './ui'
+import { spriteToDataUrl } from '../utils/sprite'
 
 function SpriteThumb({ name, def }) {
   const size = 48
@@ -88,15 +63,7 @@ export default function SpritePanel({ sprites, slug }) {
       )}
       {Object.entries(sprites).map(([cat, defs]) => (
         <div key={cat} style={{ marginBottom: T.sp[5] }}>
-          <div style={{
-            fontSize: T.fontSize.xs,
-            color: T.muted,
-            textTransform: 'uppercase',
-            letterSpacing: T.tracking.widest,
-            marginBottom: T.sp[3],
-          }}>
-            {cat}
-          </div>
+          <SectionHeading>{cat}</SectionHeading>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: T.sp[2] }}>
             {Object.entries(defs).filter(([, d]) => d && typeof d === 'object' && d.frames).map(([name, def]) => (
               <SpriteThumb key={name} name={name} def={def} />

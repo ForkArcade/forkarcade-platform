@@ -1,8 +1,6 @@
-import { githubFetch } from '../api'
+import { githubFetch, PLATFORM_REPO } from '../api'
 import { T } from '../theme'
 import VotingPanel from './VotingPanel'
-
-const PLATFORM_REPO = 'ForkArcade/forkarcade-platform'
 
 export default function NewGamePanel({ user, balance, onBalanceChange }) {
   return (

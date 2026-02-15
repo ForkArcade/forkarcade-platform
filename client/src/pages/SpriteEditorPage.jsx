@@ -2,36 +2,9 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { GITHUB_ORG, githubRawUrl } from '../api'
 import { T } from '../theme'
+import { SectionHeading } from '../components/ui'
+import { spriteToDataUrl } from '../utils/sprite'
 import { ArrowLeft, Clipboard, Check, Plus, Trash2, Copy } from 'lucide-react'
-
-// --- Helpers ---
-
-function spriteToDataUrl(def, size, frameIdx) {
-  if (!def?.w || !def?.h || !def?.frames || !def?.palette) return null
-  try {
-    const canvas = document.createElement('canvas')
-    canvas.width = size
-    canvas.height = size
-    const ctx = canvas.getContext('2d')
-    const pw = size / def.w
-    const ph = size / def.h
-    const pixels = def.frames[frameIdx]
-    if (!pixels) return null
-    for (let row = 0; row < def.h; row++) {
-      const line = pixels[row]
-      if (!line) continue
-      for (let col = 0; col < def.w; col++) {
-        const ch = line[col]
-        if (ch === '.') continue
-        const color = def.palette[ch]
-        if (!color) continue
-        ctx.fillStyle = color
-        ctx.fillRect(col * pw, row * ph, Math.ceil(pw), Math.ceil(ph))
-      }
-    }
-    return canvas.toDataURL()
-  } catch { return null }
-}
 
 function nextPaletteKey(palette) {
   const letters = 'abcdefghijklmnopqrstuvwxyz'
@@ -225,11 +198,15 @@ function PalettePanel({ palette, activeColor, onSelect, onColorChange, onAdd, on
 
 function FramesPanel({ def, activeFrame, onSelect, onAdd, onDuplicate, onRemove }) {
   const thumbSize = 48
+  const thumbUrls = useMemo(() =>
+    def.frames.map((_, i) => spriteToDataUrl(def, thumbSize, i)),
+    [def]
+  )
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: T.sp[3] }}>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: T.sp[2] }}>
         {def.frames.map((_, i) => {
-          const url = spriteToDataUrl(def, thumbSize, i)
+          const url = thumbUrls[i]
           return (
             <div
               key={i}
@@ -302,7 +279,19 @@ export default function SpriteEditorPage() {
 
   const def = sprites && activeCat && activeName ? sprites[activeCat]?.[activeName] : null
   const categories = sprites ? Object.keys(sprites) : []
-  const spriteNames = sprites && activeCat ? Object.keys(sprites[activeCat]).filter(n => sprites[activeCat][n]?.frames) : []
+
+  // Pre-compute sidebar thumbnails — only recomputes when sprites data changes
+  const sidebarThumbs = useMemo(() => {
+    if (!sprites) return {}
+    const result = {}
+    for (const cat of Object.keys(sprites)) {
+      for (const name of Object.keys(sprites[cat])) {
+        const d = sprites[cat][name]
+        if (d?.frames) result[`${cat}/${name}`] = spriteToDataUrl(d, 24, 0)
+      }
+    }
+    return result
+  }, [sprites])
 
   // Select first palette color when switching sprites
   useEffect(() => {
@@ -317,9 +306,21 @@ export default function SpriteEditorPage() {
 
   const update = useCallback((mutator) => {
     setSprites(prev => {
-      const copy = JSON.parse(JSON.stringify(prev))
-      mutator(copy[activeCat][activeName])
-      return copy
+      const prevDef = prev[activeCat][activeName]
+      const newDef = {
+        ...prevDef,
+        palette: { ...prevDef.palette },
+        frames: prevDef.frames.map(f => [...f]),
+        origin: prevDef.origin ? [...prevDef.origin] : undefined,
+      }
+      mutator(newDef)
+      return {
+        ...prev,
+        [activeCat]: {
+          ...prev[activeCat],
+          [activeName]: newDef,
+        },
+      }
     })
   }, [activeCat, activeName])
 
@@ -442,9 +443,8 @@ export default function SpriteEditorPage() {
                   {cat}
                 </div>
                 {names.map(name => {
-                  const d = sprites[cat][name]
                   const isActive = activeCat === cat && activeName === name
-                  const thumb = spriteToDataUrl(d, 24, 0)
+                  const thumb = sidebarThumbs[`${cat}/${name}`]
                   return (
                     <div
                       key={name}
@@ -521,9 +521,7 @@ export default function SpriteEditorPage() {
         }}>
           {/* Palette */}
           <div>
-            <div style={{ fontSize: T.fontSize.xs, color: T.muted, textTransform: 'uppercase', letterSpacing: T.tracking.widest, marginBottom: T.sp[3] }}>
-              Palette
-            </div>
+            <SectionHeading>Palette</SectionHeading>
             <PalettePanel
               palette={def.palette}
               activeColor={activeColor}
@@ -536,9 +534,7 @@ export default function SpriteEditorPage() {
 
           {/* Origin */}
           <div>
-            <div style={{ fontSize: T.fontSize.xs, color: T.muted, textTransform: 'uppercase', letterSpacing: T.tracking.widest, marginBottom: T.sp[3] }}>
-              Origin
-            </div>
+            <SectionHeading>Origin</SectionHeading>
             <div style={{ display: 'flex', alignItems: 'center', gap: T.sp[3] }}>
               <label style={{ fontSize: T.fontSize.xs, color: T.muted }}>x</label>
               <input
@@ -563,9 +559,7 @@ export default function SpriteEditorPage() {
 
           {/* Frames */}
           <div>
-            <div style={{ fontSize: T.fontSize.xs, color: T.muted, textTransform: 'uppercase', letterSpacing: T.tracking.widest, marginBottom: T.sp[3] }}>
-              Frames ({def.frames.length})
-            </div>
+            <SectionHeading>Frames ({def.frames.length})</SectionHeading>
             <FramesPanel
               def={def}
               activeFrame={activeFrame}

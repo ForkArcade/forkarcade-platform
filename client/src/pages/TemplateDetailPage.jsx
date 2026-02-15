@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { T } from '../theme'
-import { GITHUB_ORG, githubFetch, githubRawUrl } from '../api'
+import { GITHUB_ORG, TEMPLATE_TOPIC, githubFetch, githubRawUrl } from '../api'
 import { Badge, ColorSwatch, EmptyState } from '../components/ui'
-import { SimpleMd } from '../components/MdPopup'
+import SimpleMd from '../components/SimpleMd'
 import { ArrowLeft, ExternalLink } from 'lucide-react'
 
 function formatSize(bytes) {
@@ -81,7 +81,7 @@ export default function TemplateDetailPage() {
 
   const engineFiles = config?.engineFiles || []
   const gameFiles = config?.gameFiles || []
-  const topics = (repo.topics || []).filter(t => t !== 'forkarcade-template')
+  const topics = (repo.topics || []).filter(t => t !== TEMPLATE_TOPIC)
   const palette = assets?.palette ? Object.entries(assets.palette) : []
   const categories = assets?.categories ? Object.entries(assets.categories) : []
   const sizeMap = Object.fromEntries(tree.map(f => [f.path, f.size]))

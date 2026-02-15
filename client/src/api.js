@@ -1,7 +1,13 @@
 export const API = import.meta.env.VITE_API_URL || 'http://localhost:8787'
 
 export const GITHUB_ORG = 'ForkArcade'
+export const GAME_TOPIC = 'forkarcade-game'
 export const TEMPLATE_TOPIC = 'forkarcade-template'
+export const PLATFORM_REPO = `${GITHUB_ORG}/forkarcade-platform`
+
+export function formatSlug(slug) {
+  return slug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+}
 
 export async function apiFetch(path, options = {}) {
   const res = await fetch(API + path, {

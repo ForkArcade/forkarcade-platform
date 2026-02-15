@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams } from 'react-router-dom'
-import { apiFetch, GITHUB_ORG, githubFetch, githubRawUrl } from '../api'
+import { apiFetch, GITHUB_ORG, GAME_TOPIC, formatSlug, githubFetch, githubRawUrl } from '../api'
 import { T } from '../theme'
 import { Panel, IconTabBar, Badge, EmptyState } from '../components/ui'
 import Leaderboard from '../components/Leaderboard'
@@ -8,7 +8,7 @@ import NarrativePanel from '../components/NarrativePanel'
 import { Trophy, BookOpen, Clock, Info, Loader, AlertCircle, FileText, Zap, Palette } from 'lucide-react'
 import EvolvePanel from '../components/EvolvePanel'
 import SpritePanel from '../components/SpritePanel'
-import { MdPopup } from '../components/MdPopup'
+import MdPopup from '../components/MdPopup'
 
 const TAB_ICONS = {
   info: { label: 'Info', icon: Info },
@@ -46,8 +46,8 @@ export default function GamePage({ user, balance, onBalanceChange }) {
 
   useEffect(() => {
     githubFetch(`/repos/${GITHUB_ORG}/${slug}`)
-      .then(repo => setGame({ slug: repo.name, title: repo.name, description: repo.description || '', topics: repo.topics || [] }))
-      .catch(() => setGame({ slug, title: slug, description: '', topics: [] }))
+      .then(repo => setGame({ slug: repo.name, title: formatSlug(repo.name), description: repo.description || '', topics: repo.topics || [] }))
+      .catch(() => setGame({ slug, title: formatSlug(slug), description: '', topics: [] }))
 
     fetch(githubRawUrl(`${GITHUB_ORG}/${slug}/main/.forkarcade.json`))
       .then(r => r.ok ? r.json() : null)
@@ -326,9 +326,9 @@ export default function GamePage({ user, balance, onBalanceChange }) {
                     {game.description}
                   </div>
                 )}
-                {game.topics.filter(t => t !== 'forkarcade-game').length > 0 && (
+                {game.topics.filter(t => t !== GAME_TOPIC).length > 0 && (
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: T.sp[2], marginBottom: T.sp[5] }}>
-                    {game.topics.filter(t => t !== 'forkarcade-game').map(t => <Badge key={t}>{t}</Badge>)}
+                    {game.topics.filter(t => t !== GAME_TOPIC).map(t => <Badge key={t}>{t}</Badge>)}
                   </div>
                 )}
                 {claudeMd && (

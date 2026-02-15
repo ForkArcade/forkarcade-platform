@@ -20,7 +20,7 @@ export default function TemplatesPage() {
         setTemplates(list)
         setStatus('ok')
       })
-      .catch(() => {})
+      .catch(() => setStatus('error'))
   }, [])
 
   return (

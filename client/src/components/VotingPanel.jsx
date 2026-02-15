@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react'
-import { apiFetch, API } from '../api'
+import { useState, useEffect, useMemo } from 'react'
+import { apiFetch } from '../api'
 import { T } from '../theme'
 import { Badge, EmptyState } from './ui'
-import { MdPopup } from './MdPopup'
+import LoginButton from './LoginButton'
+import MdPopup from './MdPopup'
 
 const inputStyle = {
   width: '100%',
@@ -59,8 +60,10 @@ export default function VotingPanel({
     return () => { clearInterval(id); document.removeEventListener('visibilitychange', onVisible) }
   }, [refreshKey])
 
-  const sorted = [...issues].sort((a, b) =>
-    (votes[b.number]?.total_votes ?? 0) - (votes[a.number]?.total_votes ?? 0)
+  const sorted = useMemo(() =>
+    [...issues].sort((a, b) =>
+      (votes[b.number]?.total_votes ?? 0) - (votes[a.number]?.total_votes ?? 0)
+    ), [issues, votes]
   )
 
   async function handleVote(issueNumber) {
@@ -69,7 +72,7 @@ export default function VotingPanel({
     const prevVotes = { ...votes }
     const prev = votes[issueNumber] || { total_votes: 0, unique_voters: 0, voter_ids: [] }
     setVotes(v => ({ ...v, [issueNumber]: { ...prev, total_votes: prev.total_votes + 10, unique_voters: prev.unique_voters + 1 } }))
-    onBalanceChange(prevBalance - 10)
+    onBalanceChange(prev => (prev ?? 0) - 10)
     try {
       const r = await apiFetch(voteUrl, { method: 'POST', body: JSON.stringify({ issue_number: issueNumber, coins: 10 }) })
       if (r.ok) { onBalanceChange(r.newBalance); loadVotes() }
@@ -115,9 +118,7 @@ export default function VotingPanel({
       {!user && (
         <div style={{ padding: T.sp[5], marginBottom: T.sp[5], background: T.elevated, border: `1px solid ${T.border}`, borderRadius: T.radius.md, textAlign: 'center' }}>
           <div style={{ fontSize: T.fontSize.xs, color: T.text, lineHeight: T.leading.relaxed, marginBottom: T.sp[4] }}>{loginText}</div>
-          <button onClick={() => { window.location.href = `${API}/auth/github` }} style={{ padding: `${T.sp[3]}px ${T.sp[5]}px`, background: T.accentColor, border: 'none', borderRadius: T.radius.md, color: '#000', fontSize: T.fontSize.xs, fontWeight: T.weight.bold, fontFamily: T.font, cursor: 'pointer' }}>
-            Login with GitHub
-          </button>
+          <LoginButton />
         </div>
       )}
 
