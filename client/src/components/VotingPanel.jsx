@@ -75,21 +75,22 @@ export default function VotingPanel({
     const prevBalance = balance
     const prevVotes = { ...votes }
     const prev = votes[issueNumber] || { total_votes: 0, unique_voters: 0, voter_ids: [] }
-    const updatedVoterIds = user?.id && !prev.voter_ids.includes(user.id) ? [...prev.voter_ids, user.id] : prev.voter_ids
-    setVotes(v => ({ ...v, [issueNumber]: { ...prev, total_votes: prev.total_votes + 10, unique_voters: prev.unique_voters + 1, voter_ids: updatedVoterIds } }))
+    const isNewVoter = user?.id && !prev.voter_ids.includes(user.id)
+    const updatedVoterIds = isNewVoter ? [...prev.voter_ids, user.id] : prev.voter_ids
+    setVotes(v => ({ ...v, [issueNumber]: { ...prev, total_votes: prev.total_votes + 10, unique_voters: prev.unique_voters + (isNewVoter ? 1 : 0), voter_ids: updatedVoterIds } }))
     onBalanceChange(prev => (prev ?? 0) - 10)
     try {
       const r = await apiFetch(voteUrl, { method: 'POST', body: JSON.stringify({ issue_number: issueNumber, coins: 10 }) })
-      if (r.ok) { onBalanceChange(r.newBalance); loadVotes() }
-      else { setVotes(prevVotes); onBalanceChange(prevBalance) }
+      onBalanceChange(r.newBalance)
+      loadVotes()
     } catch { setVotes(prevVotes); onBalanceChange(prevBalance) }
   }
 
   async function handleTrigger(issueNumber) {
     try {
-      const r = await apiFetch(triggerUrl, { method: 'POST', body: JSON.stringify({ issue_number: issueNumber }) })
-      if (r.ok) loadData()
-    } catch {}
+      await apiFetch(triggerUrl, { method: 'POST', body: JSON.stringify({ issue_number: issueNumber }) })
+      loadData()
+    } catch { loadData() }
   }
 
   async function handleSubmit(e) {
@@ -102,9 +103,8 @@ export default function VotingPanel({
     const savedTitle = title.trim(), savedBody = body, savedExtra = { ...extra }
     setTitle(''); setBody(''); setExtra(defaultExtra || {}); setShowForm(false)
     try {
-      const r = await apiFetch(submitUrl, { method: 'POST', body: JSON.stringify(buildPayload(savedTitle, savedBody, savedExtra)) })
-      if (r.ok) { loadData() }
-      else { setIssues(prev => prev.filter(i => i.number !== tempId)); setTitle(savedTitle); setBody(savedBody); setExtra(savedExtra); setShowForm(true) }
+      await apiFetch(submitUrl, { method: 'POST', body: JSON.stringify(buildPayload(savedTitle, savedBody, savedExtra)) })
+      loadData()
     } catch { setIssues(prev => prev.filter(i => i.number !== tempId)); setTitle(savedTitle); setBody(savedBody); setExtra(savedExtra); setShowForm(true) }
   }
 

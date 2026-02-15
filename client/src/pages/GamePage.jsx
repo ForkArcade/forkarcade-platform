@@ -300,7 +300,7 @@ export default function GamePage({ user, balance, onBalanceChange }) {
               }}
             >
               <option value="">Latest (v{versions[versions.length - 1].version})</option>
-              {versions.slice().reverse().map(v => (
+              {versions.slice(0, -1).reverse().map(v => (
                 <option key={v.version} value={v.version}>v{v.version} — {v.description}</option>
               ))}
             </select>
@@ -329,11 +329,14 @@ export default function GamePage({ user, balance, onBalanceChange }) {
                     {game.description}
                   </div>
                 )}
-                {game.topics.filter(t => t !== GAME_TOPIC).length > 0 && (
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: T.sp[2], marginBottom: T.sp[5] }}>
-                    {game.topics.filter(t => t !== GAME_TOPIC).map(t => <Badge key={t}>{t}</Badge>)}
-                  </div>
-                )}
+                {(() => {
+                  const tags = game.topics.filter(t => t !== GAME_TOPIC)
+                  return tags.length > 0 && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: T.sp[2], marginBottom: T.sp[5] }}>
+                      {tags.map(t => <Badge key={t}>{t}</Badge>)}
+                    </div>
+                  )
+                })()}
                 {claudeMd && (
                   <button
                     onClick={() => setClaudeMdPopup(true)}

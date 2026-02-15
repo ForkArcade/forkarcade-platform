@@ -64,7 +64,7 @@ export default function App() {
               <span style={{ fontSize: T.fontSize.sm, color: T.text }}>@{user.login}</span>
               <Button
                 variant="ghost"
-                onClick={async () => { await apiFetch('/auth/logout', { method: 'POST' }); setUser(null) }}
+                onClick={() => { setUser(null); apiFetch('/auth/logout', { method: 'POST' }).catch(() => {}) }}
               >
                 Logout
               </Button>
