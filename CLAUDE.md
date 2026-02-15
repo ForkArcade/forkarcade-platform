@@ -2,19 +2,25 @@
 
 A platform for creating and playing web games published on GitHub Pages.
 
-> **TL;DR**: Games = repositories in the `ForkArcade` org on GitHub Pages in iframes. Templates = dynamically discovered via GitHub API (topic `forkarcade-template`), self-contained (engine inside). Platform provides SDK (scoring) + narrative. Server = auth + scores. No build step.
+> **TL;DR**: Games = repositories in the `ForkArcade` org on GitHub Pages in iframes. Templates = dynamically discovered via GitHub API (topic `forkarcade-template`), self-contained (engine inside). Platform provides SDK (scoring) + narrative. Server = auth + scores + wallet + voting. No build step.
 
 ## Architecture
 
 ```
-client/          React + Vite (port 5173)
-server/          Express + SQLite (port 8787)
-mcp/             MCP server (Python) — tools for Claude Code
+client/              React + Vite (port 5173)
+  src/pages/         HomePage, GamePage, TemplatesPage, TemplateDetailPage
+  src/components/    ui.jsx (shared), Leaderboard, NarrativePanel, EvolvePanel, VotingPanel, etc.
+  src/theme.js       Design tokens (colors, spacing, typography) — imported as T everywhere
+  src/api.js         API client (apiFetch, githubFetch, githubRawUrl)
+server/              Express + Turso/libsql (port 8787)
+  src/routes/        scores.js, wallet.js (evolve + new-game + voting), github.js (proxy + cache)
+mcp/                 MCP server (Python) — tools for Claude Code
+  src/handlers/      workflow.py, assets.py, versions.py, thumbnail.py
 sdk/
-  forkarcade-sdk.js   SDK (postMessage, scoring, auth)
-  fa-narrative.js     Narrative module (graph, variables, transition)
-  _platform.md        Platform golden rules (prepended to every game prompt)
-.claude/skills/  Skills: new-game, evolve, publish
+  forkarcade-sdk.js  SDK (postMessage, scoring, auth)
+  fa-narrative.js    Narrative module (graph, variables, transition)
+  _platform.md       Platform golden rules (prepended to every game prompt)
+.claude/skills/      Skills: new-game, evolve, publish
 ```
 
 ## Key Decisions
@@ -22,7 +28,7 @@ sdk/
 - **Game catalog = GitHub API** — there is no games table. Client fetches repository list from the `ForkArcade` org filtered by the `forkarcade-game` topic. Do not add a games table.
 - **Template catalog = GitHub API** — templates are repos with the `forkarcade-template` topic. MCP tools (`github_templates.py`) fetch them dynamically. Asset metadata lives in `_assets.json` in the template repo. No hardcoded template list.
 - **Games in iframe** — each game runs on GitHub Pages, embedded in an `<iframe>` on the platform. Communication via postMessage (SDK).
-- **Server is thin** — auth (GitHub OAuth + JWT cookie) + scores + wallet + evolve voting (SQLite). Do not add game logic or narrative on the server side.
+- **Server is thin** — auth (GitHub OAuth + JWT cookie) + scores + wallet + evolve voting (Turso/libsql). Do not add game logic or narrative on the server side.
 - **Narrative is client-side** — narrative data (graph, variables, events) passes through postMessage from iframe to parent. Not persisted in the database.
 - **No build step** — games are vanilla JS, `<script>` tags, GitHub Pages (`build_type=legacy`). No bundler.
 
@@ -71,7 +77,7 @@ Adding a new template = creating a repo on GitHub with the appropriate topics an
 | Type | Direction | Description |
 |------|-----------|-------------|
 | `FA_READY` | game -> platform | Game ready |
-| `FA_INIT` | platform -> game | Passes slug |
+| `FA_INIT` | platform -> game | Passes `{ slug, version }` |
 | `FA_SUBMIT_SCORE` | game -> platform | Submits score (requestId) |
 | `FA_SCORE_RESULT` | platform -> game | Response (requestId) |
 | `FA_GET_PLAYER` | game -> platform | Requests player info (requestId) |
@@ -91,35 +97,37 @@ Adding a new template = creating a repo on GitHub with the appropriate topics an
 - `GET /api/wallet` (auth) -> coin balance
 
 **Scores:**
-- `POST /api/games/:slug/score` (auth) -> save score, mint coins
-- `GET /api/games/:slug/leaderboard` -> top 50 per game
+- `POST /api/games/:slug/score` (auth) -> save score, mint coins (`floor(score * 0.1)`, no bonus for personal record currently)
+- `GET /api/games/:slug/leaderboard?version=N` -> top 50 per game, filtered by version if provided
 
 **Evolve (game changes):**
 - `POST /api/games/:slug/evolve-issues` (auth) -> create `[EVOLVE]` issue on GitHub
 - `POST /api/games/:slug/vote` (auth) -> vote on evolve issue (burn coins)
 - `GET /api/games/:slug/votes` -> aggregated vote totals per issue
-- `POST /api/games/:slug/evolve-trigger` (auth) -> add `evolve` label
+- `POST /api/games/:slug/evolve-trigger` (auth) -> add `evolve` label (threshold: 3+ unique voters OR author voted)
 
 **New Game proposals:**
 - `POST /api/new-game/issues` (auth) -> create `[NEW-GAME]` issue on platform repo
 - `POST /api/new-game/vote` (auth) -> vote on new-game issue (burn coins)
 - `GET /api/new-game/votes` -> aggregated vote totals per issue
-- `POST /api/new-game/trigger` (auth) -> add `approved` label
+- `POST /api/new-game/trigger` (auth) -> add `approved` label (threshold: 10+ unique voters)
 
-**GitHub proxy (authenticated, avoids rate limits):**
-- `GET /api/github/repos` -> cached org repos (5-min TTL)
-- `GET /api/github/proxy/*` -> generic GitHub API proxy
-- `GET /api/github/raw/*` -> raw file proxy (raw.githubusercontent.com)
+**GitHub proxy (authenticated, cached, avoids rate limits):**
+- `GET /api/github/repos` -> org repos (5-min cache)
+- `GET /api/github/proxy/*` -> generic GitHub API proxy (2-min cache)
+- `GET /api/github/raw/*` -> raw file proxy (5-min cache)
+- All endpoints serve stale data on upstream error
 
-## Database (SQLite)
+## Database (Turso/libsql)
 
-Four tables: `users`, `scores`, `wallets` (github_user_id, balance), `votes` (game_slug, issue_number, coins_spent). Scores identified by `game_slug` (TEXT), not by FK to games.
+Four tables: `users`, `scores` (game_slug, score, version), `wallets` (github_user_id, balance), `votes` (game_slug, issue_number, coins_spent). Scores identified by `game_slug` (TEXT), not by FK to games. Votes are coins-based: min 10, multiples of 10.
 
 ## Client — Routing
 
-- `/` -> HomePage — game catalog from GitHub API (topic `forkarcade-game`)
-- `/templates` -> TemplatesPage — template list from GitHub API (topic `forkarcade-template`)
-- `/play/:slug` -> GamePage — iframe + tabs (Info | Leaderboard | Narrative | Evolve | Changelog)
+- `/` -> HomePage — game catalog from GitHub API (topic `forkarcade-game`) + about sidebar (General/Coins/Evolve/Propose tabs)
+- `/templates` -> TemplatesPage — template catalog from GitHub API (topic `forkarcade-template`)
+- `/templates/:slug` -> TemplateDetailPage — template details (_prompt.md + engine/game files + palette + sprites)
+- `/play/:slug` -> GamePage — iframe + tabs (Info | Leaderboard | Narrative | Evolve | Changelog) + version selector
 
 ## MCP (mcp/src/main.py)
 
