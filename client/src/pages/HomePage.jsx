@@ -39,23 +39,11 @@ export default function HomePage({ user, balance, onBalanceChange }) {
         setGames(gameList)
         setStatus('ok')
 
-        const thumbs = {}
-        let loaded = 0
         gameList.forEach((game, i) => {
           const url = githubRawUrl(`${GITHUB_ORG}/${game.slug}/main/_thumbnail.png`)
           const img = new window.Image()
           img.onload = () => {
-            thumbs[i] = url
-            loaded++
-            if (loaded === gameList.length) {
-              setGames(prev => prev.map((g, j) => thumbs[j] ? { ...g, thumbnail: thumbs[j] } : g))
-            }
-          }
-          img.onerror = () => {
-            loaded++
-            if (loaded === gameList.length) {
-              setGames(prev => prev.map((g, j) => thumbs[j] ? { ...g, thumbnail: thumbs[j] } : g))
-            }
+            setGames(prev => prev.map((g, j) => j === i ? { ...g, thumbnail: url } : g))
           }
           img.src = url
         })

@@ -259,6 +259,7 @@ export default function SpriteEditorPage() {
   const [activeName, setActiveName] = useState(null)
   const [activeFrame, setActiveFrame] = useState(0)
   const [activeColor, setActiveColor] = useState('.')
+  const activeColorRef = useRef('.')
   const [copied, setCopied] = useState(false)
 
   useEffect(() => {
@@ -277,6 +278,8 @@ export default function SpriteEditorPage() {
       .catch(() => setSprites(null))
   }, [slug])
 
+  activeColorRef.current = activeColor
+
   const def = sprites && activeCat && activeName ? sprites[activeCat]?.[activeName] : null
   const categories = sprites ? Object.keys(sprites) : []
 
@@ -293,16 +296,18 @@ export default function SpriteEditorPage() {
     return result
   }, [sprites])
 
-  // Select first palette color when switching sprites
+  // Reset frame and fix palette color when switching sprites
   useEffect(() => {
-    if (def?.palette) {
-      const keys = Object.keys(def.palette)
-      if (keys.length > 0 && activeColor !== '.' && !def.palette[activeColor]) {
+    if (!sprites || !activeCat || !activeName) return
+    const d = sprites[activeCat]?.[activeName]
+    if (d?.palette) {
+      const keys = Object.keys(d.palette)
+      if (keys.length > 0 && activeColorRef.current !== '.' && !d.palette[activeColorRef.current]) {
         setActiveColor(keys[0])
       }
     }
     setActiveFrame(0)
-  }, [activeCat, activeName])
+  }, [activeCat, activeName, sprites])
 
   const update = useCallback((mutator) => {
     setSprites(prev => {

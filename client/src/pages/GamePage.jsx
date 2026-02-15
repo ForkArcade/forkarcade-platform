@@ -10,6 +10,8 @@ import EvolvePanel from '../components/EvolvePanel'
 import SpritePanel from '../components/SpritePanel'
 import MdPopup from '../components/MdPopup'
 
+const IFRAME_ORIGIN = `https://${GITHUB_ORG.toLowerCase()}.github.io`
+
 const TAB_ICONS = {
   info: { label: 'Info', icon: Info },
   leaderboard: { label: 'Leaderboard', icon: Trophy },
@@ -28,11 +30,13 @@ export default function GamePage({ user, balance, onBalanceChange }) {
   const [versions, setVersions] = useState([])
   const [selectedVersion, setSelectedVersion] = useState(null)
   const [gameStatus, setGameStatus] = useState('loading') // loading | ready | unavailable
+  const gameStatusRef = useRef('loading')
   const [focused, setFocused] = useState(false)
   const [sprites, setSprites] = useState(null)
-  const [claudeMd, setClaudeMd] = useState(null)
-  const [showClaudeMd, setShowClaudeMd] = useState(false)
+  const [claudeMd, setClaudeMd] = useState(null) // null = not loaded yet, string = loaded content
+  const [claudeMdPopup, setClaudeMdPopup] = useState(false)
   const [changelogPopup, setChangelogPopup] = useState(null) // { version, text } | null
+  const changelogCache = useRef({})
   const iframeRef = useRef(null)
 
   const currentVersion = selectedVersion || (versions.length > 0 ? versions[versions.length - 1].version : null)
@@ -67,11 +71,9 @@ export default function GamePage({ user, balance, onBalanceChange }) {
 
   useEffect(() => { loadLeaderboard() }, [loadLeaderboard])
 
-  const iframeOrigin = `https://${GITHUB_ORG.toLowerCase()}.github.io`
-
   const iframeUrl = selectedVersion
-    ? `${iframeOrigin}/${slug}/versions/v${selectedVersion}/`
-    : `${iframeOrigin}/${slug}/`
+    ? `${IFRAME_ORIGIN}/${slug}/versions/v${selectedVersion}/`
+    : `${IFRAME_ORIGIN}/${slug}/`
 
   const wrapperRef = useRef(null)
 
@@ -87,6 +89,7 @@ export default function GamePage({ user, balance, onBalanceChange }) {
 
   useEffect(() => {
     setGameStatus('loading')
+    gameStatusRef.current = 'loading'
     setFocused(false)
 
     // Retry: 4s → 8s → 16s (28s total, covers GitHub Pages deploy time)
@@ -97,16 +100,15 @@ export default function GamePage({ user, balance, onBalanceChange }) {
 
     function scheduleRetry() {
       if (cancelled || attempt >= delays.length) {
-        if (!cancelled) setGameStatus(prev => prev === 'loading' ? 'unavailable' : prev)
+        if (!cancelled && gameStatusRef.current === 'loading') {
+          setGameStatus('unavailable')
+          gameStatusRef.current = 'unavailable'
+        }
         return
       }
       timer = setTimeout(() => {
-        if (cancelled) return
-        setGameStatus(prev => {
-          if (prev !== 'loading') return prev
-          if (iframeRef.current) iframeRef.current.src = iframeUrl
-          return prev
-        })
+        if (cancelled || gameStatusRef.current !== 'loading') return
+        if (iframeRef.current) iframeRef.current.src = iframeUrl
         attempt++
         scheduleRetry()
       }, delays[attempt])
@@ -129,21 +131,22 @@ export default function GamePage({ user, balance, onBalanceChange }) {
       switch (data.type) {
         case 'FA_READY':
           setGameStatus('ready')
-          iframeRef.current?.contentWindow.postMessage({ type: 'FA_INIT', slug, version: currentVersion }, iframeOrigin)
+          gameStatusRef.current = 'ready'
+          iframeRef.current?.contentWindow.postMessage({ type: 'FA_INIT', slug, version: currentVersion }, IFRAME_ORIGIN)
           break
         case 'FA_SUBMIT_SCORE':
           apiFetch(`/api/games/${slug}/score`, {
             method: 'POST',
             body: JSON.stringify({ score: data.score, version: data.version || currentVersion }),
           }).then(result => {
-            iframeRef.current?.contentWindow.postMessage({ type: 'FA_SCORE_RESULT', ok: result.ok, requestId: data.requestId }, iframeOrigin)
+            iframeRef.current?.contentWindow.postMessage({ type: 'FA_SCORE_RESULT', ok: result.ok, requestId: data.requestId }, IFRAME_ORIGIN)
             if (result.coins > 0) {
-              iframeRef.current?.contentWindow.postMessage({ type: 'FA_COIN_EARNED', coins: result.coins, isPersonalRecord: result.isPersonalRecord }, iframeOrigin)
+              iframeRef.current?.contentWindow.postMessage({ type: 'FA_COIN_EARNED', coins: result.coins, isPersonalRecord: result.isPersonalRecord }, IFRAME_ORIGIN)
               onBalanceChange(prev => (prev ?? 0) + result.coins)
             }
             loadLeaderboard()
           }).catch(() => {
-            iframeRef.current?.contentWindow.postMessage({ type: 'FA_SCORE_RESULT', error: 'submit_failed', requestId: data.requestId }, iframeOrigin)
+            iframeRef.current?.contentWindow.postMessage({ type: 'FA_SCORE_RESULT', error: 'submit_failed', requestId: data.requestId }, IFRAME_ORIGIN)
           })
           break
         case 'FA_GET_PLAYER':
@@ -151,7 +154,7 @@ export default function GamePage({ user, balance, onBalanceChange }) {
             user
               ? { type: 'FA_PLAYER_INFO', login: user.login, sub: user.sub, requestId: data.requestId }
               : { type: 'FA_PLAYER_INFO', error: 'not_logged_in', requestId: data.requestId },
-            iframeOrigin
+            IFRAME_ORIGIN
           )
           break
         case 'FA_NARRATIVE_UPDATE':
@@ -333,7 +336,7 @@ export default function GamePage({ user, balance, onBalanceChange }) {
                 )}
                 {claudeMd && (
                   <button
-                    onClick={() => setShowClaudeMd(true)}
+                    onClick={() => setClaudeMdPopup(true)}
                     style={{
                       display: 'flex',
                       alignItems: 'center',
@@ -365,9 +368,19 @@ export default function GamePage({ user, balance, onBalanceChange }) {
                   <div
                     key={v.version}
                     onClick={() => {
+                      const cacheKey = `v${v.version}`
+                      if (changelogCache.current[cacheKey]) {
+                        setChangelogPopup({ version: v.version, text: changelogCache.current[cacheKey] })
+                        return
+                      }
                       fetch(githubRawUrl(`${GITHUB_ORG}/${slug}/main/changelog/v${v.version}.md`))
                         .then(r => r.ok ? r.text() : null)
-                        .then(text => { if (text) setChangelogPopup({ version: v.version, text }) })
+                        .then(text => {
+                          if (text) {
+                            changelogCache.current[cacheKey] = text
+                            setChangelogPopup({ version: v.version, text })
+                          }
+                        })
                         .catch(() => {})
                     }}
                     style={{
@@ -400,8 +413,8 @@ export default function GamePage({ user, balance, onBalanceChange }) {
           </div>
         </Panel>
 
-      {showClaudeMd && claudeMd && (
-        <MdPopup title="CLAUDE.md" text={claudeMd} onClose={() => setShowClaudeMd(false)} />
+      {claudeMdPopup && claudeMd && (
+        <MdPopup title="CLAUDE.md" text={claudeMd} onClose={() => setClaudeMdPopup(false)} />
       )}
       {changelogPopup && (
         <MdPopup title={`Changelog v${changelogPopup.version}`} text={changelogPopup.text} onClose={() => setChangelogPopup(null)} />

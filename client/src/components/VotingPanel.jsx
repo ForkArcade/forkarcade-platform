@@ -53,6 +53,10 @@ export default function VotingPanel({
   }
 
   useEffect(() => {
+    setShowForm(false)
+    setTitle('')
+    setBody('')
+    setExtra(defaultExtra || {})
     loadData()
     const id = setInterval(loadVotes, 30_000)
     const onVisible = () => !document.hidden && loadVotes()
@@ -71,7 +75,8 @@ export default function VotingPanel({
     const prevBalance = balance
     const prevVotes = { ...votes }
     const prev = votes[issueNumber] || { total_votes: 0, unique_voters: 0, voter_ids: [] }
-    setVotes(v => ({ ...v, [issueNumber]: { ...prev, total_votes: prev.total_votes + 10, unique_voters: prev.unique_voters + 1 } }))
+    const updatedVoterIds = user?.id && !prev.voter_ids.includes(user.id) ? [...prev.voter_ids, user.id] : prev.voter_ids
+    setVotes(v => ({ ...v, [issueNumber]: { ...prev, total_votes: prev.total_votes + 10, unique_voters: prev.unique_voters + 1, voter_ids: updatedVoterIds } }))
     onBalanceChange(prev => (prev ?? 0) - 10)
     try {
       const r = await apiFetch(voteUrl, { method: 'POST', body: JSON.stringify({ issue_number: issueNumber, coins: 10 }) })

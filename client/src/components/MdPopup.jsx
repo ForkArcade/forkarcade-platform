@@ -2,8 +2,6 @@ import { T } from '../theme'
 import { X } from 'lucide-react'
 import SimpleMd from './SimpleMd'
 
-export { default as SimpleMd } from './SimpleMd'
-
 export default function MdPopup({ title, text, onClose, footer }) {
   return (
     <div

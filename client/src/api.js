@@ -10,13 +10,12 @@ export function formatSlug(slug) {
 }
 
 export async function apiFetch(path, options = {}) {
+  const headers = { ...(options.headers || {}) }
+  if (options.body) headers['Content-Type'] = 'application/json'
   const res = await fetch(API + path, {
     credentials: 'include',
     ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(options.headers || {}),
-    },
+    headers,
   })
   if (!res.ok) throw new Error(`API ${res.status}`)
   return res.json()

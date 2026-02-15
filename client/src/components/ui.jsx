@@ -240,46 +240,6 @@ export function IconTabBar({ tabs, active, onChange }) {
   )
 }
 
-// --- Segmented Control ---
-
-export function SegmentedControl({ items, active, onChange }) {
-  return (
-    <div style={{
-      display: 'inline-flex',
-      background: T.surface,
-      border: `1px solid ${T.border}`,
-      borderRadius: T.radius.md,
-      overflow: 'hidden',
-    }}>
-      {items.map((item, i) => {
-        const isActive = active === item.value
-        return (
-          <button
-            key={item.value}
-            onClick={() => onChange(item.value)}
-            title={item.title}
-            style={{
-              padding: `0 ${T.sp[4]}px`,
-              height: 26,
-              background: isActive ? T.elevated : 'transparent',
-              color: isActive ? T.textBright : T.muted,
-              border: 'none',
-              borderRight: i < items.length - 1 ? `1px solid ${T.border}` : 'none',
-              cursor: 'pointer',
-              fontSize: T.fontSize.xs,
-              fontFamily: T.mono,
-              fontWeight: isActive ? T.weight.medium : T.weight.normal,
-              letterSpacing: T.tracking.wide,
-            }}
-          >
-            {item.label}
-          </button>
-        )
-      })}
-    </div>
-  )
-}
-
 // --- Pill Tabs ---
 
 export function PillTabs({ tabs, active, onChange }) {
