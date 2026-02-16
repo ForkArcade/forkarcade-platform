@@ -95,6 +95,8 @@ export default function App() {
           <Separator />
           <a href="/pitchdeck.html" target="_blank" rel="noopener noreferrer" style={{ color: T.muted, textDecoration: 'none' }}>Pitch Deck</a>
           <Separator />
+          <a href="/video.gif" target="_blank" rel="noopener noreferrer" style={{ color: T.muted, textDecoration: 'none' }}>Demo</a>
+          <Separator />
           <span style={{ color: T.muted }}>Built with Claude Code</span>
         </div>
       </footer>
