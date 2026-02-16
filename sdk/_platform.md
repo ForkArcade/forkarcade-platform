@@ -50,6 +50,19 @@ FA.narrative.init({
 
 Graph categories: `arc` (global game arc), `quest_*` (per-NPC/quest), `situation_*` (specific events). Edges define valid transitions. `transition()` warns in console if no edge exists.
 
+### Conditional edges
+Edges with `var` conditions auto-trigger when `setVar()` changes a matching variable. First matching conditional edge wins. Unconditional edges (no `var`) require explicit `transition()` call.
+
+```js
+edges: [
+  { from: 'stranger', to: 'acquaintance', var: 'npc_interactions', gte: 1 },  // auto
+  { from: 'acquaintance', to: 'confidant', var: 'npc_interactions', gte: 3 }, // auto
+  { from: 'routine', to: 'first_system' }  // manual — transition() only
+]
+```
+
+Conditions: `eq`, `gte`, `lte` (same syntax as `FA.select`). Use for relationship graphs, progression thresholds. Keep dramatic beats (cutscenes, endings) as manual transitions.
+
 ### Transitions
 ```js
 FA.narrative.transition('arc', 'explore');                    // graphId, nodeId
