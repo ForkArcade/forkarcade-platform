@@ -93,6 +93,8 @@ export default function App() {
         <div style={{ display: 'flex', gap: T.sp[5], fontSize: T.fontSize.xs }}>
           <a href="https://github.com/ForkArcade" target="_blank" rel="noopener noreferrer" style={{ color: T.muted, textDecoration: 'none' }}>GitHub</a>
           <Separator />
+          <a href="/pitchdeck.html" target="_blank" rel="noopener noreferrer" style={{ color: T.muted, textDecoration: 'none' }}>Pitch Deck</a>
+          <Separator />
           <span style={{ color: T.muted }}>Built with Claude Code</span>
         </div>
       </footer>
