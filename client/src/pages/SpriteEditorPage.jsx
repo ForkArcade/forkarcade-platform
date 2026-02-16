@@ -78,11 +78,16 @@ export default function SpriteEditorPage({ user }) {
       .catch(() => setLoadError(true))
   }, [slug])
 
-  // Save to localStorage on every edit (skip initial load)
+  // Save to localStorage on edit (debounced, skip initial load)
+  const saveTimerRef = useRef(null)
   useEffect(() => {
     if (!sprites || initialLoadRef.current) return
-    localStorage.setItem(LS_KEY(slug), JSON.stringify(sprites))
     setHasLocalEdits(true)
+    clearTimeout(saveTimerRef.current)
+    saveTimerRef.current = setTimeout(() => {
+      localStorage.setItem(LS_KEY(slug), JSON.stringify(sprites))
+    }, 400)
+    return () => clearTimeout(saveTimerRef.current)
   }, [sprites, slug])
 
   const handleDiscard = useCallback(() => {

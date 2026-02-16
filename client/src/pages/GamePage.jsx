@@ -26,7 +26,11 @@ export default function GamePage({ user, balance, onBalanceChange }) {
   const [game, setGame] = useState(null)
   const [leaderboard, setLeaderboard] = useState([])
   const [tab, setTab] = useState('info')
-  const [narrativeState, setNarrativeState] = useState({ variables: {}, currentNode: null, graph: null, events: [] })
+  const tabRef = useRef(tab)
+  tabRef.current = tab
+  const narrativeRef = useRef({ variables: {}, currentNode: null, graph: null, events: [] })
+  const [narrativeState, setNarrativeState] = useState(narrativeRef.current)
+  const narrativeFlushTimer = useRef(null)
   const [versions, setVersions] = useState([])
   const [selectedVersion, setSelectedVersion] = useState(null)
   const [gameStatus, setGameStatus] = useState('loading') // loading | ready | unavailable
@@ -180,19 +184,35 @@ export default function GamePage({ user, balance, onBalanceChange }) {
             IFRAME_ORIGIN
           )
           break
-        case 'FA_NARRATIVE_UPDATE':
-          setNarrativeState(prev => ({
-            variables: data.variables || prev.variables,
-            currentNode: data.currentNode || prev.currentNode,
-            graph: data.graph || prev.graph,
-            events: data.event ? [...prev.events, data.event].slice(-20) : prev.events,
-          }))
+        case 'FA_NARRATIVE_UPDATE': {
+          const nr = narrativeRef.current
+          narrativeRef.current = {
+            variables: data.variables || nr.variables,
+            currentNode: data.currentNode || nr.currentNode,
+            graph: data.graph || nr.graph,
+            events: data.event ? [...nr.events, data.event].slice(-20) : nr.events,
+          }
+          if (tabRef.current === 'narrative' && !narrativeFlushTimer.current) {
+            narrativeFlushTimer.current = setTimeout(() => {
+              narrativeFlushTimer.current = null
+              setNarrativeState({ ...narrativeRef.current })
+            }, 500)
+          }
           break
+        }
       }
     }
     window.addEventListener('message', handleMessage)
     return () => window.removeEventListener('message', handleMessage)
   }, [slug, user, loadLeaderboard, currentVersion])
+
+  // Sync narrative ref to state when switching to narrative tab
+  useEffect(() => {
+    if (tab === 'narrative') setNarrativeState({ ...narrativeRef.current })
+  }, [tab])
+
+  // Cleanup narrative throttle timer
+  useEffect(() => () => clearTimeout(narrativeFlushTimer.current), [])
 
   if (!game) return <EmptyState>Loading...</EmptyState>
 
