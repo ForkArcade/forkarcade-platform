@@ -14,47 +14,79 @@ Every game MUST have at least 3 screens (`screen` state):
 
 Narrative is the platform's mission — dev focuses on the game, narrative comes for free. But the player MUST see it in the game.
 
-- Define a narrative graph with **nodes AND edges** in `FA.narrative.init()`
+- Define **named graphs** with nodes and edges in `FA.narrative.init()`
 - Register narrative texts: `FA.register('narrativeText', nodeId, { text, color })`
 - Display them in the game (e.g. bar at the top of the screen with fade out)
-- Call `showNarrative(nodeId)` at key moments
+- Call `showNarrative(graphId, nodeId)` at key moments
 - End screen shows appropriate narrative text
 
-Narrative graph format:
+### Multi-graph init
+Define named graphs. Each graph has its own nodes, edges, and currentNode. Variables are global (shared across all graphs).
+
 ```js
 FA.narrative.init({
-  startNode: 'awakening',
   variables: { hasKey: false, bossDefeated: false },
-  graph: {
-    nodes: [
-      { id: 'awakening', type: 'scene', label: 'Awakening' },
-      { id: 'explore', type: 'scene', label: 'Exploration' },
-      { id: 'boss', type: 'choice', label: 'Boss Fight' },
-      { id: 'victory', type: 'scene', label: 'Victory' },
-      { id: 'defeat', type: 'scene', label: 'Defeat' }
-    ],
-    edges: [
-      { from: 'awakening', to: 'explore' },
-      { from: 'explore', to: 'boss' },
-      { from: 'boss', to: 'victory' },
-      { from: 'boss', to: 'defeat' },
-      { from: 'defeat', to: 'explore' }
-    ]
+  graphs: {
+    arc: {
+      startNode: 'awakening',
+      nodes: [
+        { id: 'awakening', type: 'scene', label: 'Awakening' },
+        { id: 'explore', type: 'scene', label: 'Exploration' },
+        { id: 'boss', type: 'choice', label: 'Boss Fight' },
+        { id: 'victory', type: 'scene', label: 'Victory' },
+        { id: 'defeat', type: 'scene', label: 'Defeat' }
+      ],
+      edges: [
+        { from: 'awakening', to: 'explore' },
+        { from: 'explore', to: 'boss' },
+        { from: 'boss', to: 'victory' },
+        { from: 'boss', to: 'defeat' },
+        { from: 'defeat', to: 'explore' }
+      ]
+    }
   }
 });
 ```
 
-Edges define valid transitions. `transition()` warns in console if no edge exists from the current node to the target. The platform renders edges as `→ target1, target2` under each node in the Narrative panel.
+Graph categories: `arc` (global game arc), `quest_*` (per-NPC/quest), `situation_*` (specific events). Edges define valid transitions. `transition()` warns in console if no edge exists.
 
-`showNarrative` pattern:
+### Transitions
 ```js
-function showNarrative(nodeId) {
+FA.narrative.transition('arc', 'explore');                    // graphId, nodeId
+FA.narrative.transition('arc', 'victory', 'Boss defeated');   // graphId, nodeId, event
+```
+
+### Content selection
+`FA.select(entries)` — priority-ordered array, first matching entry wins. Use for dialogues, thoughts, any narrative-driven content.
+
+```js
+FA.register('dialogues', 'npc_name', [
+  { node: 'quest_npc:allied', text: 'I found intel.' },
+  { var: 'day', gte: 3, text: 'You keep coming back.' },
+  { text: 'Morning.' }  // fallback (no condition)
+]);
+
+var entry = FA.select(FA.lookup('dialogues', 'npc_name'));
+var text = entry ? entry.text : null;
+```
+
+Conditions:
+- `{ node: 'graphId:nodeId' }` — true when graph is at that node
+- `{ var: 'name', eq: value }` — exact match
+- `{ var: 'name', gte: N }` — greater or equal
+- `{ var: 'name', lte: N }` — less or equal
+- Conditions combine: `{ var: 'day', gte: 3, lte: 5, text: '...' }`
+- No condition = always matches (fallback)
+
+### showNarrative pattern
+```js
+function showNarrative(graphId, nodeId) {
   var textDef = FA.lookup('narrativeText', nodeId);
   if (textDef) {
     // life is in milliseconds! dt in the engine is in ms (~16.67ms per tick)
     FA.setState('narrativeMessage', { text: textDef.text, color: textDef.color, life: 4000 });
   }
-  FA.narrative.transition(nodeId);
+  FA.narrative.transition(graphId, nodeId);
 }
 ```
 In the game loop count down: `if (state.narrativeMessage && state.narrativeMessage.life > 0) state.narrativeMessage.life -= dt;`
@@ -138,6 +170,17 @@ When implementing an evolve issue, you MUST create a changelog file:
 ```
 
 This file is committed as part of the evolve PR. The platform displays it in the Changelog tab.
+
+## Performance Rules
+
+The game loop runs at ~60fps. Every allocation or expensive call per frame compounds into stuttering and GC pauses.
+
+- **Never allocate in the game loop** — no `new Set()`, `new Array()`, `{}`, `[]` inside `FA.setUpdate` or render layers. Pre-allocate once, reuse with `.clear()` or index reset.
+- **Cache expensive computations** — BFS, pathfinding, FOV, connectivity checks. Recompute only when input changes (e.g. parts spliced, player moved), not every frame.
+- **Turn-based games: don't recompute per frame** — if state only changes on player action, cache results and skip recalculation in the render loop.
+- **Guard `FA.narrative.setVar()` on value change** — never call it every frame. Compare with previous value first: `if (state._lastX !== val) { state._lastX = val; FA.narrative.setVar(...); }`
+- **`ctx.shadowBlur` is expensive** — set shadow state once outside loops, not per entity. Batch draws by color/style, use a single `ctx.save()`/`ctx.restore()` per batch.
+- **`ctx.createRadialGradient`/`createLinearGradient`** — create once and cache if inputs don't change. Never create per entity per frame.
 
 ## Platform Files (do not edit)
 

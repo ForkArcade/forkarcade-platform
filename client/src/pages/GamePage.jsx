@@ -28,7 +28,7 @@ export default function GamePage({ user, balance, onBalanceChange }) {
   const [tab, setTab] = useState('info')
   const tabRef = useRef(tab)
   tabRef.current = tab
-  const narrativeRef = useRef({ variables: {}, currentNode: null, graph: null, events: [] })
+  const narrativeRef = useRef({ variables: {}, graphs: {}, events: [] })
   const [narrativeState, setNarrativeState] = useState(narrativeRef.current)
   const narrativeFlushTimer = useRef(null)
   const [versions, setVersions] = useState([])
@@ -188,8 +188,7 @@ export default function GamePage({ user, balance, onBalanceChange }) {
           const nr = narrativeRef.current
           narrativeRef.current = {
             variables: data.variables || nr.variables,
-            currentNode: data.currentNode || nr.currentNode,
-            graph: data.graph || nr.graph,
+            graphs: data.graphs || nr.graphs,
             events: data.event ? [...nr.events, data.event].slice(-20) : nr.events,
           }
           if (tabRef.current === 'narrative' && !narrativeFlushTimer.current) {

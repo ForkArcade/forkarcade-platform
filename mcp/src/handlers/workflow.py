@@ -257,20 +257,22 @@ Reports narrative state to the platform. Fire-and-forget (no Promise).
 ```js
 ForkArcade.updateNarrative({{
   variables: {{ karma: 3, has_key: true }},
-  currentNode: 'dark-cellar',
-  graph: {{
-    nodes: [
-      {{ id: 'intro', label: 'Start', type: 'scene' }},
-      {{ id: 'choice-1', label: 'Help NPC?', type: 'choice' }},
-    ],
-    edges: [
-      {{ from: 'intro', to: 'choice-1' }},
-    ]
+  graphs: {{
+    arc: {{
+      currentNode: 'dark-cellar',
+      nodes: [
+        {{ id: 'intro', label: 'Start', type: 'scene' }},
+        {{ id: 'dark-cellar', label: 'Dark Cellar', type: 'scene' }},
+      ],
+      edges: [
+        {{ from: 'intro', to: 'dark-cellar' }},
+      ]
+    }}
   }},
   event: 'Entered dark cellar'
 }});
 ```
-Node types: `scene`, `choice`, `condition`.
+Node types: `scene`, `choice`, `condition`. Multiple named graphs supported (`arc`, `quest_*`, etc.).
 """
 
 

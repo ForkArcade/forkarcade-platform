@@ -1,10 +1,8 @@
 import { T } from '../theme'
 import { SectionHeading, EmptyState } from './ui'
 
-function NodeList({ graph, currentNode }) {
-  if (!graph || !graph.nodes || graph.nodes.length === 0) {
-    return <EmptyState>No narrative graph yet</EmptyState>
-  }
+function GraphSection({ name, graph }) {
+  if (!graph || !graph.nodes || graph.nodes.length === 0) return null
 
   const edgeMap = {}
   if (graph.edges) {
@@ -15,28 +13,37 @@ function NodeList({ graph, currentNode }) {
   }
 
   return (
-    <div style={{ fontSize: T.fontSize.xs, fontFamily: T.mono }}>
-      {graph.nodes.map(node => {
-        const active = node.id === currentNode
-        const color = T.nodeColors[node.type] || T.text
-        const targets = edgeMap[node.id]
-        return (
-          <div key={node.id} style={{ padding: `${T.sp[1]}px 0` }}>
-            <div style={{ display: 'flex', gap: T.sp[3], alignItems: 'center' }}>
-              <span style={{ color, fontSize: 9 }}>{node.type === 'choice' ? '\u25c6' : node.type === 'condition' ? '\u25b2' : '\u25a0'}</span>
-              <span style={{ color: active ? T.textBright : T.text, fontWeight: active ? T.weight.bold : T.weight.normal }}>
-                {node.label || node.id}
-              </span>
-              {active && <span style={{ color: T.accentColor, fontSize: 9 }}>{'\u25c0'}</span>}
-            </div>
-            {targets && (
-              <div style={{ marginLeft: 18, color: T.muted, fontSize: 9 }}>
-                {'\u2192'} {targets.join(', ')}
+    <div style={{ marginBottom: T.sp[5] }}>
+      <div style={{
+        fontSize: 9, fontFamily: T.mono, color: T.muted,
+        textTransform: 'uppercase', letterSpacing: T.tracking.widest,
+        marginBottom: T.sp[2]
+      }}>
+        {name}
+      </div>
+      <div style={{ fontSize: T.fontSize.xs, fontFamily: T.mono }}>
+        {graph.nodes.map(node => {
+          const active = node.id === graph.currentNode
+          const color = T.nodeColors[node.type] || T.text
+          const targets = edgeMap[node.id]
+          return (
+            <div key={node.id} style={{ padding: `${T.sp[1]}px 0` }}>
+              <div style={{ display: 'flex', gap: T.sp[3], alignItems: 'center' }}>
+                <span style={{ color, fontSize: 9 }}>{node.type === 'choice' ? '\u25c6' : node.type === 'condition' ? '\u25b2' : '\u25a0'}</span>
+                <span style={{ color: active ? T.textBright : T.text, fontWeight: active ? T.weight.bold : T.weight.normal }}>
+                  {node.label || node.id}
+                </span>
+                {active && <span style={{ color: T.accentColor, fontSize: 9 }}>{'\u25c0'}</span>}
               </div>
-            )}
-          </div>
-        )
-      })}
+              {targets && (
+                <div style={{ marginLeft: 18, color: T.muted, fontSize: 9 }}>
+                  {'\u2192'} {targets.join(', ')}
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }
@@ -80,13 +87,19 @@ function EventLog({ events }) {
 }
 
 export default function NarrativePanel({ narrativeState }) {
-  const { variables, currentNode, graph, events } = narrativeState || {}
+  const { variables, graphs, events } = narrativeState || {}
+  const graphEntries = graphs ? Object.entries(graphs) : []
 
   return (
     <div style={{ fontSize: T.fontSize.sm }}>
       <div style={{ marginBottom: T.sp[6] }}>
-        <SectionHeading>Graph</SectionHeading>
-        <NodeList graph={graph} currentNode={currentNode} />
+        <SectionHeading>Graphs</SectionHeading>
+        {graphEntries.length === 0
+          ? <EmptyState>No narrative graphs yet</EmptyState>
+          : graphEntries.map(([name, graph]) => (
+              <GraphSection key={name} name={name} graph={graph} />
+            ))
+        }
       </div>
       <div style={{ marginBottom: T.sp[6] }}>
         <SectionHeading>Variables</SectionHeading>
