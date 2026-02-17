@@ -108,7 +108,10 @@ export default function SpriteEditor({ sprites, activeCat, activeName, onUpdate,
   }, [flushPaint])
 
   // --- Palette handlers ---
+  const [previewColor, setPreviewColor] = useState(null) // { key, color } during drag
+
   const handleColorChange = useCallback((key, color) => {
+    setPreviewColor(null)
     onUpdate(d => { d.palette[key] = color })
   }, [onUpdate])
 
@@ -292,18 +295,21 @@ export default function SpriteEditor({ sprites, activeCat, activeName, onUpdate,
             }}
           />
           {/* Colors */}
-          {paletteKeys.map(key => (
-            <div
-              key={key}
-              onClick={() => setActiveColor(key)}
-              title={`${key}: ${def.palette[key]}`}
-              style={{
-                width: 22, height: 22, borderRadius: 3, cursor: 'pointer',
-                background: def.palette[key],
-                border: activeColor === key ? `2px solid ${T.accentColor}` : `1px solid ${T.border}`,
-              }}
-            />
-          ))}
+          {paletteKeys.map(key => {
+            const color = (previewColor?.key === key) ? previewColor.color : def.palette[key]
+            return (
+              <div
+                key={key}
+                onClick={() => setActiveColor(key)}
+                title={`${key}: ${color}`}
+                style={{
+                  width: 22, height: 22, borderRadius: 3, cursor: 'pointer',
+                  background: color,
+                  border: activeColor === key ? `2px solid ${T.accentColor}` : `1px solid ${T.border}`,
+                }}
+              />
+            )
+          })}
           {/* Add */}
           <div
             onClick={handleAddColor}
@@ -320,12 +326,14 @@ export default function SpriteEditor({ sprites, activeCat, activeName, onUpdate,
         {activeColor !== '.' && def.palette[activeColor] && (
           <div style={{ display: 'flex', alignItems: 'center', gap: T.sp[2], marginTop: T.sp[2] }}>
             <input
-              type="color" value={def.palette[activeColor]}
+              type="color"
+              value={(previewColor?.key === activeColor) ? previewColor.color : def.palette[activeColor]}
+              onInput={(e) => setPreviewColor({ key: activeColor, color: e.target.value })}
               onChange={(e) => handleColorChange(activeColor, e.target.value)}
               style={{ width: 20, height: 20, padding: 0, border: `1px solid ${T.border}`, borderRadius: 2, cursor: 'pointer', background: 'none' }}
             />
             <span style={{ fontFamily: T.mono, fontSize: 9, color: T.textBright }}>{activeColor}</span>
-            <span style={{ fontFamily: T.mono, fontSize: 8, color: T.muted }}>{def.palette[activeColor]}</span>
+            <span style={{ fontFamily: T.mono, fontSize: 8, color: T.muted }}>{(previewColor?.key === activeColor) ? previewColor.color : def.palette[activeColor]}</span>
             {paletteKeys.length > 1 && (
               <button
                 onClick={() => handleRemoveColor(activeColor)}
