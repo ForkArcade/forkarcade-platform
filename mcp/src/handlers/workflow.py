@@ -550,31 +550,48 @@ def apply_data_patch(args):
         return json.dumps({"error": f"Invalid JSON in data-patch block: {e}"})
 
     patch_type = patch.get("type")
-    if patch_type != "sprites":
-        return json.dumps({"error": f"Unknown data-patch type: {patch_type}. Supported: sprites"})
+    if patch_type not in ("sprites", "maps"):
+        return json.dumps({"error": f"Unknown data-patch type: {patch_type}. Supported: sprites, maps"})
 
     data = patch.get("data")
     if not isinstance(data, dict):
         return json.dumps({"error": "data-patch data must be an object"})
 
-    sprite_count = 0
-    for cat, sprites in data.items():
-        if not isinstance(sprites, dict):
-            return json.dumps({"error": f"Category '{cat}' must be an object"})
-        for name, s in sprites.items():
-            if not isinstance(s.get("frames"), list) or len(s["frames"]) == 0:
-                return json.dumps({"error": f"{cat}/{name}: missing or empty frames"})
-            if not isinstance(s.get("palette"), dict):
-                return json.dumps({"error": f"{cat}/{name}: missing palette"})
-            sprite_count += 1
+    if patch_type == "sprites":
+        sprite_count = 0
+        for cat, sprites in data.items():
+            if not isinstance(sprites, dict):
+                return json.dumps({"error": f"Category '{cat}' must be an object"})
+            for name, s in sprites.items():
+                if not isinstance(s.get("frames"), list) or len(s["frames"]) == 0:
+                    return json.dumps({"error": f"{cat}/{name}: missing or empty frames"})
+                if not isinstance(s.get("palette"), dict):
+                    return json.dumps({"error": f"{cat}/{name}: missing palette"})
+                sprite_count += 1
 
-    (game_path / "_sprites.json").write_text(json.dumps(data, indent=2) + "\n")
-    (game_path / "sprites.js").write_text(generate_sprites_js(data))
+        (game_path / "_sprites.json").write_text(json.dumps(data, indent=2) + "\n")
+        (game_path / "sprites.js").write_text(generate_sprites_js(data))
 
-    return json.dumps({
-        "ok": True,
-        "message": f"Data patch applied: {sprite_count} sprites written",
-        "sprites": sprite_count,
-    })
+        return json.dumps({
+            "ok": True,
+            "message": f"Data patch applied: {sprite_count} sprites written",
+            "sprites": sprite_count,
+        })
+
+    if patch_type == "maps":
+        levels = data.get("levels")
+        if not isinstance(levels, list) or len(levels) == 0:
+            return json.dumps({"error": "maps data-patch must have non-empty levels array"})
+        for i, level in enumerate(levels):
+            if not isinstance(level.get("grid"), list) or len(level["grid"]) == 0:
+                return json.dumps({"error": f"Level {i} missing or empty grid"})
+
+        (game_path / "_maps.json").write_text(json.dumps(data, indent=2) + "\n")
+
+        return json.dumps({
+            "ok": True,
+            "message": f"Map data patch applied: {len(levels)} levels written to _maps.json",
+            "levels": len(levels),
+        })
 
 

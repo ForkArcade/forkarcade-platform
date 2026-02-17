@@ -1,5 +1,4 @@
 import { useState, useRef, useCallback } from 'react'
-import { Link } from 'react-router-dom'
 import { T } from '../theme'
 import { Button } from '../components/ui'
 import { apiFetch } from '../api'
@@ -19,6 +18,7 @@ export default function RightPanel({
   slug, user, levels, setLevels, activeId, setActiveId,
   activeLevel, grid, zoneGrid, zoneDefs, setZoneDefs,
   cols, rows, updateLevel, tiles, spriteDefs, setSpriteDefs, showZones, setShowZones,
+  hasLocalMapEdits, resetMaps,
 }) {
   const [renamingId, setRenamingId] = useState(null)
   const [renameValue, setRenameValue] = useState('')
@@ -28,6 +28,10 @@ export default function RightPanel({
   const [proposeOpen, setProposeOpen] = useState(false)
   const [proposeTitle, setProposeTitle] = useState('Sprite update')
   const [proposeStatus, setProposeStatus] = useState(null)
+
+  const [mapProposeOpen, setMapProposeOpen] = useState(false)
+  const [mapProposeTitle, setMapProposeTitle] = useState('Map update')
+  const [mapProposeStatus, setMapProposeStatus] = useState(null)
 
   // Level CRUD
   const addLevel = () => {
@@ -174,20 +178,53 @@ export default function RightPanel({
     } catch { setProposeStatus('error') }
   }, [spriteDefs, proposeTitle, slug])
 
+  const handleMapPropose = useCallback(async () => {
+    if (!mapProposeTitle.trim()) return
+    setMapProposeStatus('sending')
+    const summary = `Map changes proposed from the editor.\n\nLevels:\n${levels.map(l =>
+      `- ${l.name} (${l.grid[0]?.length || 0}x${l.grid.length || 0})`
+    ).join('\n')}`
+    const json = JSON.stringify({ type: 'maps', data: { levels, zoneDefs } })
+    const body = `${summary}\n\n\`\`\`json:data-patch\n${json}\n\`\`\``
+    if (body.length > 60000) { setMapProposeStatus('error'); return }
+    try {
+      await apiFetch(`/api/games/${slug}/evolve-issues`, {
+        method: 'POST',
+        body: JSON.stringify({ title: mapProposeTitle.trim(), body, category: 'data-patch' }),
+      })
+      setMapProposeStatus('done')
+      setMapProposeOpen(false)
+      setTimeout(() => setMapProposeStatus(null), 3000)
+    } catch { setMapProposeStatus('error') }
+  }, [levels, zoneDefs, mapProposeTitle, slug])
+
   return (
     <div style={{
       width: 220, borderLeft: `1px solid ${T.border}`,
       padding: T.sp[4], display: 'flex', flexDirection: 'column', gap: T.sp[5],
       overflowY: 'auto', flexShrink: 0,
     }}>
-      <Link to={`/play/${slug}`} style={{ fontSize: T.fontSize.xs, color: T.accentColor, textDecoration: 'none', fontFamily: T.mono }}>
-        &larr; {slug}
-      </Link>
+      <a href={`/play/${slug}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: T.fontSize.xs, color: T.accentColor, textDecoration: 'none', fontFamily: T.mono }}>
+        {slug} &nearr; live preview
+      </a>
 
       {/* Levels */}
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: T.sp[3] }}>
-          <div style={{ fontSize: T.fontSize.xs, color: T.text, textTransform: 'uppercase' }}>Levels</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: T.sp[2] }}>
+            <div style={{ fontSize: T.fontSize.xs, color: T.text, textTransform: 'uppercase' }}>Levels</div>
+            {hasLocalMapEdits && resetMaps && (
+              <button
+                onClick={resetMaps}
+                title="Discard local map edits and reload published maps"
+                style={{
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  fontSize: 9, fontFamily: T.mono, color: '#ffb74d',
+                  padding: 0,
+                }}
+              >reset</button>
+            )}
+          </div>
           <button
             onClick={addLevel}
             style={{
@@ -312,6 +349,35 @@ export default function RightPanel({
                 <div style={{ fontSize: 10, color: T.danger }}>Failed. Login required & must have played this game.</div>
               )}
               <Button variant="ghost" onClick={() => setProposeOpen(false)}>Cancel</Button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Propose maps */}
+      {user && hasLocalMapEdits && (
+        <div>
+          {mapProposeStatus === 'done' ? (
+            <div style={{ fontSize: T.fontSize.xs, color: T.accent, padding: T.sp[3] }}>Map proposal submitted!</div>
+          ) : !mapProposeOpen ? (
+            <Button onClick={() => { setMapProposeOpen(true); setMapProposeStatus(null) }} style={{ width: '100%' }}>
+              Propose maps
+            </Button>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: T.sp[2] }}>
+              <input
+                value={mapProposeTitle}
+                onChange={e => setMapProposeTitle(e.target.value)}
+                placeholder="Title"
+                style={{ padding: `${T.sp[2]}px ${T.sp[3]}px`, background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius.sm, color: T.textBright, fontSize: T.fontSize.xs }}
+              />
+              <Button onClick={handleMapPropose} disabled={mapProposeStatus === 'sending' || !mapProposeTitle.trim()}>
+                {mapProposeStatus === 'sending' ? 'Sending...' : 'Submit'}
+              </Button>
+              {mapProposeStatus === 'error' && (
+                <div style={{ fontSize: 10, color: T.danger }}>Failed. Login required & must have played this game.</div>
+              )}
+              <Button variant="ghost" onClick={() => setMapProposeOpen(false)}>Cancel</Button>
             </div>
           )}
         </div>

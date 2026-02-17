@@ -67,6 +67,13 @@
       return;
     }
 
+    if (data.type === 'FA_MAP_UPDATE' && data.maps) {
+      window.FA_MAP_DATA = data.maps;
+      var evt = new CustomEvent('fa-map-update', { detail: data.maps });
+      window.dispatchEvent(evt);
+      return;
+    }
+
     if (data.requestId && _pending[data.requestId]) {
       var handler = _pending[data.requestId];
       delete _pending[data.requestId];

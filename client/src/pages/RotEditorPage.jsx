@@ -38,6 +38,9 @@ export default function RotEditorPage({ user }) {
   const offscreenRef = useRef(null)
   const containerRef = useRef(null)
   const levelsSaveRef = useRef(null)
+  const mapInitialRef = useRef(true)
+
+  const [hasLocalMapEdits, setHasLocalMapEdits] = useState(() => localStorage.getItem(STORAGE_KEY(slug)) !== null)
 
   const [levels, setLevels] = useState(() => {
     const loaded = loadLevels(slug)
@@ -123,6 +126,45 @@ export default function RotEditorPage({ user }) {
       .catch(() => {})
   }, [slug])
 
+  const resetMaps = useCallback(() => {
+    localStorage.removeItem(STORAGE_KEY(slug))
+    setHasLocalMapEdits(false)
+    mapInitialRef.current = true
+    fetch(githubRawUrl(`${GITHUB_ORG}/${slug}/main/data.js`))
+      .then(r => r.ok ? r.text() : null)
+      .then(text => {
+        if (!text) {
+          const id = uid()
+          setLevels([{ id, name: 'Level 1', grid: createEmptyGrid(DEFAULT_W, DEFAULT_H), frameGrid: createEmptyGrid(DEFAULT_W, DEFAULT_H).map(r => r.map(() => 0)), zoneGrid: createEmptyZoneGrid(DEFAULT_W, DEFAULT_H) }])
+          setActiveId(id)
+          setZoneDefs([])
+          return
+        }
+        const gameMaps = parseMapsFromDataJs(text)
+        if (gameMaps.length === 0) {
+          const id = uid()
+          setLevels([{ id, name: 'Level 1', grid: createEmptyGrid(DEFAULT_W, DEFAULT_H), frameGrid: createEmptyGrid(DEFAULT_W, DEFAULT_H).map(r => r.map(() => 0)), zoneGrid: createEmptyZoneGrid(DEFAULT_W, DEFAULT_H) }])
+          setActiveId(id)
+          setZoneDefs([])
+          return
+        }
+        const allZoneDefs = gameMaps.flatMap(m => m.zoneDefs || [])
+        setZoneDefs(allZoneDefs)
+        const curTiles = tilesRef.current
+        const gameLevels = gameMaps.map(m => ({
+          id: `game-${m.name}`,
+          name: m.name,
+          grid: m.grid,
+          frameGrid: curTiles.length > 0 ? bakeAllAutotiles(m.grid, null, curTiles) : m.grid.map(r => r.map(() => 0)),
+          zoneGrid: m.zoneGrid || createEmptyZoneGrid(m.grid[0]?.length || DEFAULT_W, m.grid.length || DEFAULT_H),
+          source: 'game',
+        }))
+        setLevels(gameLevels)
+        setActiveId(gameLevels[0].id)
+      })
+      .catch(() => {})
+  }, [slug])
+
   const [isPainting, setIsPainting] = useState(false)
   const [hoverPos, setHoverPos] = useState(null)
   const [cellSize, setCellSize] = useState(20)
@@ -136,8 +178,12 @@ export default function RotEditorPage({ user }) {
 
   // Debounced save levels to localStorage
   useEffect(() => {
+    if (mapInitialRef.current) { mapInitialRef.current = false; return }
     clearTimeout(levelsSaveRef.current)
-    levelsSaveRef.current = setTimeout(() => saveLevels(slug, { levels, activeId, zoneDefs }), 300)
+    levelsSaveRef.current = setTimeout(() => {
+      saveLevels(slug, { levels, activeId, zoneDefs })
+      setHasLocalMapEdits(true)
+    }, 300)
     return () => clearTimeout(levelsSaveRef.current)
   }, [levels, activeId, slug, zoneDefs])
 
@@ -577,6 +623,8 @@ export default function RotEditorPage({ user }) {
         setSpriteDefs={setSpriteDefs}
         showZones={showZones}
         setShowZones={setShowZones}
+        hasLocalMapEdits={hasLocalMapEdits}
+        resetMaps={resetMaps}
       />
     </div>
   )

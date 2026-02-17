@@ -140,6 +140,21 @@ export default function GamePage({ user, balance, onBalanceChange }) {
     return () => window.removeEventListener('storage', onStorage)
   }, [slug])
 
+  // Hot-reload maps when editor saves to localStorage (cross-tab)
+  useEffect(() => {
+    const key = `fa-maps-${slug}`
+    function onStorage(e) {
+      if (e.key !== key || !e.newValue || gameStatusRef.current !== 'ready') return
+      try {
+        iframeRef.current?.contentWindow.postMessage(
+          { type: 'FA_MAP_UPDATE', maps: JSON.parse(e.newValue) }, IFRAME_ORIGIN
+        )
+      } catch (err) {}
+    }
+    window.addEventListener('storage', onStorage)
+    return () => window.removeEventListener('storage', onStorage)
+  }, [slug])
+
   useEffect(() => {
     function handleMessage(event) {
       const { data } = event
@@ -156,6 +171,12 @@ export default function GamePage({ user, balance, onBalanceChange }) {
             if (savedSprites) {
               iframeRef.current?.contentWindow.postMessage(
                 { type: 'FA_SPRITES_UPDATE', sprites: JSON.parse(savedSprites) }, IFRAME_ORIGIN
+              )
+            }
+            const savedMaps = localStorage.getItem(`fa-maps-${slug}`)
+            if (savedMaps) {
+              iframeRef.current?.contentWindow.postMessage(
+                { type: 'FA_MAP_UPDATE', maps: JSON.parse(savedMaps) }, IFRAME_ORIGIN
               )
             }
           } catch (e) {}
