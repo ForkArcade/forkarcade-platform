@@ -61,7 +61,8 @@ export function computeAutotileFrame(grid, x, y, tid) {
   return (left ? 8 : 0) + (right ? 4 : 0) + (bottom ? 2 : 0) + (!bottom && top ? 1 : 0)
 }
 
-// Bake autotile frames for entire grid (only touches >=16 frame sprites, preserves others)
+// Bake autotile frames for entire grid
+// 16+ frames: neighbor-based autotile, 2 frames: checkerboard (x+y)%2
 export function bakeAllAutotiles(grid, frameGrid, tiles) {
   const rows = grid.length, cols = grid[0]?.length || 0
   const result = frameGrid
@@ -70,8 +71,11 @@ export function bakeAllAutotiles(grid, frameGrid, tiles) {
   for (let y = 0; y < rows; y++) {
     for (let x = 0; x < cols; x++) {
       const tid = grid[y]?.[x]
-      if (tid != null && tiles[tid]?.def?.frames?.length >= 16) {
+      const fc = tid != null ? tiles[tid]?.def?.frames?.length : 0
+      if (fc >= 16) {
         result[y][x] = computeAutotileFrame(grid, x, y, tid)
+      } else if (fc === 2) {
+        result[y][x] = (x + y) % 2
       }
     }
   }
