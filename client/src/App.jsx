@@ -98,6 +98,8 @@ export default function App() {
           <a href="/video.gif" target="_blank" rel="noopener noreferrer" style={{ color: T.muted, textDecoration: 'none' }}>Demo</a>
           <Separator />
           <span style={{ color: T.muted }}>Built with Claude Code</span>
+          <Separator />
+          <span style={{ color: T.border, fontFamily: T.mono }}>{__COMMIT_HASH__}</span>
         </div>
       </footer>
     </div>
