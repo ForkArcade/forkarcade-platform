@@ -62,7 +62,7 @@ export default function RotEditorPage({ user }) {
     spriteDefs, hasLocalEdits, resetToPublished,
     categories, tiles, activeCategory, setActiveCategory,
     activeTile, setActiveTile, activeFrame, setActiveFrame,
-    activeFrameThumbs, handleSpriteUpdate,
+    handleSpriteUpdate,
   } = useMapSprites(slug)
 
   const tilesRef = useRef([])
@@ -446,29 +446,6 @@ export default function RotEditorPage({ user }) {
                   {tile.label}
                 </span>
               </div>
-              {activeTile === idx && tile.def.frames.length > 1 && (
-                <div style={{ paddingLeft: 36, paddingTop: 3, paddingBottom: 3 }}>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
-                    {tile.def.frames.map((_, fi) => (
-                      <div
-                        key={fi}
-                        onClick={() => setActiveFrame(fi)}
-                        style={{
-                          width: 20, height: 20, borderRadius: 3, cursor: 'pointer',
-                          border: activeFrame === fi ? `2px solid ${T.accentColor}` : '1px solid rgba(255,255,255,0.1)',
-                          overflow: 'hidden', background: '#111',
-                        }}
-                      >
-                        <img
-                          src={activeFrameThumbs[fi]}
-                          alt="" width={20} height={20}
-                          style={{ display: 'block', imageRendering: 'pixelated' }}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
           ))}
           {tiles.length === 0 && (
