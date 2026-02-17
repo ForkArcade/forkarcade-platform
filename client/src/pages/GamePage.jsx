@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { apiFetch, GITHUB_ORG, GAME_TOPIC, formatSlug, githubFetch, githubRawUrl } from '../api'
 import { T } from '../theme'
 import { Panel, IconTabBar, Badge, EmptyState } from '../components/ui'
@@ -7,6 +7,7 @@ import Leaderboard from '../components/Leaderboard'
 import NarrativePanel from '../components/NarrativePanel'
 import { Trophy, BookOpen, Clock, Info, Loader, AlertCircle, FileText, Zap, Palette } from 'lucide-react'
 import EvolvePanel from '../components/EvolvePanel'
+import SpritePanel from '../components/SpritePanel'
 import MdPopup from '../components/MdPopup'
 
 const IFRAME_ORIGIN = `https://${GITHUB_ORG.toLowerCase()}.github.io`
@@ -16,7 +17,7 @@ const TAB_ICONS = {
   leaderboard: { label: 'Leaderboard', icon: Trophy },
   narrative: { label: 'Narrative', icon: BookOpen },
   evolve: { label: 'Evolve', icon: Zap },
-  appearance: { label: 'Appearance', icon: Palette },
+  sprites: { label: 'Sprites', icon: Palette },
   changelog: { label: 'Changelog', icon: Clock },
 }
 
@@ -214,7 +215,7 @@ export default function GamePage({ user, balance, onBalanceChange }) {
 
   if (!game) return <EmptyState>Loading...</EmptyState>
 
-  const iconTabs = ['info', 'leaderboard', 'narrative', 'evolve', 'appearance', versions.length > 0 && 'changelog']
+  const iconTabs = ['info', 'leaderboard', 'narrative', 'evolve', sprites && 'sprites', versions.length > 0 && 'changelog']
     .filter(Boolean).map(k => ({ key: k, ...TAB_ICONS[k] }))
 
   return (
@@ -286,11 +287,7 @@ export default function GamePage({ user, balance, onBalanceChange }) {
             {tab === 'leaderboard' && <Leaderboard rows={leaderboard} />}
             {tab === 'narrative' && <NarrativePanel narrativeState={narrativeState} />}
             {tab === 'evolve' && <EvolvePanel slug={slug} user={user} balance={balance} onBalanceChange={onBalanceChange} />}
-            {tab === 'appearance' && (
-              <Link to={`/edit/${slug}`} style={{ display: 'flex', alignItems: 'center', gap: T.sp[3], padding: `${T.sp[3]}px ${T.sp[4]}px`, background: T.elevated, border: `1px solid ${T.border}`, borderRadius: T.radius.md, color: T.accentColor, fontSize: T.fontSize.xs, fontFamily: T.mono, textDecoration: 'none', cursor: 'pointer' }}>
-                <Palette size={14} /> Open Editor
-              </Link>
-            )}
+            {tab === 'sprites' && <SpritePanel sprites={sprites} slug={slug} />}
             {tab === 'changelog' && (
               <div>
                 {versions.slice().reverse().map(v => (
