@@ -129,16 +129,16 @@ Four tables: `users`, `scores` (game_slug, score, version), `wallets` (github_us
 - `/templates` -> TemplatesPage — template catalog from GitHub API (topic `forkarcade-template`)
 - `/templates/:slug` -> TemplateDetailPage — template details (_prompt.md + engine/game files + palette + sprites)
 - `/play/:slug` -> GamePage — iframe + tabs (Info | Leaderboard | Narrative | Evolve | Appearance | Changelog) + version selector
-- `/edit/:slug` -> RotEditorPage — map + sprite editor (rot.js-based). Edits `_sprites.json` and map data. Saves to localStorage, hot-reloads in game iframe. Ctrl+V pastes image with color extraction.
+- `/edit/:slug` -> RotEditorPage — map + sprite editor. Edits `_sprites.json` and map data. Saves to localStorage, hot-reloads in game iframe. Ctrl+V pastes image. "Propose sprites" button creates `data-patch` evolve issue.
 
 ## MCP (mcp/src/main.py)
 
-14 tools, templates fetched dynamically from GitHub API (`github_templates.py`):
+15 tools, templates fetched dynamically from GitHub API (`github_templates.py`):
 
 - **Workflow**: `list_templates`, `init_game`, `get_sdk_docs`, `get_game_prompt`, `validate_game`, `publish_game`, `update_sdk`
 - **Assets**: `get_asset_guide`, `create_sprite`, `validate_assets`, `preview_assets`, `create_thumbnail`
 - **Versions**: `get_versions`
-- **Evolve**: `list_evolve_issues` — lists open issues with `evolve` label ready to implement
+- **Evolve**: `list_evolve_issues`, `apply_data_patch` — deterministic apply of visual changes (sprites) without LLM interpretation
 
 Publish sets the `forkarcade-game` topic + category topic, enables GitHub Pages, and creates a version snapshot (`/versions/v{N}/`). Asset tools create pixel art sprites in `_sprites.json` format -> generated `sprites.js`.
 
@@ -152,12 +152,22 @@ Publish sets the `forkarcade-game` topic + category topic, enables GitHub Pages,
 
 Games evolve through GitHub issues. Every version is playable.
 
-### Flow
+### Flow (text-based — mechanics, balance, features)
 1. Player proposes `[EVOLVE]` issue via platform -> votes reach threshold -> `evolve` label added
 2. Use `/evolve` skill (or `list_evolve_issues` MCP tool) to see ready issues
 3. Implement changes locally, create `changelog/v{N}.md`
 4. Use `/publish` to push and create version snapshot
 5. Platform displays version selector + changelog
+
+### Flow (data-patch — sprites, visual changes)
+1. Player edits sprites in RotEditorPage (`/edit/:slug`)
+2. Player clicks "Propose sprites" -> creates `[EVOLVE]` issue with `data-patch` label + JSON data in body
+3. Community votes (same mechanism, same threshold)
+4. `/evolve` skill detects `data-patch` label -> calls `apply_data_patch` MCP tool
+5. Tool writes `_sprites.json` + regenerates `sprites.js` deterministically — no LLM interpretation
+6. Changelog + publish as usual
+
+Issue body format: human-readable summary + ` ```json:data-patch ` code block with `{ "type": "sprites", "data": { ...full _sprites.json... } }`.
 
 ### Version Structure in Game Repo
 ```
