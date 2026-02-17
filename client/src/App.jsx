@@ -7,7 +7,6 @@ import HomePage from './pages/HomePage'
 import GamePage from './pages/GamePage'
 import TemplatesPage from './pages/TemplatesPage'
 import TemplateDetailPage from './pages/TemplateDetailPage'
-import SpriteEditorPage from './pages/SpriteEditorPage'
 import RotEditorPage from './pages/RotEditorPage'
 import LoginButton from './components/LoginButton'
 
@@ -24,7 +23,7 @@ export default function App() {
   const [user, setUser] = useState(null)
   const [walletBalance, setWalletBalance] = useState(null)
   const location = useLocation()
-  const isGamePage = location.pathname.startsWith('/play/') || location.pathname.startsWith('/sprites/') || location.pathname.startsWith('/edit/')
+  const isGamePage = location.pathname.startsWith('/play/') || location.pathname.startsWith('/edit/')
 
   async function me() {
     try {
@@ -83,7 +82,6 @@ export default function App() {
           <Route path="/templates" element={<TemplatesPage />} />
           <Route path="/templates/:slug" element={<TemplateDetailPage />} />
           <Route path="/play/:slug" element={<GamePage user={user} balance={walletBalance ?? 0} onBalanceChange={setWalletBalance} />} />
-          <Route path="/sprites/:slug" element={<SpriteEditorPage user={user} />} />
           <Route path="/edit/:slug" element={<RotEditorPage />} />
         </Routes>
       </div>

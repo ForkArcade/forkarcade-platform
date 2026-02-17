@@ -8,7 +8,7 @@ A platform for creating and playing web games published on GitHub Pages.
 
 ```
 client/              React + Vite (port 5173)
-  src/pages/         HomePage, GamePage, TemplatesPage, TemplateDetailPage, SpriteEditorPage
+  src/pages/         HomePage, GamePage, TemplatesPage, TemplateDetailPage, RotEditorPage
   src/components/    ui.jsx (shared), Leaderboard, NarrativePanel, EvolvePanel, VotingPanel, etc.
   src/theme.js       Design tokens (colors, spacing, typography) — imported as T everywhere
   src/api.js         API client (apiFetch, githubFetch, githubRawUrl)
@@ -128,8 +128,8 @@ Four tables: `users`, `scores` (game_slug, score, version), `wallets` (github_us
 - `/` -> HomePage — game catalog from GitHub API (topic `forkarcade-game`) + about sidebar (General/Coins/Evolve/Propose tabs)
 - `/templates` -> TemplatesPage — template catalog from GitHub API (topic `forkarcade-template`)
 - `/templates/:slug` -> TemplateDetailPage — template details (_prompt.md + engine/game files + palette + sprites)
-- `/play/:slug` -> GamePage — iframe + tabs (Info | Leaderboard | Narrative | Evolve | Sprites | Changelog) + version selector
-- `/sprites/:slug` -> SpriteEditorPage — pixel editor for `_sprites.json`. Saves to localStorage, hot-reloads in game iframe (cross-tab via storage event). Ctrl+V pastes image with color extraction. Propose evolve creates `[EVOLVE]` issue with category `visual`.
+- `/play/:slug` -> GamePage — iframe + tabs (Info | Leaderboard | Narrative | Evolve | Appearance | Changelog) + version selector
+- `/edit/:slug` -> RotEditorPage — map + sprite editor (rot.js-based). Edits `_sprites.json` and map data. Saves to localStorage, hot-reloads in game iframe. Ctrl+V pastes image with color extraction.
 
 ## MCP (mcp/src/main.py)
 
@@ -181,7 +181,8 @@ Scores have a `version` column — SDK automatically includes the version. Leade
 - **Templates live in `../templates/`** (relative to platform root, i.e. `/home/dadmor/code/FORK-ARCADE/templates/`). NEVER clone template repos elsewhere.
 - **Before cloning a template repo**, check if it already exists in `../templates/`. If it does, work there.
 - **Template work = template repo only** — when fixing/updating a template, NEVER modify platform files (`client/`, `server/`, `sdk/`). Templates are separate repos.
-- **Platform files are sacred** — do not delete, rename, or restructure platform components (SpriteEditorPage, SpritePanel, etc.) unless explicitly asked to change the platform.
+- **Platform files are sacred** — do not delete, rename, or restructure platform components unless explicitly asked to change the platform.
+- **The OLD sprite system is DELETED** — SpriteEditorPage, SpritePanel, SpriteSidebar, FramesPanel, PalettePanel, PixelGrid are all gone. Do NOT recreate or restore them. The NEW system is RotEditorPage + editors/SpriteEditor.jsx.
 
 ## ZERO OVERENGINEERING RULE
 
