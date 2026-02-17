@@ -29,7 +29,10 @@ function loadLevels(slug) {
     const raw = localStorage.getItem(STORAGE_KEY(slug))
     if (raw) {
       const data = JSON.parse(raw)
-      if (data.levels?.length) return data
+      if (data.levels?.length) {
+        data.levels = data.levels.filter(l => l.grid?.length > 0 && l.grid[0]?.length > 0)
+        if (data.levels.length > 0) return data
+      }
     }
   } catch {}
   return null
@@ -319,9 +322,9 @@ export default function RotEditorPage({ user }) {
   const [renameValue, setRenameValue] = useState('')
 
   const activeLevel = levels.find(l => l.id === activeId) || levels[0]
-  const grid = activeLevel.grid
-  const frameGrid = activeLevel.frameGrid
-  const zoneGrid = activeLevel.zoneGrid
+  const grid = activeLevel?.grid || createEmptyGrid(DEFAULT_W, DEFAULT_H)
+  const frameGrid = activeLevel?.frameGrid
+  const zoneGrid = activeLevel?.zoneGrid
   const cols = grid[0]?.length || DEFAULT_W
   const rows = grid.length || DEFAULT_H
 
