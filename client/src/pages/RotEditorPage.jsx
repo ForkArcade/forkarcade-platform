@@ -426,23 +426,24 @@ export default function RotEditorPage({ user }) {
                 onClick={() => { setActiveTile(idx); setActiveFrame(0) }}
                 title={tile.label}
                 style={{
-                  aspectRatio: '1', cursor: 'pointer',
+                  cursor: 'pointer',
                   background: activeTile === idx ? T.elevated : '#111',
                   outline: activeTile === idx ? `2px solid ${T.accentColor}` : 'none',
                   outlineOffset: -2, overflow: 'hidden',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center',
                 }}
               >
-                {tile.thumb && (
-                  <img src={tile.thumb} alt="" width="100%" height="100%" style={{ display: 'block', imageRendering: 'pixelated' }} />
-                )}
+                <div style={{ aspectRatio: '1', width: '100%', overflow: 'hidden' }}>
+                  {tile.thumb && (
+                    <img src={tile.thumb} alt="" width="100%" height="100%" style={{ display: 'block', imageRendering: 'pixelated' }} />
+                  )}
+                </div>
+                <div style={{ fontSize: 7, fontFamily: T.mono, color: activeTile === idx ? T.textBright : T.muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%', textAlign: 'center', padding: '1px 2px' }}>
+                  {tile.label}
+                </div>
               </div>
             ))}
           </div>
-          {tiles[activeTile] && (
-            <div style={{ fontSize: 9, fontFamily: T.mono, color: T.textBright, marginTop: T.sp[1], overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {tiles[activeTile].label}
-            </div>
-          )}
           {tiles.length === 0 && (
             <div style={{ fontSize: T.fontSize.xs, color: T.muted, padding: T.sp[3] }}>No sprites in this category</div>
           )}
