@@ -149,10 +149,15 @@ export default function RotEditorPage({ user }) {
     if (saved) {
       try { setSpriteDefs(JSON.parse(saved)); spriteInitialRef.current = false; return } catch {}
     }
-    fetch(githubRawUrl(`${GITHUB_ORG}/${slug}/main/_sprites.json`))
-      .then(r => r.ok ? r.json() : null)
-      .then(data => { if (data) { setSpriteDefs(data); spriteInitialRef.current = false } })
-      .catch(() => {})
+    const url = githubRawUrl(`${GITHUB_ORG}/${slug}/main/_sprites.json`)
+    console.log('[RotEditor] Loading sprites from:', url)
+    fetch(url)
+      .then(r => { console.log('[RotEditor] Sprites response:', r.status); return r.ok ? r.json() : null })
+      .then(data => {
+        console.log('[RotEditor] Sprites loaded:', data ? Object.keys(data).map(cat => `${cat}: ${Object.keys(data[cat]).length} sprites`).join(', ') : 'null')
+        if (data) { setSpriteDefs(data); spriteInitialRef.current = false }
+      })
+      .catch(err => console.error('[RotEditor] Sprites fetch failed:', err))
   }, [slug])
 
   // Debounced save spriteDefs to localStorage on edit
