@@ -14,6 +14,25 @@ export function setPixel(frame, row, col, ch) {
   return line.substring(0, col) + ch + line.substring(col + 1)
 }
 
+export function renderSpriteToCanvas(ctx, def, frame, px, py, size) {
+  if (!def?.frames) return
+  const f = def.frames[frame % def.frames.length]
+  if (!f) return
+  const pw = size / def.w, ph = size / def.h
+  for (let r = 0; r < def.h; r++) {
+    const line = f[r]
+    if (!line) continue
+    for (let c = 0; c < def.w; c++) {
+      const ch = line[c]
+      if (ch === '.') continue
+      const color = def.palette[ch]
+      if (!color) continue
+      ctx.fillStyle = color
+      ctx.fillRect(px + c * pw, py + r * ph, Math.ceil(pw), Math.ceil(ph))
+    }
+  }
+}
+
 export function spriteToDataUrl(def, size, frameIdx = 0) {
   if (!def?.w || !def?.h || !def?.frames || !def?.palette) return null
   try {
