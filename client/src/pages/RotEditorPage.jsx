@@ -82,7 +82,7 @@ function computeAutotileFrame(grid, x, y, tid) {
   const isEdge = (dy, dx) => {
     const ny = y + dy, nx = x + dx
     if (ny < 0 || ny >= rows || nx < 0 || nx >= cols) return false
-    return grid[ny][nx] !== tid
+    return grid[ny]?.[nx] !== tid
   }
   const top = isEdge(-1, 0), bottom = isEdge(1, 0)
   const left = isEdge(0, -1), right = isEdge(0, 1)
@@ -97,8 +97,8 @@ function bakeAllAutotiles(grid, frameGrid, tiles) {
     : grid.map(row => row.map(() => 0))
   for (let y = 0; y < rows; y++) {
     for (let x = 0; x < cols; x++) {
-      const tid = grid[y][x]
-      if (tiles[tid]?.def.frames.length >= 16) {
+      const tid = grid[y]?.[x]
+      if (tid != null && tiles[tid]?.def?.frames?.length >= 16) {
         result[y][x] = computeAutotileFrame(grid, x, y, tid)
       }
     }
@@ -208,9 +208,13 @@ export default function RotEditorPage({ user }) {
     setLevels(prev => {
       let changed = false
       const next = prev.map(level => {
+        if (!level.grid?.length) return level
         const baked = bakeAllAutotiles(level.grid, level.frameGrid, tiles)
         const old = level.frameGrid
-        if (old && old.length === baked.length && old.every((row, y) => row.every((v, x) => v === baked[y][x]))) return level
+        if (old && old.length === baked.length && old.every((row, y) => {
+          const bakedRow = baked[y]
+          return bakedRow && row.length === bakedRow.length && row.every((v, x) => v === bakedRow[x])
+        })) return level
         changed = true
         return { ...level, frameGrid: baked }
       })
@@ -497,7 +501,7 @@ export default function RotEditorPage({ user }) {
     if (!pos) return
     updateLevel(level => {
       const fg = level.frameGrid || level.grid.map(row => row.map(() => 0))
-      const isAutotile = tiles[activeTile]?.def.frames.length >= 16
+      const isAutotile = tiles[activeTile]?.def?.frames?.length >= 16
       if (level.grid[pos.y][pos.x] === activeTile && (isAutotile || fg[pos.y][pos.x] === activeFrame)) return {}
       const nextGrid = level.grid.map(row => [...row])
       const nextFg = fg.map(row => [...row])
@@ -510,7 +514,7 @@ export default function RotEditorPage({ user }) {
         const ny = pos.y + dy, nx = pos.x + dx
         if (ny < 0 || ny >= nextGrid.length || nx < 0 || nx >= (nextGrid[0]?.length || 0)) continue
         const nTid = nextGrid[ny][nx]
-        if (tiles[nTid]?.def.frames.length >= 16) {
+        if (tiles[nTid]?.def?.frames?.length >= 16) {
           nextFg[ny][nx] = computeAutotileFrame(nextGrid, nx, ny, nTid)
         }
       }
