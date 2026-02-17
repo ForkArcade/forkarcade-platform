@@ -419,28 +419,22 @@ export default function RotEditorPage({ user }) {
               </button>
             )}
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 1, background: T.border, borderRadius: T.radius.sm, overflow: 'hidden' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, 32px)', gap: 1, background: T.border, borderRadius: T.radius.sm, overflow: 'hidden' }}>
             {tiles.map((tile, idx) => (
               <div
                 key={tile.name}
                 onClick={() => { setActiveTile(idx); setActiveFrame(0) }}
+                title={tile.label}
                 style={{
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
-                  padding: T.sp[1], cursor: 'pointer',
-                  background: activeTile === idx ? T.elevated : T.surface,
+                  width: 32, height: 32, cursor: 'pointer',
+                  background: activeTile === idx ? T.elevated : '#111',
+                  outline: activeTile === idx ? `2px solid ${T.accentColor}` : 'none',
+                  outlineOffset: -2,
                 }}
               >
-                <div style={{
-                  width: 32, height: 32,
-                  overflow: 'hidden', background: '#111',
-                }}>
-                  {tile.thumb && (
-                    <img src={tile.thumb} alt="" width={32} height={32} style={{ display: 'block', imageRendering: 'pixelated' }} />
-                  )}
-                </div>
-                <span style={{ fontSize: 8, fontFamily: T.mono, color: activeTile === idx ? T.textBright : T.muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%', textAlign: 'center' }}>
-                  {tile.label}
-                </span>
+                {tile.thumb && (
+                  <img src={tile.thumb} alt="" width={32} height={32} style={{ display: 'block', imageRendering: 'pixelated' }} />
+                )}
               </div>
             ))}
           </div>
