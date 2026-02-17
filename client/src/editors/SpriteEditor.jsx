@@ -25,18 +25,19 @@ export default function SpriteEditor({ sprites, activeCat, activeName, onUpdate,
   // --- Pixel Grid ---
   const canvasRef = useRef(null)
   const paintingRef = useRef(false)
+  const pendingRef = useRef(null)
 
   const cellSize = !def ? 20 : Math.min(20, Math.floor(240 / Math.max(def.w, def.h)))
   const gridW = def ? def.w * cellSize : 0
   const gridH = def ? def.h * cellSize : 0
   const frame = def?.frames?.[activeFrame]
 
-  useEffect(() => {
+  // Render pixel grid
+  const renderGrid = useCallback(() => {
     const canvas = canvasRef.current
     if (!canvas || !frame || !def) return
     const ctx = canvas.getContext('2d')
     ctx.clearRect(0, 0, gridW, gridH)
-
     for (let row = 0; row < def.h; row++) {
       const line = frame[row]
       for (let col = 0; col < def.w; col++) {
@@ -48,7 +49,6 @@ export default function SpriteEditor({ sprites, activeCat, activeName, onUpdate,
         }
       }
     }
-
     ctx.strokeStyle = T.border
     ctx.lineWidth = 0.5
     for (let row = 0; row <= def.h; row++) {
@@ -57,7 +57,9 @@ export default function SpriteEditor({ sprites, activeCat, activeName, onUpdate,
     for (let col = 0; col <= def.w; col++) {
       ctx.beginPath(); ctx.moveTo(col * cellSize, 0); ctx.lineTo(col * cellSize, gridH); ctx.stroke()
     }
-  }, [def, activeFrame, frame, cellSize, gridW, gridH])
+  }, [def, frame, cellSize, gridW, gridH])
+
+  useEffect(() => { renderGrid() }, [renderGrid])
 
   const getCoords = useCallback((e) => {
     const rect = canvasRef.current.getBoundingClientRect()
@@ -67,12 +69,43 @@ export default function SpriteEditor({ sprites, activeCat, activeName, onUpdate,
     return null
   }, [cellSize, def?.w, def?.h])
 
+  // Paint: update canvas immediately, debounce state update
+  const flushPaint = useCallback(() => {
+    const lines = pendingRef.current
+    if (!lines) return
+    pendingRef.current = null
+    onUpdate(d => { d.frames[activeFrame] = lines })
+  }, [onUpdate, activeFrame])
+
   const handlePaint = useCallback((e) => {
     const c = getCoords(e)
-    if (c) onUpdate(d => {
-      d.frames[activeFrame][c.row] = setPixel(d.frames[activeFrame], c.row, c.col, activeColor)
-    })
-  }, [getCoords, onUpdate, activeFrame, activeColor])
+    if (!c || !frame) return
+    const currentLines = pendingRef.current || [...frame]
+    const newLine = setPixel(currentLines, c.row, c.col, activeColor)
+    if (newLine === currentLines[c.row]) return
+    currentLines[c.row] = newLine
+    pendingRef.current = currentLines
+
+    // Immediate canvas update for single cell
+    const canvas = canvasRef.current
+    if (canvas) {
+      const ctx = canvas.getContext('2d')
+      const px = c.col * cellSize, py = c.row * cellSize
+      ctx.clearRect(px, py, cellSize, cellSize)
+      if (activeColor !== '.' && def.palette[activeColor]) {
+        ctx.fillStyle = def.palette[activeColor]
+        ctx.fillRect(px, py, cellSize, cellSize)
+      }
+      ctx.strokeStyle = T.border
+      ctx.lineWidth = 0.5
+      ctx.strokeRect(px, py, cellSize, cellSize)
+    }
+  }, [getCoords, frame, activeColor, cellSize, def?.palette])
+
+  const handleMouseUp = useCallback(() => {
+    paintingRef.current = false
+    flushPaint()
+  }, [flushPaint])
 
   // --- Palette handlers ---
   const handleColorChange = useCallback((key, color) => {
@@ -237,68 +270,72 @@ export default function SpriteEditor({ sprites, activeCat, activeName, onUpdate,
           height={gridH}
           onMouseDown={(e) => { e.preventDefault(); paintingRef.current = true; handlePaint(e) }}
           onMouseMove={(e) => { if (paintingRef.current) handlePaint(e) }}
-          onMouseUp={() => { paintingRef.current = false }}
-          onMouseLeave={() => { paintingRef.current = false }}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
           onContextMenu={(e) => e.preventDefault()}
           style={{ border: `1px solid ${T.border}`, borderRadius: T.radius.sm, cursor: 'crosshair', userSelect: 'none' }}
         />
       </div>
 
-      {/* Palette */}
+      {/* Palette — compact grid */}
       <div>
         <div style={{ fontSize: 9, color: T.muted, textTransform: 'uppercase', marginBottom: T.sp[1] }}>Palette</div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
           {/* Transparent */}
           <div
             onClick={() => setActiveColor('.')}
+            title="Transparent (.)"
             style={{
-              display: 'flex', alignItems: 'center', gap: T.sp[2],
-              padding: '2px 4px', borderRadius: T.radius.sm, cursor: 'pointer',
-              background: activeColor === '.' ? T.elevated : 'transparent',
-              border: activeColor === '.' ? `1px solid ${T.accentColor}` : '1px solid transparent',
-            }}
-          >
-            <div style={{
-              width: 16, height: 16, borderRadius: 2,
-              border: `1px solid ${T.border}`,
+              width: 22, height: 22, borderRadius: 3, cursor: 'pointer',
+              border: activeColor === '.' ? `2px solid ${T.accentColor}` : `1px solid ${T.border}`,
               background: `repeating-conic-gradient(${T.border} 0% 25%, transparent 0% 50%) 50% / 8px 8px`,
-            }} />
-            <span style={{ fontFamily: T.mono, fontSize: 9, color: T.muted }}>.</span>
-          </div>
+            }}
+          />
           {/* Colors */}
           {paletteKeys.map(key => (
             <div
               key={key}
               onClick={() => setActiveColor(key)}
+              title={`${key}: ${def.palette[key]}`}
               style={{
-                display: 'flex', alignItems: 'center', gap: T.sp[2],
-                padding: '2px 4px', borderRadius: T.radius.sm, cursor: 'pointer',
-                background: activeColor === key ? T.elevated : 'transparent',
-                border: activeColor === key ? `1px solid ${T.accentColor}` : '1px solid transparent',
+                width: 22, height: 22, borderRadius: 3, cursor: 'pointer',
+                background: def.palette[key],
+                border: activeColor === key ? `2px solid ${T.accentColor}` : `1px solid ${T.border}`,
               }}
-            >
-              <input
-                type="color" value={def.palette[key]}
-                onClick={(e) => e.stopPropagation()}
-                onChange={(e) => handleColorChange(key, e.target.value)}
-                style={{ width: 16, height: 16, padding: 0, border: `1px solid ${T.border}`, borderRadius: 2, cursor: 'pointer', background: 'none' }}
-              />
-              <span style={{ fontFamily: T.mono, fontSize: 9, color: T.textBright }}>{key}</span>
-              <span style={{ fontFamily: T.mono, fontSize: 8, color: T.muted }}>{def.palette[key]}</span>
-              {paletteKeys.length > 1 && (
-                <button
-                  onClick={(e) => { e.stopPropagation(); handleRemoveColor(key) }}
-                  style={{ ...smallBtn, padding: 1, height: 14, width: 14, marginLeft: 'auto', border: 'none', color: T.muted }}
-                >
-                  <Trash2 size={8} />
-                </button>
-              )}
-            </div>
+            />
           ))}
-          <button onClick={handleAddColor} style={{ ...smallBtn, marginTop: 2, justifyContent: 'center' }}>
-            <Plus size={10} /> Add
-          </button>
+          {/* Add */}
+          <div
+            onClick={handleAddColor}
+            title="Add color"
+            style={{
+              width: 22, height: 22, borderRadius: 3, cursor: 'pointer',
+              border: `1px dashed ${T.border}`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 12, color: T.muted,
+            }}
+          >+</div>
         </div>
+        {/* Selected color controls */}
+        {activeColor !== '.' && def.palette[activeColor] && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: T.sp[2], marginTop: T.sp[2] }}>
+            <input
+              type="color" value={def.palette[activeColor]}
+              onChange={(e) => handleColorChange(activeColor, e.target.value)}
+              style={{ width: 20, height: 20, padding: 0, border: `1px solid ${T.border}`, borderRadius: 2, cursor: 'pointer', background: 'none' }}
+            />
+            <span style={{ fontFamily: T.mono, fontSize: 9, color: T.textBright }}>{activeColor}</span>
+            <span style={{ fontFamily: T.mono, fontSize: 8, color: T.muted }}>{def.palette[activeColor]}</span>
+            {paletteKeys.length > 1 && (
+              <button
+                onClick={() => handleRemoveColor(activeColor)}
+                style={{ ...smallBtn, padding: 1, height: 14, width: 14, marginLeft: 'auto', border: 'none', color: T.muted }}
+              >
+                <Trash2 size={8} />
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Frames */}
