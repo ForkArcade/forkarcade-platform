@@ -62,7 +62,7 @@ export function computeAutotileFrame(grid, x, y, tid) {
 }
 
 // Bake autotile frames for entire grid
-// 16+ frames: neighbor-based autotile, 2 frames: checkerboard (x+y)%2
+// 16+ frames: neighbor-based autotile, 2-15 frames: position hash for variety
 export function bakeAllAutotiles(grid, frameGrid, tiles) {
   const rows = grid.length, cols = grid[0]?.length || 0
   const result = frameGrid
@@ -74,8 +74,8 @@ export function bakeAllAutotiles(grid, frameGrid, tiles) {
       const fc = tid != null ? tiles[tid]?.def?.frames?.length : 0
       if (fc >= 16) {
         result[y][x] = computeAutotileFrame(grid, x, y, tid)
-      } else if (fc === 2) {
-        result[y][x] = (x + y) % 2
+      } else if (fc > 1) {
+        result[y][x] = (x * 31 + y * 17) % fc
       }
     }
   }
