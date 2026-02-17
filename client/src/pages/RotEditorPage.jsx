@@ -386,7 +386,7 @@ export default function RotEditorPage({ user }) {
         for (let x = 0; x < cols; x++) {
           const tid = grid[y]?.[x] ?? 0
           const fid = frameGrid?.[y]?.[x] ?? 0
-          if (tid === (prev.grid[y]?.[x] ?? 0) && fid === (prev.fg[y]?.[x] ?? 0)) continue
+          if (tid === (prev.grid[y]?.[x] ?? 0) && fid === (prev.fg?.[y]?.[x] ?? 0)) continue
           const px = x * cellSize, py = y * cellSize
           ctx.fillStyle = '#000'
           ctx.fillRect(px, py, cellSize, cellSize)
