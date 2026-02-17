@@ -176,6 +176,13 @@ Each evolve creates `changelog/v{N}.md` — structured LLM log with: issue refer
 ### Scores
 Scores have a `version` column — SDK automatically includes the version. Leaderboard filtered per version (`?version=N`).
 
+## WORKING WITH TEMPLATES — CRITICAL
+
+- **Templates live in `../templates/`** (relative to platform root, i.e. `/home/dadmor/code/FORK-ARCADE/templates/`). NEVER clone template repos elsewhere.
+- **Before cloning a template repo**, check if it already exists in `../templates/`. If it does, work there.
+- **Template work = template repo only** — when fixing/updating a template, NEVER modify platform files (`client/`, `server/`, `sdk/`). Templates are separate repos.
+- **Platform files are sacred** — do not delete, rename, or restructure platform components (SpriteEditorPage, SpritePanel, etc.) unless explicitly asked to change the platform.
+
 ## ZERO OVERENGINEERING RULE
 
 - **NEVER create bonus files** — no CLI wrappers, helper scripts, extra tools "just in case"
