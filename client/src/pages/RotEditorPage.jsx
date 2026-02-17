@@ -419,35 +419,33 @@ export default function RotEditorPage({ user }) {
               </button>
             )}
           </div>
-          {tiles.map((tile, idx) => (
-            <div key={tile.name}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 3 }}>
+            {tiles.map((tile, idx) => (
               <div
+                key={tile.name}
                 onClick={() => { setActiveTile(idx); setActiveFrame(0) }}
                 style={{
-                  display: 'flex', alignItems: 'center', gap: T.sp[2],
-                  padding: `${T.sp[1]}px ${T.sp[2]}px`,
-                  borderRadius: T.radius.sm, cursor: 'pointer',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
+                  padding: T.sp[1], borderRadius: T.radius.sm, cursor: 'pointer',
                   background: activeTile === idx ? T.elevated : 'transparent',
                   border: activeTile === idx ? `1px solid ${T.accentColor}` : '1px solid transparent',
                 }}
               >
                 <div style={{
-                  width: 24, height: 24, borderRadius: 3,
+                  width: 32, height: 32, borderRadius: 3,
                   border: '1px solid rgba(255,255,255,0.1)',
-                  overflow: 'hidden', flexShrink: 0,
-                  background: '#111',
+                  overflow: 'hidden', background: '#111',
                 }}>
                   {tile.thumb && (
-                    <img src={tile.thumb} alt="" width={24} height={24} style={{ display: 'block', imageRendering: 'pixelated' }} />
+                    <img src={tile.thumb} alt="" width={32} height={32} style={{ display: 'block', imageRendering: 'pixelated' }} />
                   )}
                 </div>
-                <span style={{ fontFamily: T.mono, fontSize: 9, opacity: 0.4, width: 10, flexShrink: 0 }}>{idx}</span>
-                <span style={{ fontSize: T.fontSize.xs, color: activeTile === idx ? T.textBright : T.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <span style={{ fontSize: 8, fontFamily: T.mono, color: activeTile === idx ? T.textBright : T.muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%', textAlign: 'center' }}>
                   {tile.label}
                 </span>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
           {tiles.length === 0 && (
             <div style={{ fontSize: T.fontSize.xs, color: T.muted, padding: T.sp[3] }}>No sprites in this category</div>
           )}
