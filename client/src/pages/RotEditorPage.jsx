@@ -134,6 +134,7 @@ export default function RotEditorPage({ user }) {
 
   const [spriteDefs, setSpriteDefs] = useState(null)
   const [activeCategory, setActiveCategory] = useState('tiles')
+  const [hasLocalEdits, setHasLocalEdits] = useState(false)
   const spriteInitialRef = useRef(true)
   const spriteSaveRef = useRef(null)
 
@@ -141,24 +142,30 @@ export default function RotEditorPage({ user }) {
   const [proposeTitle, setProposeTitle] = useState('Sprite update')
   const [proposeStatus, setProposeStatus] = useState(null) // null | 'sending' | 'done' | 'error'
 
-  // Load sprites from localStorage (local edits) or GitHub
+  const fetchSpritesFromGitHub = useCallback(() => {
+    spriteInitialRef.current = true
+    fetch(githubRawUrl(`${GITHUB_ORG}/${slug}/main/_sprites.json`))
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data) { setSpriteDefs(data); setHasLocalEdits(false); spriteInitialRef.current = false }
+      })
+      .catch(() => {})
+  }, [slug])
+
+  // Load sprites: localStorage (local edits) first, otherwise GitHub
   useEffect(() => {
     spriteInitialRef.current = true
-    const lsKey = `fa-sprites-${slug}`
-    const saved = localStorage.getItem(lsKey)
+    const saved = localStorage.getItem(`fa-sprites-${slug}`)
     if (saved) {
-      try { setSpriteDefs(JSON.parse(saved)); spriteInitialRef.current = false; return } catch {}
+      try { setSpriteDefs(JSON.parse(saved)); setHasLocalEdits(true); spriteInitialRef.current = false; return } catch {}
     }
-    const url = githubRawUrl(`${GITHUB_ORG}/${slug}/main/_sprites.json`)
-    console.log('[RotEditor] Loading sprites from:', url)
-    fetch(url)
-      .then(r => { console.log('[RotEditor] Sprites response:', r.status); return r.ok ? r.json() : null })
-      .then(data => {
-        console.log('[RotEditor] Sprites loaded:', data ? Object.keys(data).map(cat => `${cat}: ${Object.keys(data[cat]).length} sprites`).join(', ') : 'null')
-        if (data) { setSpriteDefs(data); spriteInitialRef.current = false }
-      })
-      .catch(err => console.error('[RotEditor] Sprites fetch failed:', err))
-  }, [slug])
+    fetchSpritesFromGitHub()
+  }, [slug, fetchSpritesFromGitHub])
+
+  const resetToPublished = useCallback(() => {
+    localStorage.removeItem(`fa-sprites-${slug}`)
+    fetchSpritesFromGitHub()
+  }, [slug, fetchSpritesFromGitHub])
 
   // Debounced save spriteDefs to localStorage on edit
   useEffect(() => {
@@ -166,6 +173,7 @@ export default function RotEditorPage({ user }) {
     clearTimeout(spriteSaveRef.current)
     spriteSaveRef.current = setTimeout(() => {
       localStorage.setItem(`fa-sprites-${slug}`, JSON.stringify(spriteDefs))
+      setHasLocalEdits(true)
     }, 400)
     return () => clearTimeout(spriteSaveRef.current)
   }, [spriteDefs, slug])
@@ -751,8 +759,24 @@ export default function RotEditorPage({ user }) {
               ))}
             </div>
           )}
-          <div style={{ fontSize: T.fontSize.xs, color: T.text, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: T.sp[2] }}>
-            {activeCategory}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: T.sp[2] }}>
+            <span style={{ fontSize: T.fontSize.xs, color: T.text, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              {activeCategory}
+            </span>
+            {hasLocalEdits && (
+              <button
+                onClick={resetToPublished}
+                style={{
+                  background: 'transparent', border: 'none', cursor: 'pointer',
+                  fontSize: 9, fontFamily: T.mono, color: T.warning ?? '#ffb74d',
+                  textTransform: 'uppercase', letterSpacing: '0.03em',
+                  padding: '1px 4px', borderRadius: T.radius.sm,
+                }}
+                title="Discard local edits and reload published sprites"
+              >
+                local edits · reset
+              </button>
+            )}
           </div>
           {tiles.map((tile, idx) => (
             <div key={tile.name}>
