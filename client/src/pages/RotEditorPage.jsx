@@ -438,6 +438,11 @@ export default function RotEditorPage({ user }) {
               </div>
             ))}
           </div>
+          {tiles[activeTile] && (
+            <div style={{ fontSize: 9, fontFamily: T.mono, color: T.textBright, marginTop: T.sp[1], overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {tiles[activeTile].label}
+            </div>
+          )}
           {tiles.length === 0 && (
             <div style={{ fontSize: T.fontSize.xs, color: T.muted, padding: T.sp[3] }}>No sprites in this category</div>
           )}
