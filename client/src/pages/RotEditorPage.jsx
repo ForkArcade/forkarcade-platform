@@ -59,7 +59,7 @@ export default function RotEditorPage({ user }) {
   const [showZones, setShowZones] = useState(true)
 
   const {
-    spriteDefs, hasLocalEdits, resetToPublished,
+    spriteDefs, setSpriteDefs, hasLocalEdits, resetToPublished,
     categories, tiles, activeCategory, setActiveCategory,
     activeTile, setActiveTile, activeFrame, setActiveFrame,
     handleSpriteUpdate,
@@ -574,6 +574,7 @@ export default function RotEditorPage({ user }) {
         updateLevel={updateLevel}
         tiles={tiles}
         spriteDefs={spriteDefs}
+        setSpriteDefs={setSpriteDefs}
         showZones={showZones}
         setShowZones={setShowZones}
       />

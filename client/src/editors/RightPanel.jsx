@@ -18,7 +18,7 @@ const inputStyle = {
 export default function RightPanel({
   slug, user, levels, setLevels, activeId, setActiveId,
   activeLevel, grid, zoneGrid, zoneDefs, setZoneDefs,
-  cols, rows, updateLevel, tiles, spriteDefs, showZones, setShowZones,
+  cols, rows, updateLevel, tiles, spriteDefs, setSpriteDefs, showZones, setShowZones,
 }) {
   const [renamingId, setRenamingId] = useState(null)
   const [renameValue, setRenameValue] = useState('')
@@ -115,28 +115,32 @@ export default function RightPanel({
     reader.onload = (ev) => {
       try {
         const data = JSON.parse(ev.target.result)
-        if (!data.map?.length) return
-        const newGrid = data.map.map(s => [...s].map(Number))
-        const newZoneGrid = data.zones
-          ? data.zones.map(s => [...s])
-          : createEmptyZoneGrid(newGrid[0].length, newGrid.length)
-        if (data.zoneDefs) {
-          const parsedDefs = Object.entries(data.zoneDefs).map(([key, name], i) => ({
-            key, name, color: ZONE_COLORS[i % ZONE_COLORS.length],
+        // Auto-detect: if it has a "map" array it's a map, otherwise treat as sprites
+        if (data.map?.length) {
+          const newGrid = data.map.map(s => [...s].map(Number))
+          const newZoneGrid = data.zones
+            ? data.zones.map(s => [...s])
+            : createEmptyZoneGrid(newGrid[0].length, newGrid.length)
+          if (data.zoneDefs) {
+            const parsedDefs = Object.entries(data.zoneDefs).map(([key, name], i) => ({
+              key, name, color: ZONE_COLORS[i % ZONE_COLORS.length],
+            }))
+            setZoneDefs(prev => {
+              const existingKeys = new Set(prev.map(z => z.key))
+              const newDefs = parsedDefs.filter(z => !existingKeys.has(z.key))
+              return newDefs.length > 0 ? [...prev, ...newDefs] : prev
+            })
+          }
+          updateLevel(() => ({
+            grid: newGrid,
+            frameGrid: bakeAllAutotiles(newGrid, null, tiles),
+            zoneGrid: newZoneGrid,
           }))
-          setZoneDefs(prev => {
-            const existingKeys = new Set(prev.map(z => z.key))
-            const newDefs = parsedDefs.filter(z => !existingKeys.has(z.key))
-            return newDefs.length > 0 ? [...prev, ...newDefs] : prev
-          })
-        }
-        updateLevel(() => ({
-          grid: newGrid,
-          frameGrid: bakeAllAutotiles(newGrid, null, tiles),
-          zoneGrid: newZoneGrid,
-        }))
-        if (data.name) {
-          setLevels(prev => prev.map(l => l.id === activeId ? { ...l, name: data.name } : l))
+          if (data.name) {
+            setLevels(prev => prev.map(l => l.id === activeId ? { ...l, name: data.name } : l))
+          }
+        } else if (setSpriteDefs && Object.values(data).some(v => v && typeof v === 'object' && Object.values(v).some(s => s?.frames))) {
+          setSpriteDefs(data)
         }
       } catch {}
     }
