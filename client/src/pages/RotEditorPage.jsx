@@ -419,21 +419,21 @@ export default function RotEditorPage({ user }) {
               </button>
             )}
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, 32px)', gap: 1, background: T.border, borderRadius: T.radius.sm, overflow: 'hidden' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 1, background: T.border, borderRadius: T.radius.sm, overflow: 'hidden' }}>
             {tiles.map((tile, idx) => (
               <div
                 key={tile.name}
                 onClick={() => { setActiveTile(idx); setActiveFrame(0) }}
                 title={tile.label}
                 style={{
-                  width: 32, height: 32, cursor: 'pointer',
+                  aspectRatio: '1', cursor: 'pointer',
                   background: activeTile === idx ? T.elevated : '#111',
                   outline: activeTile === idx ? `2px solid ${T.accentColor}` : 'none',
-                  outlineOffset: -2,
+                  outlineOffset: -2, overflow: 'hidden',
                 }}
               >
                 {tile.thumb && (
-                  <img src={tile.thumb} alt="" width={32} height={32} style={{ display: 'block', imageRendering: 'pixelated' }} />
+                  <img src={tile.thumb} alt="" width="100%" height="100%" style={{ display: 'block', imageRendering: 'pixelated' }} />
                 )}
               </div>
             ))}
