@@ -5,7 +5,7 @@ import { Button } from '../components/ui'
 import { apiFetch } from '../api'
 import {
   uid, createEmptyGrid, createEmptyZoneGrid, ZONE_COLORS,
-  parseZonesFromSection, bakeAllAutotiles, DEFAULT_W, DEFAULT_H,
+  bakeAllAutotiles, DEFAULT_W, DEFAULT_H,
 } from './mapUtils'
 
 const inputStyle = {
@@ -22,7 +22,6 @@ export default function RightPanel({
 }) {
   const [renamingId, setRenamingId] = useState(null)
   const [renameValue, setRenameValue] = useState('')
-  const [importText, setImportText] = useState('')
   const [copied, setCopied] = useState(false)
   const fileInputRef = useRef(null)
 
@@ -143,29 +142,6 @@ export default function RightPanel({
     }
     reader.readAsText(file)
     e.target.value = ''
-  }
-
-  const handleImport = () => {
-    const matches = importText.match(/['"]([0-9]+)['"]/g)
-    if (!matches) return
-    const strings = matches.map(m => m.slice(1, -1))
-    if (strings.length > 0 && strings[0].length > 0) {
-      const newGrid = strings.map(s => [...s].map(Number))
-      const { zoneGrid: parsedZones, zoneDefs: parsedDefs } = parseZonesFromSection(importText)
-      if (parsedDefs.length > 0) {
-        setZoneDefs(prev => {
-          const existingKeys = new Set(prev.map(z => z.key))
-          const newDefs = parsedDefs.filter(z => !existingKeys.has(z.key))
-          return newDefs.length > 0 ? [...prev, ...newDefs] : prev
-        })
-      }
-      updateLevel(() => ({
-        grid: newGrid,
-        frameGrid: bakeAllAutotiles(newGrid, null, tiles),
-        zoneGrid: parsedZones || createEmptyZoneGrid(newGrid[0].length, newGrid.length),
-      }))
-      setImportText('')
-    }
   }
 
   // Propose
@@ -290,12 +266,21 @@ export default function RightPanel({
           {copied ? 'Copied!' : 'Copy to clipboard'}
         </Button>
         <Button onClick={handleDownloadJson} style={{ width: '100%', marginTop: T.sp[2] }}>
-          Download JSON
+          Download map JSON
         </Button>
-        <input ref={fileInputRef} type="file" accept=".json" onChange={handleUploadJson} style={{ display: 'none' }} />
-        <Button onClick={() => fileInputRef.current?.click()} style={{ width: '100%', marginTop: T.sp[2] }}>
-          Upload JSON
-        </Button>
+        {spriteDefs && (
+          <Button onClick={() => {
+            const blob = new Blob([JSON.stringify(spriteDefs, null, 2)], { type: 'application/json' })
+            const url = URL.createObjectURL(blob)
+            const a = document.createElement('a')
+            a.download = `${slug}_sprites.json`
+            a.href = url
+            a.click()
+            URL.revokeObjectURL(url)
+          }} style={{ width: '100%', marginTop: T.sp[2] }}>
+            Download sprites JSON
+          </Button>
+        )}
       </div>
 
       {/* Propose */}
@@ -329,22 +314,11 @@ export default function RightPanel({
       )}
 
       {/* Import */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+      <div>
         <div style={{ fontSize: T.fontSize.xs, color: T.text, textTransform: 'uppercase', marginBottom: T.sp[3] }}>Import</div>
-        <textarea
-          value={importText}
-          onChange={e => setImportText(e.target.value)}
-          placeholder={"Paste map array from data.js..."}
-          style={{
-            flex: 1, minHeight: 120,
-            padding: T.sp[3], background: T.surface,
-            border: `1px solid ${T.border}`, borderRadius: T.radius.sm,
-            color: T.textBright, fontFamily: T.mono,
-            fontSize: 10, lineHeight: 1.4, resize: 'none',
-          }}
-        />
-        <Button onClick={handleImport} style={{ marginTop: T.sp[3], width: '100%' }} disabled={!importText.trim()}>
-          Apply
+        <input ref={fileInputRef} type="file" accept=".json" onChange={handleUploadJson} style={{ display: 'none' }} />
+        <Button onClick={() => fileInputRef.current?.click()} style={{ width: '100%' }}>
+          Upload JSON
         </Button>
       </div>
 
