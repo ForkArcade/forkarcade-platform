@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { T } from '../theme'
 import { Button } from '../components/ui'
-import { GITHUB_ORG, githubRawUrl } from '../api'
+import { GITHUB_ORG, githubRawUrl, apiFetch } from '../api'
 import { renderSpriteToCanvas, spriteToDataUrl } from '../utils/sprite'
 import SpriteEditor from '../editors/SpriteEditor'
 
@@ -103,7 +103,7 @@ function bakeAllAutotiles(grid, frameGrid, tiles) {
   return result
 }
 
-export default function RotEditorPage() {
+export default function RotEditorPage({ user }) {
   const { slug } = useParams()
   const canvasRef = useRef(null)
   const offscreenRef = useRef(null)
@@ -133,6 +133,10 @@ export default function RotEditorPage() {
   const [activeCategory, setActiveCategory] = useState('tiles')
   const spriteInitialRef = useRef(true)
   const spriteSaveRef = useRef(null)
+
+  const [proposeOpen, setProposeOpen] = useState(false)
+  const [proposeTitle, setProposeTitle] = useState('Sprite update')
+  const [proposeStatus, setProposeStatus] = useState(null) // null | 'sending' | 'done' | 'error'
 
   // Load sprites from localStorage (local edits) or GitHub
   useEffect(() => {
@@ -239,6 +243,36 @@ export default function RotEditorPage() {
       return { ...prev, [cat]: { ...prev[cat], [name]: newDef } }
     })
   }, [activeCategory, activeTile, tiles])
+
+  const handlePropose = useCallback(async () => {
+    if (!spriteDefs || !proposeTitle.trim()) return
+    setProposeStatus('sending')
+    const lines = ['Sprite changes proposed from the editor.\n\nChanged sprites:']
+    for (const [cat, sprites] of Object.entries(spriteDefs)) {
+      for (const [name, def] of Object.entries(sprites)) {
+        if (!def?.frames) continue
+        lines.push(`- ${cat}/${name} (${def.frames.length} frame${def.frames.length !== 1 ? 's' : ''})`)
+      }
+    }
+    const summary = lines.join('\n')
+    const json = JSON.stringify({ type: 'sprites', data: spriteDefs })
+    const body = `${summary}\n\n\`\`\`json:data-patch\n${json}\n\`\`\``
+    if (body.length > 60000) {
+      setProposeStatus('error')
+      return
+    }
+    try {
+      await apiFetch(`/api/games/${slug}/evolve-issues`, {
+        method: 'POST',
+        body: JSON.stringify({ title: proposeTitle.trim(), body, category: 'data-patch' }),
+      })
+      setProposeStatus('done')
+      setProposeOpen(false)
+      setTimeout(() => setProposeStatus(null), 3000)
+    } catch {
+      setProposeStatus('error')
+    }
+  }, [spriteDefs, proposeTitle, slug])
 
   // Fetch game maps from data.js on mount
   useEffect(() => {
@@ -978,6 +1012,36 @@ export default function RotEditorPage() {
             Upload JSON
           </Button>
         </div>
+
+        {/* Propose */}
+        {user && spriteDefs && (
+          <div>
+            <div style={{ fontSize: T.fontSize.xs, color: T.text, textTransform: 'uppercase', marginBottom: T.sp[3] }}>Propose</div>
+            {proposeStatus === 'done' ? (
+              <div style={{ fontSize: T.fontSize.xs, color: T.accent, padding: T.sp[3] }}>Submitted!</div>
+            ) : !proposeOpen ? (
+              <Button onClick={() => { setProposeOpen(true); setProposeStatus(null) }} style={{ width: '100%' }}>
+                Propose sprites
+              </Button>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: T.sp[2] }}>
+                <input
+                  value={proposeTitle}
+                  onChange={e => setProposeTitle(e.target.value)}
+                  placeholder="Title"
+                  style={{ padding: `${T.sp[2]}px ${T.sp[3]}px`, background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius.sm, color: T.textBright, fontSize: T.fontSize.xs }}
+                />
+                <Button onClick={handlePropose} disabled={proposeStatus === 'sending' || !proposeTitle.trim()}>
+                  {proposeStatus === 'sending' ? 'Sending...' : 'Submit'}
+                </Button>
+                {proposeStatus === 'error' && (
+                  <div style={{ fontSize: 10, color: T.danger }}>Failed. Login required & must have played this game.</div>
+                )}
+                <Button variant="ghost" onClick={() => setProposeOpen(false)}>Cancel</Button>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Import */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>

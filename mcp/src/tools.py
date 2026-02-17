@@ -234,4 +234,16 @@ Use it when the image alone doesn't clearly identify the game. Skip it when the 
             },
         },
     },
+    {
+        "name": "apply_data_patch",
+        "description": "Applies a data-patch from an evolve issue — writes sprite data deterministically without LLM interpretation. Parses the JSON data block from the issue body, writes _sprites.json and regenerates sprites.js.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "path": {"type": "string", "description": "Path to the game directory"},
+                "issue_body": {"type": "string", "description": "Full GitHub issue body containing ```json:data-patch block"},
+            },
+            "required": ["path", "issue_body"],
+        },
+    },
 ]

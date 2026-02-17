@@ -536,3 +536,45 @@ def list_evolve_issues(args):
         return json.dumps({"error": str(e)})
 
 
+def apply_data_patch(args):
+    game_path = validate_game_path(args["path"])
+    body = args.get("issue_body", "")
+
+    match = re.search(r'```json:data-patch\s*\n(.*?)\n```', body, re.DOTALL)
+    if not match:
+        return json.dumps({"error": "No json:data-patch block found in issue body"})
+
+    try:
+        patch = json.loads(match.group(1))
+    except json.JSONDecodeError as e:
+        return json.dumps({"error": f"Invalid JSON in data-patch block: {e}"})
+
+    patch_type = patch.get("type")
+    if patch_type != "sprites":
+        return json.dumps({"error": f"Unknown data-patch type: {patch_type}. Supported: sprites"})
+
+    data = patch.get("data")
+    if not isinstance(data, dict):
+        return json.dumps({"error": "data-patch data must be an object"})
+
+    sprite_count = 0
+    for cat, sprites in data.items():
+        if not isinstance(sprites, dict):
+            return json.dumps({"error": f"Category '{cat}' must be an object"})
+        for name, s in sprites.items():
+            if not isinstance(s.get("frames"), list) or len(s["frames"]) == 0:
+                return json.dumps({"error": f"{cat}/{name}: missing or empty frames"})
+            if not isinstance(s.get("palette"), dict):
+                return json.dumps({"error": f"{cat}/{name}: missing palette"})
+            sprite_count += 1
+
+    (game_path / "_sprites.json").write_text(json.dumps(data, indent=2) + "\n")
+    (game_path / "sprites.js").write_text(generate_sprites_js(data))
+
+    return json.dumps({
+        "ok": True,
+        "message": f"Data patch applied: {sprite_count} sprites written",
+        "sprites": sprite_count,
+    })
+
+

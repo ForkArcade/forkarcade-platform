@@ -82,7 +82,7 @@ export default function App() {
           <Route path="/templates" element={<TemplatesPage />} />
           <Route path="/templates/:slug" element={<TemplateDetailPage />} />
           <Route path="/play/:slug" element={<GamePage user={user} balance={walletBalance ?? 0} onBalanceChange={setWalletBalance} />} />
-          <Route path="/edit/:slug" element={<RotEditorPage />} />
+          <Route path="/edit/:slug" element={<RotEditorPage user={user} />} />
         </Routes>
       </div>
       <footer style={{ borderTop: `1px solid ${T.border}`, padding: `${T.sp[6]}px ${T.sp[7]}px`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
