@@ -36,11 +36,15 @@ export default function App() {
   }
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const token = params.get('token')
-    if (token) {
-      setToken(token)
-      window.history.replaceState({}, '', window.location.pathname)
+    // Read token from URL fragment (#token=...) — more secure than query string
+    const hash = window.location.hash
+    if (hash) {
+      const params = new URLSearchParams(hash.slice(1))
+      const token = params.get('token')
+      if (token) {
+        setToken(token)
+        window.history.replaceState({}, '', window.location.pathname)
+      }
     }
     if (getToken()) me()
   }, [])

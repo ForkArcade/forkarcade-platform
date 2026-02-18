@@ -80,7 +80,12 @@ async def handle_call_tool(name: str, arguments: dict | None) -> list[types.Text
     if not handler:
         return [types.TextContent(type="text", text=json.dumps({"error": f"Unknown tool: {name}"}))]
 
-    result = handler(args)
+    try:
+        result = handler(args)
+    except ValueError as e:
+        result = json.dumps({"error": f"Validation failed: {e}"})
+    except Exception as e:
+        result = json.dumps({"error": str(e)})
     return [types.TextContent(type="text", text=result)]
 
 

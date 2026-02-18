@@ -8,6 +8,8 @@
   var _slug = null;
   var _version = null;
   var _parentOrigin = null;
+  var _readyCallbacks = [];
+  var _readyRetryInterval = null;
 
   function generateId() {
     return Math.random().toString(36).substr(2, 9);
@@ -23,7 +25,7 @@
   function isValidFAMessage(event) {
     var data = event.data;
     if (!data || !data.type) return false;
-    if (!data.type.startsWith('FA_')) return false;
+    if (typeof data.type !== 'string' || data.type.indexOf('FA_') !== 0) return false;
     if (_parentOrigin && event.origin !== _parentOrigin) return false;
     return true;
   }
@@ -36,7 +38,7 @@
       setTimeout(function() {
         if (_pending[id]) {
           delete _pending[id];
-          reject(new Error('Request timed out'));
+          reject(new Error(type + ' timed out after 10s'));
         }
       }, 10000);
     });
@@ -51,16 +53,27 @@
       _slug = data.slug;
       _version = data.version || null;
       _ready = true;
-      sendToParent({ type: 'FA_READY' });
+      // Stop retry loop
+      if (_readyRetryInterval) {
+        clearInterval(_readyRetryInterval);
+        _readyRetryInterval = null;
+      }
+      // Fire all onReady callbacks
+      var cbs = _readyCallbacks;
+      _readyCallbacks = [];
+      var ctx = { slug: _slug, version: _version };
+      for (var i = 0; i < cbs.length; i++) cbs[i](ctx);
       return;
     }
 
     if (data.type === 'FA_SPRITES_UPDATE' && data.sprites) {
       if (typeof SPRITE_DEFS !== 'undefined') {
         SPRITE_DEFS = data.sprites;
-        for (var cat in SPRITE_DEFS) {
-          for (var name in SPRITE_DEFS[cat]) {
-            if (SPRITE_DEFS[cat][name]._c) delete SPRITE_DEFS[cat][name]._c;
+        var cats = Object.keys(SPRITE_DEFS);
+        for (var ci = 0; ci < cats.length; ci++) {
+          var names = Object.keys(SPRITE_DEFS[cats[ci]]);
+          for (var ni = 0; ni < names.length; ni++) {
+            if (SPRITE_DEFS[cats[ci]][names[ni]]._c) delete SPRITE_DEFS[cats[ci]][names[ni]]._c;
           }
         }
       }
@@ -69,6 +82,12 @@
 
     if (data.type === 'FA_MAP_UPDATE' && data.maps) {
       window.FA_MAP_DATA = data.maps;
+      if (typeof MAP_DEFS !== 'undefined') {
+        var oldKeys = Object.keys(MAP_DEFS);
+        for (var oi = 0; oi < oldKeys.length; oi++) delete MAP_DEFS[oldKeys[oi]];
+        var newKeys = Object.keys(data.maps);
+        for (var mi = 0; mi < newKeys.length; mi++) MAP_DEFS[newKeys[mi]] = data.maps[newKeys[mi]];
+      }
       var evt = new CustomEvent('fa-map-update', { detail: data.maps });
       window.dispatchEvent(evt);
       return;
@@ -93,6 +112,7 @@
       return request('FA_GET_PLAYER');
     },
     updateNarrative: function(data) {
+      if (!data) return;
       sendToParent({
         type: 'FA_NARRATIVE_UPDATE',
         variables: data.variables,
@@ -102,12 +122,26 @@
     },
     onReady: function(callback) {
       if (_ready) { callback({ slug: _slug, version: _version }); return; }
-      var interval = setInterval(function() {
-        if (_ready) { clearInterval(interval); callback({ slug: _slug, version: _version }); }
-      }, 50);
+      _readyCallbacks.push(callback);
     },
     sdkVersion: _sdkVersion
   };
 
+  // Send FA_READY and retry every 500ms until FA_INIT is received (max 60 attempts = 30s)
+  var _readyAttempts = 0;
   sendToParent({ type: 'FA_READY' });
+  _readyRetryInterval = setInterval(function() {
+    if (_ready) {
+      clearInterval(_readyRetryInterval);
+      _readyRetryInterval = null;
+      return;
+    }
+    _readyAttempts++;
+    if (_readyAttempts >= 60) {
+      clearInterval(_readyRetryInterval);
+      _readyRetryInterval = null;
+      return;
+    }
+    sendToParent({ type: 'FA_READY' });
+  }, 500);
 })(window);

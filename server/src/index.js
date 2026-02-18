@@ -21,6 +21,15 @@ app.use(cors({ origin: process.env.CLIENT_ORIGIN, credentials: true }))
 // Serve SDK as static file (canonical copy in /sdk at project root)
 app.use('/sdk', express.static(path.join(__dirname, '../../sdk')))
 
+// Serve local games for dev (../games/<slug>/)
+app.use('/local-games', express.static(path.join(__dirname, '../../../games')))
+
+// Validate :slug parameter across all routes
+app.param('slug', (req, res, next, slug) => {
+  if (!/^[a-zA-Z0-9_-]+$/.test(slug)) return res.status(400).json({ error: 'invalid_slug' })
+  next()
+})
+
 app.use(authRouter)
 app.use(scoresRouter)
 app.use(githubRouter)

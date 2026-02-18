@@ -1,21 +1,16 @@
 import json
-import os
 import re
-import shlex
 import subprocess
 from datetime import date
 from pathlib import Path
 
 from github_templates import ORG, _gh_api, list_templates as gh_list_templates, get_template, get_template_prompt, get_template_styles
 from sprites import generate_sprites_js
-from context import validate_game_path
+from maps import generate_maps_js
+from context import validate_game_path, PLATFORM_ROOT, GAMES_DIR
 
-_HERE = Path(__file__).resolve().parent
-PLATFORM_ROOT = _HERE.parent.parent.parent
-GAMES_DIR = PLATFORM_ROOT.parent / "games"
 SDK_DIR = PLATFORM_ROOT / "sdk"
-PLATFORM_API = os.environ.get("FORKARCADE_API", "http://localhost:8787")
-BASE_FILES = ["index.html", "style.css", "sprites.js", "forkarcade-sdk.js", "fa-narrative.js"]
+BASE_FILES = ["index.html", "style.css", "sprites.js", "maps.js", "forkarcade-sdk.js", "fa-narrative.js"]
 
 
 def _get_config(game_path):
@@ -51,13 +46,6 @@ def run(cmd_args, cwd=None):
         raise RuntimeError(result.stderr.strip() or f"Command failed: {cmd_args}")
     return result.stdout.strip()
 
-
-def run_shell(cmd, cwd=None):
-    """Run a shell pipeline (only for trusted, hardcoded commands without user input)."""
-    result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=30, cwd=cwd)
-    if result.returncode != 0:
-        raise RuntimeError(result.stderr.strip() or f"Command failed: {cmd}")
-    return result.stdout.strip()
 
 
 
@@ -193,6 +181,8 @@ def init_game(args):
 
         (game_path / "_sprites.json").write_text("{}\n")
         (game_path / "sprites.js").write_text(generate_sprites_js({}))
+        (game_path / "_maps.json").write_text("{}\n")
+        (game_path / "maps.js").write_text(generate_maps_js({}))
 
         return json.dumps({
             "ok": True,
@@ -388,13 +378,17 @@ def publish_game(args):
                     html = re.sub(r'(src="[^"]+?\.js)(\?v=\d+)?(")', rf'\1?v={cb_ver}\3', html)
                     html = re.sub(r'(href="[^"]+?\.css)(\?v=\d+)?(")', rf'\1?v={cb_ver}\3', html)
                     index_path.write_text(html)
-        except Exception:
-            pass
+        except Exception as e:
+            results.append(f"Cache bust skipped: {e}")
 
         try:
-            run_shell('git add -A && git commit -m "Publish game"', cwd=game_path)
-        except Exception:
-            pass
+            snapshot_files = _get_snapshot_files(game_path)
+            files_to_add = [f for f in snapshot_files if (game_path / f).exists()]
+            files_to_add += [".forkarcade.json", "_sprites.json", "_maps.json"]
+            run(["git", "add", "--"] + files_to_add, cwd=game_path)
+            run(["git", "commit", "-m", "Publish game"], cwd=game_path)
+        except Exception as e:
+            results.append(f"Git commit skipped: {e}")
         run(["git", "push", "-u", "origin", "main"], cwd=game_path)
         results.append("Pushed to GitHub")
 
@@ -403,8 +397,8 @@ def publish_game(args):
 
         try:
             run(["gh", "repo", "edit", f"{ORG}/{slug}", "--add-topic", "forkarcade-game"])
-        except Exception:
-            pass
+        except Exception as e:
+            results.append(f"Topic 'forkarcade-game' skipped: {e}")
 
         # Add template category as topic (e.g. roguelike, strategy-rpg)
         try:
@@ -414,8 +408,8 @@ def publish_game(args):
                 template = cfg.get("template")
                 if template:
                     run(["gh", "repo", "edit", f"{ORG}/{slug}", "--add-topic", template])
-        except Exception:
-            pass
+        except Exception as e:
+            results.append(f"Template topic skipped: {e}")
 
         try:
             run(["gh", "api", f"repos/{ORG}/{slug}/pages", "-X", "POST",
@@ -448,7 +442,9 @@ def publish_game(args):
                     "description": "Initial release" if next_version == 1 else f"Published v{next_version}",
                 })
                 config_path.write_text(json.dumps(config, indent=2) + "\n")
-                run_shell('git add versions/ .forkarcade.json && git commit -m "Version v{}" && git push'.format(next_version), cwd=game_path)
+                run(["git", "add", "versions/", ".forkarcade.json"], cwd=game_path)
+                run(["git", "commit", "-m", f"Version v{next_version}"], cwd=game_path)
+                run(["git", "push"], cwd=game_path)
                 results.append(f"Version v{next_version} snapshot created")
         except Exception as e:
             results.append(f"Version snapshot warning: {e}")
@@ -579,19 +575,27 @@ def apply_data_patch(args):
         })
 
     if patch_type == "maps":
-        levels = data.get("levels")
-        if not isinstance(levels, list) or len(levels) == 0:
-            return json.dumps({"error": "maps data-patch must have non-empty levels array"})
-        for i, level in enumerate(levels):
-            if not isinstance(level.get("grid"), list) or len(level["grid"]) == 0:
-                return json.dumps({"error": f"Level {i} missing or empty grid"})
+        map_count = 0
+        for name, map_data in data.items():
+            if not isinstance(map_data, dict):
+                return json.dumps({"error": f"Map '{name}' must be an object"})
+            if not isinstance(map_data.get("grid"), list) or len(map_data["grid"]) == 0:
+                return json.dumps({"error": f"Map '{name}' missing or empty grid"})
+            for i, obj in enumerate(map_data.get("objects", [])):
+                if not isinstance(obj, dict):
+                    return json.dumps({"error": f"Map '{name}' object {i} must be an object"})
+                for field in ("x", "y", "type"):
+                    if field not in obj:
+                        return json.dumps({"error": f"Map '{name}' object {i} missing '{field}'"})
+            map_count += 1
 
         (game_path / "_maps.json").write_text(json.dumps(data, indent=2) + "\n")
+        (game_path / "maps.js").write_text(generate_maps_js(data))
 
         return json.dumps({
             "ok": True,
-            "message": f"Map data patch applied: {len(levels)} levels written to _maps.json",
-            "levels": len(levels),
+            "message": f"Map data patch applied: {map_count} maps written",
+            "maps": map_count,
         })
 
 

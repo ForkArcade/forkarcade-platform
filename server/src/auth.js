@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import jwt from 'jsonwebtoken'
+import crypto from 'crypto'
 import db from './db.js'
 
 const router = Router()
@@ -26,18 +27,26 @@ export function auth(req, res, next) {
 
 // OAuth: redirect to GitHub
 router.get('/auth/github', (_req, res) => {
+  const state = crypto.randomUUID()
+  res.cookie('oauth_state', state, { httpOnly: true, sameSite: 'lax', maxAge: 600_000 })
   const params = new URLSearchParams({
     client_id: process.env.GITHUB_CLIENT_ID,
     redirect_uri: `${process.env.SERVER_ORIGIN || `http://localhost:${process.env.PORT}`}/auth/github/callback`,
     scope: 'read:user',
+    state,
   })
   res.redirect(`https://github.com/login/oauth/authorize?${params}`)
 })
 
 // OAuth: callback from GitHub
 router.get('/auth/github/callback', async (req, res) => {
-  const { code } = req.query
+  const { code, state } = req.query
   if (!code) return res.status(400).send('Missing code parameter')
+  const expectedState = req.cookies?.oauth_state
+  res.clearCookie('oauth_state')
+  if (!state || !expectedState || state !== expectedState) {
+    return res.status(403).send('Invalid OAuth state — possible CSRF attack')
+  }
 
   try {
     const tokenRes = await fetch('https://github.com/login/oauth/access_token', {
@@ -81,7 +90,8 @@ router.get('/auth/github/callback', async (req, res) => {
 
     const token = sign({ github_user_id: ghUser.id, login: ghUser.login })
     const clientOrigin = process.env.CLIENT_ORIGIN || 'http://localhost:5173'
-    res.redirect(`${clientOrigin}?token=${encodeURIComponent(token)}`)
+    // Use fragment (#) instead of query string (?) — fragments are not logged in server access logs or sent in referrer headers
+    res.redirect(`${clientOrigin}#token=${encodeURIComponent(token)}`)
   } catch (err) {
     console.error('OAuth callback error:', err)
     res.status(500).send('Authentication failed')

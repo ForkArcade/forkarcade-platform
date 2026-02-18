@@ -9,6 +9,7 @@
     variables: {},
     graphs: {},
     _events: [],
+    _evaluating: false,
 
     init: function(config) {
       this.variables = config.variables || {};
@@ -78,6 +79,8 @@
     },
 
     _evaluate: function() {
+      if (this._evaluating) return;
+      this._evaluating = true;
       for (var gId in this.graphs) {
         var g = this.graphs[gId];
         if (!g.edges) continue;
@@ -91,11 +94,13 @@
           if (e.gte !== undefined && !(val >= e.gte)) match = false;
           if (e.lte !== undefined && !(val <= e.lte)) match = false;
           if (match) {
+            this._evaluating = false;
             this.transition(gId, e.to, e.var + ' \u2192 ' + e.to);
             return;
           }
         }
       }
+      this._evaluating = false;
     },
 
     _sync: function() {

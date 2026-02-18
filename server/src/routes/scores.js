@@ -1,26 +1,41 @@
 import { Router } from 'express'
+import rateLimit from 'express-rate-limit'
 import db from '../db.js'
 import { auth } from '../auth.js'
 
 const router = Router()
 
-router.post('/api/games/:slug/score', auth, async (req, res) => {
+const MAX_COINS_PER_SUBMISSION = 1000
+
+// Rate limit: max 6 score submissions per minute per user
+const scoreLimiter = rateLimit({
+  windowMs: 60_000,
+  max: 6,
+  keyGenerator: (req) => req.user?.sub || req.ip,
+  message: { error: 'rate_limited', retry_after: 60 },
+})
+
+router.post('/api/games/:slug/score', auth, scoreLimiter, async (req, res) => {
   const { score, version } = req.body
   if (typeof score !== 'number' || !Number.isFinite(score) || score < 0 || score > 1_000_000_000) {
     return res.status(400).json({ error: 'invalid_score' })
+  }
+  const v = version != null ? parseInt(version) : null
+  if (version != null && (!Number.isInteger(v) || v < 1)) {
+    return res.status(400).json({ error: 'invalid_version' })
   }
 
   try {
     // Get personal best + insert score + mint coins in one batch (single round-trip to Turso)
     const results = await db.batch([
       { sql: 'SELECT MAX(score) as best FROM scores WHERE github_user_id = ? AND game_slug = ?', args: [req.user.sub, req.params.slug] },
-      { sql: 'INSERT INTO scores (github_user_id, game_slug, score, version, created_at) VALUES (?, ?, ?, ?, ?)', args: [req.user.sub, req.params.slug, score, version || null, new Date().toISOString()] },
+      { sql: 'INSERT INTO scores (github_user_id, game_slug, score, version, created_at) VALUES (?, ?, ?, ?, ?)', args: [req.user.sub, req.params.slug, score, v, new Date().toISOString()] },
     ])
     const personalBest = results[0].rows[0]?.best ?? 0
     const isPersonalRecord = score > personalBest
 
-    let coins = Math.floor(score * 0.1)
-    if (isPersonalRecord) coins = Math.floor(coins * 1.5)
+    let coins = Math.min(Math.floor(score * 0.1), MAX_COINS_PER_SUBMISSION)
+    if (isPersonalRecord) coins = Math.min(Math.floor(coins * 1.5), MAX_COINS_PER_SUBMISSION)
     if (coins > 0) {
       await db.execute({
         sql: `INSERT INTO wallets (github_user_id, balance) VALUES (?, ?)

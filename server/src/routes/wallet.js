@@ -61,27 +61,22 @@ router.post('/api/games/:slug/evolve-issues', auth, async (req, res) => {
 router.post('/api/games/:slug/vote', auth, async (req, res) => {
   const { slug } = req.params
   const { issue_number, coins } = req.body
-  if (!issue_number || !coins || coins < 10 || coins % 10 !== 0) {
+  if (!Number.isInteger(issue_number) || issue_number < 1) {
+    return res.status(400).json({ error: 'invalid_issue_number' })
+  }
+  if (typeof coins !== 'number' || !Number.isInteger(coins) || coins < 10 || coins > 10000 || coins % 10 !== 0) {
     return res.status(400).json({ error: 'invalid_vote' })
   }
 
   try {
-    const deduct = await db.execute({
-      sql: 'UPDATE wallets SET balance = balance - ? WHERE github_user_id = ? AND balance >= ?',
-      args: [coins, req.user.sub, coins],
-    })
-    if (deduct.rowsAffected === 0) return res.status(400).json({ error: 'insufficient_coins' })
-
-    try {
-      const results = await db.batch([
-        { sql: 'INSERT INTO votes (github_user_id, game_slug, issue_number, coins_spent, created_at) VALUES (?, ?, ?, ?, ?)', args: [req.user.sub, slug, issue_number, coins, new Date().toISOString()] },
-        { sql: 'SELECT balance FROM wallets WHERE github_user_id = ?', args: [req.user.sub] },
-      ])
-      res.json({ ok: true, newBalance: results[1].rows[0]?.balance ?? 0 })
-    } catch (insertErr) {
-      await db.execute({ sql: 'UPDATE wallets SET balance = balance + ? WHERE github_user_id = ?', args: [coins, req.user.sub] }).catch(() => {})
-      throw insertErr
-    }
+    // Atomic: deduct coins + insert vote + read balance in one batch
+    const results = await db.batch([
+      { sql: 'UPDATE wallets SET balance = balance - ? WHERE github_user_id = ? AND balance >= ?', args: [coins, req.user.sub, coins] },
+      { sql: 'INSERT INTO votes (github_user_id, game_slug, issue_number, coins_spent, created_at) VALUES (?, ?, ?, ?, ?)', args: [req.user.sub, slug, issue_number, coins, new Date().toISOString()] },
+      { sql: 'SELECT balance FROM wallets WHERE github_user_id = ?', args: [req.user.sub] },
+    ])
+    if (results[0].rowsAffected === 0) return res.status(400).json({ error: 'insufficient_coins' })
+    res.json({ ok: true, newBalance: results[2].rows[0]?.balance ?? 0 })
   } catch (err) {
     console.error('Vote error:', err.message)
     res.status(500).json({ error: 'db_error' })
@@ -112,7 +107,7 @@ router.get('/api/games/:slug/votes', async (req, res) => {
 router.post('/api/games/:slug/evolve-trigger', auth, async (req, res) => {
   const { slug } = req.params
   const { issue_number } = req.body
-  if (!issue_number) return res.status(400).json({ error: 'missing_issue' })
+  if (!Number.isInteger(issue_number) || issue_number < 1) return res.status(400).json({ error: 'invalid_issue_number' })
 
   try {
     // Check vote threshold — author vote bypasses the 3-voter minimum
@@ -196,27 +191,22 @@ router.post('/api/new-game/issues', auth, async (req, res) => {
 // POST /api/new-game/vote — vote on a new game proposal
 router.post('/api/new-game/vote', auth, async (req, res) => {
   const { issue_number, coins } = req.body
-  if (!issue_number || !coins || coins < 10 || coins % 10 !== 0) {
+  if (!Number.isInteger(issue_number) || issue_number < 1) {
+    return res.status(400).json({ error: 'invalid_issue_number' })
+  }
+  if (typeof coins !== 'number' || !Number.isInteger(coins) || coins < 10 || coins > 10000 || coins % 10 !== 0) {
     return res.status(400).json({ error: 'invalid_vote' })
   }
 
   try {
-    const deduct = await db.execute({
-      sql: 'UPDATE wallets SET balance = balance - ? WHERE github_user_id = ? AND balance >= ?',
-      args: [coins, req.user.sub, coins],
-    })
-    if (deduct.rowsAffected === 0) return res.status(400).json({ error: 'insufficient_coins' })
-
-    try {
-      const results = await db.batch([
-        { sql: 'INSERT INTO votes (github_user_id, game_slug, issue_number, coins_spent, created_at) VALUES (?, ?, ?, ?, ?)', args: [req.user.sub, NEW_GAME_SLUG, issue_number, coins, new Date().toISOString()] },
-        { sql: 'SELECT balance FROM wallets WHERE github_user_id = ?', args: [req.user.sub] },
-      ])
-      res.json({ ok: true, newBalance: results[1].rows[0]?.balance ?? 0 })
-    } catch (insertErr) {
-      await db.execute({ sql: 'UPDATE wallets SET balance = balance + ? WHERE github_user_id = ?', args: [coins, req.user.sub] }).catch(() => {})
-      throw insertErr
-    }
+    // Atomic: deduct coins + insert vote + read balance in one batch
+    const results = await db.batch([
+      { sql: 'UPDATE wallets SET balance = balance - ? WHERE github_user_id = ? AND balance >= ?', args: [coins, req.user.sub, coins] },
+      { sql: 'INSERT INTO votes (github_user_id, game_slug, issue_number, coins_spent, created_at) VALUES (?, ?, ?, ?, ?)', args: [req.user.sub, NEW_GAME_SLUG, issue_number, coins, new Date().toISOString()] },
+      { sql: 'SELECT balance FROM wallets WHERE github_user_id = ?', args: [req.user.sub] },
+    ])
+    if (results[0].rowsAffected === 0) return res.status(400).json({ error: 'insufficient_coins' })
+    res.json({ ok: true, newBalance: results[2].rows[0]?.balance ?? 0 })
   } catch (err) {
     console.error('New game vote error:', err.message)
     res.status(500).json({ error: 'db_error' })
@@ -245,7 +235,7 @@ router.get('/api/new-game/votes', async (_req, res) => {
 // POST /api/new-game/trigger — add new-game label (threshold: 10 unique voters)
 router.post('/api/new-game/trigger', auth, async (req, res) => {
   const { issue_number } = req.body
-  if (!issue_number) return res.status(400).json({ error: 'missing_issue' })
+  if (!Number.isInteger(issue_number) || issue_number < 1) return res.status(400).json({ error: 'invalid_issue_number' })
 
   try {
     const voteCount = await db.execute({
