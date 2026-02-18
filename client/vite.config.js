@@ -15,6 +15,7 @@ export default defineConfig({
       '/api': 'http://localhost:8787',
       '/auth': 'http://localhost:8787',
       '/sdk': 'http://localhost:8787',
+      '/local-games': 'http://localhost:8787',
     }
   }
 })

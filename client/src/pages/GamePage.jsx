@@ -8,8 +8,18 @@ import NarrativePanel from '../components/NarrativePanel'
 import { Trophy, BookOpen, Clock, Info, Loader, AlertCircle, FileText, Zap, Palette } from 'lucide-react'
 import EvolvePanel from '../components/EvolvePanel'
 import MdPopup from '../components/MdPopup'
+import { levelsToMapDefs } from '../editors/mapUtils'
 
-const IFRAME_ORIGIN = `https://${GITHUB_ORG.toLowerCase()}.github.io`
+const isDev = window.location.hostname === 'localhost'
+const IFRAME_ORIGIN = isDev ? window.location.origin : `https://${GITHUB_ORG.toLowerCase()}.github.io`
+
+function editorMapsToMapDefs(raw) {
+  try {
+    const parsed = JSON.parse(raw)
+    if (parsed.levels) return levelsToMapDefs(parsed.levels, parsed.zoneDefs || [])
+    return parsed
+  } catch { return null }
+}
 
 const TAB_ICONS = {
   info: { label: 'Info', icon: Info },
@@ -74,9 +84,11 @@ export default function GamePage({ user, balance, onBalanceChange }) {
 
   useEffect(() => { loadLeaderboard() }, [loadLeaderboard])
 
-  const iframeUrl = selectedVersion
-    ? `${IFRAME_ORIGIN}/${slug}/versions/v${selectedVersion}/`
-    : `${IFRAME_ORIGIN}/${slug}/`
+  const iframeUrl = isDev
+    ? `/local-games/${slug}/`
+    : selectedVersion
+      ? `${IFRAME_ORIGIN}/${slug}/versions/v${selectedVersion}/`
+      : `${IFRAME_ORIGIN}/${slug}/`
 
   const wrapperRef = useRef(null)
 
@@ -146,9 +158,12 @@ export default function GamePage({ user, balance, onBalanceChange }) {
     function onStorage(e) {
       if (e.key !== key || !e.newValue || gameStatusRef.current !== 'ready') return
       try {
-        iframeRef.current?.contentWindow.postMessage(
-          { type: 'FA_MAP_UPDATE', maps: JSON.parse(e.newValue) }, IFRAME_ORIGIN
-        )
+        const maps = editorMapsToMapDefs(e.newValue)
+        if (maps) {
+          iframeRef.current?.contentWindow.postMessage(
+            { type: 'FA_MAP_UPDATE', maps }, IFRAME_ORIGIN
+          )
+        }
       } catch (err) {}
     }
     window.addEventListener('storage', onStorage)
@@ -175,9 +190,12 @@ export default function GamePage({ user, balance, onBalanceChange }) {
             }
             const savedMaps = localStorage.getItem(`fa-maps-${slug}`)
             if (savedMaps) {
-              iframeRef.current?.contentWindow.postMessage(
-                { type: 'FA_MAP_UPDATE', maps: JSON.parse(savedMaps) }, IFRAME_ORIGIN
-              )
+              const maps = editorMapsToMapDefs(savedMaps)
+              if (maps) {
+                iframeRef.current?.contentWindow.postMessage(
+                  { type: 'FA_MAP_UPDATE', maps }, IFRAME_ORIGIN
+                )
+              }
             }
           } catch (e) {}
           break

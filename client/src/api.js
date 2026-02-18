@@ -28,8 +28,15 @@ export async function apiFetch(path, options = {}) {
   return res.json()
 }
 
+export const isDev = window.location.hostname === 'localhost'
+
 export function githubRawUrl(path) {
   return `${API}/api/github/raw/${path}`
+}
+
+export function gameFileUrl(slug, filename) {
+  if (isDev) return `/local-games/${slug}/${filename}`
+  return githubRawUrl(`${GITHUB_ORG}/${slug}/main/${filename}`)
 }
 
 export async function githubFetch(path) {
