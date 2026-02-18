@@ -246,4 +246,15 @@ Use it when the image alone doesn't clearly identify the game. Skip it when the 
             "required": ["path", "issue_body"],
         },
     },
+    {
+        "name": "delete_game",
+        "description": "Deletes a game — removes GitHub repo, cleans up scores/votes from database, deletes local directory. Admin operation.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "slug": {"type": "string", "description": "Game slug (repo name) to delete"},
+            },
+            "required": ["slug"],
+        },
+    },
 ]

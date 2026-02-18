@@ -1,10 +1,13 @@
 import json
+import os
 import re
 import shutil
 import subprocess
 import sys
 from datetime import date
 from pathlib import Path
+from urllib.request import Request, urlopen
+from urllib.error import URLError
 
 from github_templates import ORG, _gh_api, list_templates as gh_list_templates, get_template, get_template_prompt, get_template_styles
 from sprites import generate_sprites_js
@@ -605,3 +608,52 @@ def apply_data_patch(args):
             "message": f"Map data patch applied: {map_count} maps written",
             "maps": map_count,
         })
+
+
+def delete_game(args):
+    slug = args["slug"]
+    if not re.match(r"^[a-z0-9-]+$", slug):
+        return json.dumps({"error": "Invalid slug"})
+
+    results = []
+
+    # 1. Check repo exists
+    try:
+        run(["gh", "repo", "view", f"{ORG}/{slug}", "--json", "name"])
+    except RuntimeError:
+        return json.dumps({"error": f"Repository {ORG}/{slug} not found"})
+
+    # 2. Delete GitHub repo
+    try:
+        run(["gh", "repo", "delete", f"{ORG}/{slug}", "--yes"])
+        results.append(f"Deleted repo {ORG}/{slug}")
+    except RuntimeError as e:
+        return json.dumps({"error": f"Failed to delete repo: {e}"})
+
+    # 3. Clean up database (scores + votes) via server endpoint
+    server_url = os.environ.get("FA_SERVER_URL", "http://localhost:8787")
+    admin_secret = os.environ.get("ADMIN_SECRET", "")
+    if admin_secret:
+        try:
+            req = Request(
+                f"{server_url}/api/games/{slug}/data",
+                method="DELETE",
+                headers={"X-Admin-Secret": admin_secret},
+            )
+            with urlopen(req, timeout=10) as resp:
+                db_result = json.loads(resp.read().decode())
+                results.append(f"DB cleanup: {db_result.get('deleted_scores', 0)} scores, {db_result.get('deleted_votes', 0)} votes deleted")
+        except (URLError, Exception) as e:
+            results.append(f"DB cleanup failed (server may be offline): {e}")
+    else:
+        results.append("DB cleanup skipped: ADMIN_SECRET not configured")
+
+    # 4. Delete local game directory
+    game_path = GAMES_DIR / slug
+    if game_path.exists():
+        shutil.rmtree(game_path)
+        results.append(f"Deleted local directory {game_path}")
+    else:
+        results.append(f"No local directory found at {game_path}")
+
+    return json.dumps({"ok": True, "slug": slug, "results": results}, indent=2)

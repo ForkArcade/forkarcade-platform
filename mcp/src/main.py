@@ -33,6 +33,7 @@ HANDLERS = {
     "create_thumbnail": thumbnail.create_thumbnail,
     "list_evolve_issues": workflow.list_evolve_issues,
     "apply_data_patch": workflow.apply_data_patch,
+    "delete_game": workflow.delete_game,
 }
 
 
