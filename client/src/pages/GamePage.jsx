@@ -13,6 +13,18 @@ import { levelsToMapDefs } from '../editors/mapUtils'
 const isDev = window.location.hostname === 'localhost'
 const IFRAME_ORIGIN = isDev ? window.location.origin : `https://${GITHUB_ORG.toLowerCase()}.github.io`
 
+function sendSpritesToIframe(iframe, raw, origin) {
+  try {
+    const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw
+    if (parsed._format === 'png') {
+      const { _format, _sheetDataUrl, _sheetCols, ...atlas } = parsed
+      iframe.postMessage({ type: 'FA_SPRITES_UPDATE', sheetDataUrl: _sheetDataUrl, sheetCols: _sheetCols, sprites: atlas }, origin)
+    } else {
+      iframe.postMessage({ type: 'FA_SPRITES_UPDATE', sprites: parsed }, origin)
+    }
+  } catch {}
+}
+
 function editorMapsToMapDefs(raw) {
   try {
     const parsed = JSON.parse(raw)
@@ -142,11 +154,7 @@ export default function GamePage({ user, balance, onBalanceChange }) {
     const key = `fa-sprites-${slug}`
     function onStorage(e) {
       if (e.key !== key || !e.newValue || gameStatusRef.current !== 'ready') return
-      try {
-        iframeRef.current?.contentWindow.postMessage(
-          { type: 'FA_SPRITES_UPDATE', sprites: JSON.parse(e.newValue) }, IFRAME_ORIGIN
-        )
-      } catch (err) {}
+      sendSpritesToIframe(iframeRef.current?.contentWindow, e.newValue, IFRAME_ORIGIN)
     }
     window.addEventListener('storage', onStorage)
     return () => window.removeEventListener('storage', onStorage)
@@ -184,9 +192,7 @@ export default function GamePage({ user, balance, onBalanceChange }) {
           try {
             const savedSprites = localStorage.getItem(`fa-sprites-${slug}`)
             if (savedSprites) {
-              iframeRef.current?.contentWindow.postMessage(
-                { type: 'FA_SPRITES_UPDATE', sprites: JSON.parse(savedSprites) }, IFRAME_ORIGIN
-              )
+              sendSpritesToIframe(iframeRef.current?.contentWindow, savedSprites, IFRAME_ORIGIN)
             }
             const savedMaps = localStorage.getItem(`fa-maps-${slug}`)
             if (savedMaps) {
