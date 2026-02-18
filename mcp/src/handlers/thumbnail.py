@@ -58,18 +58,23 @@ PIXEL_FONT = {
 }
 
 _sprites_cache = {}
+_sprites_cache_ts = {}
+_SPRITES_CACHE_TTL = 60  # 1 minute
 
 
 def _load_sprites(game_path):
     """Load sprites from _sprites.json in the game directory."""
+    import time
     key = str(game_path)
-    if key in _sprites_cache:
+    now = time.time()
+    if key in _sprites_cache and (now - _sprites_cache_ts.get(key, 0)) < _SPRITES_CACHE_TTL:
         return _sprites_cache[key]
     sprites_path = game_path / "_sprites.json"
     if not sprites_path.exists():
         return {}
     data = migrate_sprite_data(json.loads(sprites_path.read_text()))
     _sprites_cache[key] = data
+    _sprites_cache_ts[key] = now
     return data
 
 RESAMPLE = {
@@ -342,7 +347,8 @@ def create_thumbnail(args):
     out.save(out_path)
 
     def_path = game_path / "_thumbnail.json"
-    def_path.write_text(json.dumps(args, indent=2))
+    thumbnail_def = {"layers": args.get("layers", []), "w": out_w, "h": out_h}
+    def_path.write_text(json.dumps(thumbnail_def, indent=2))
 
     pushed = False
     try:

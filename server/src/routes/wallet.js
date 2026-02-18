@@ -99,7 +99,7 @@ router.get('/api/games/:slug/votes', async (req, res) => {
     res.json(totals.rows.map(r => ({ ...r, voter_ids: voterMap[r.issue_number] || [] })))
   } catch (err) {
     console.error('Votes fetch error:', err.message)
-    res.json([])
+    res.status(500).json({ error: 'db_error' })
   }
 })
 
@@ -228,7 +228,7 @@ router.get('/api/new-game/votes', async (_req, res) => {
     res.json(totals.rows.map(r => ({ ...r, voter_ids: voterMap[r.issue_number] || [] })))
   } catch (err) {
     console.error('New game votes error:', err.message)
-    res.json([])
+    res.status(500).json({ error: 'db_error' })
   }
 })
 

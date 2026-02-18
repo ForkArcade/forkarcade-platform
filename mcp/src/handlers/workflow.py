@@ -1,5 +1,6 @@
 import json
 import re
+import shutil
 import subprocess
 from datetime import date
 from pathlib import Path
@@ -52,6 +53,8 @@ def run(cmd_args, cwd=None):
 def _get_sdk_info():
     """Read canonical SDK file and extract version."""
     sdk_path = PLATFORM_ROOT / "sdk" / "forkarcade-sdk.js"
+    if not sdk_path.exists():
+        raise FileNotFoundError(f"SDK file not found: {sdk_path}")
     content = sdk_path.read_text()
     first_line = content.split('\n')[0]
     match = re.search(r'v(\d+)', first_line)
@@ -98,7 +101,7 @@ def _apply_style(game_path, template_key, style_key=None):
 
     # Inject font <link> into index.html
     font_url = font.get("url")
-    if font_url:
+    if font_url and font_url.startswith("https://"):
         index_path = game_path / "index.html"
         if index_path.exists():
             html = index_path.read_text()
@@ -431,7 +434,7 @@ def publish_game(args):
                 for f in _get_snapshot_files(game_path):
                     src = game_path / f
                     if src.exists():
-                        (version_dir / f).write_text(src.read_text())
+                        shutil.copy2(src, version_dir / f)
                 config["currentVersion"] = next_version
                 if "versions" not in config:
                     config["versions"] = []
@@ -563,6 +566,10 @@ def apply_data_patch(args):
                     return json.dumps({"error": f"{cat}/{name}: missing or empty frames"})
                 if not isinstance(s.get("palette"), dict):
                     return json.dumps({"error": f"{cat}/{name}: missing palette"})
+                w = s.get("w")
+                h = s.get("h")
+                if not isinstance(w, int) or not isinstance(h, int) or w < 1 or h < 1 or w > 128 or h > 128:
+                    return json.dumps({"error": f"{cat}/{name}: w and h must be integers between 1 and 128"})
                 sprite_count += 1
 
         (game_path / "_sprites.json").write_text(json.dumps(data, indent=2) + "\n")

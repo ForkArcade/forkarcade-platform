@@ -29,7 +29,10 @@ def _gh_api(path):
     )
     if result.returncode != 0:
         raise RuntimeError(f"GitHub API error: {result.stderr.strip()}")
-    return json.loads(result.stdout)
+    try:
+        return json.loads(result.stdout)
+    except json.JSONDecodeError as e:
+        raise RuntimeError(f"GitHub API returned invalid JSON for {path}: {e}")
 
 
 def _fetch_templates():

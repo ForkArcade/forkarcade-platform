@@ -14,15 +14,17 @@ import walletRouter from './routes/wallet.js'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const app = express()
 
-app.use(express.json())
+app.use(express.json({ limit: '1mb' }))
 app.use(cookieParser())
-app.use(cors({ origin: process.env.CLIENT_ORIGIN, credentials: true }))
+app.use(cors({ origin: process.env.CLIENT_ORIGIN || false, credentials: true }))
 
 // Serve SDK as static file (canonical copy in /sdk at project root)
 app.use('/sdk', express.static(path.join(__dirname, '../../sdk')))
 
-// Serve local games for dev (../games/<slug>/)
-app.use('/local-games', express.static(path.join(__dirname, '../../../games')))
+// Serve local games for dev only (../games/<slug>/)
+if (process.env.NODE_ENV !== 'production') {
+  app.use('/local-games', express.static(path.join(__dirname, '../../../games')))
+}
 
 // Validate :slug parameter across all routes
 app.param('slug', (req, res, next, slug) => {

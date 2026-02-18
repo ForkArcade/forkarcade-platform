@@ -66,7 +66,7 @@ router.get('/api/games/:slug/leaderboard', async (req, res) => {
     res.json(result.rows)
   } catch (err) {
     console.error('Leaderboard error:', err.message)
-    res.json([])
+    res.status(500).json({ error: 'db_error' })
   }
 })
 

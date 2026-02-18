@@ -106,6 +106,9 @@
 
   window.ForkArcade = {
     submitScore: function(score) {
+      if (typeof score !== 'number' || !isFinite(score) || score < 0 || score > 1000000000) {
+        return Promise.reject(new Error('Invalid score: must be a finite number between 0 and 1,000,000,000'));
+      }
       return request('FA_SUBMIT_SCORE', { score: score, version: _version });
     },
     getPlayer: function() {

@@ -72,7 +72,7 @@ def create_sprite(args):
                 return json.dumps({"error": f"Character '{ch}' in row {i} not found in palette"})
 
     for key, val in palette.items():
-        if not isinstance(val, str) or not re.match(r"^#[0-9a-fA-F]{3,6}$", val):
+        if not isinstance(val, str) or not re.match(r"^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$", val):
             return json.dumps({"error": f"Invalid color '{val}' for palette key '{key}'"})
 
     if not isinstance(origin, list) or len(origin) != 2:
@@ -129,7 +129,7 @@ def validate_assets(args):
     template = args.get("template")
 
     if not template:
-        game_ctx = detect_game_context()
+        game_ctx = detect_game_context(str(game_path))
         if game_ctx:
             template = game_ctx["template"]
     if not template:
