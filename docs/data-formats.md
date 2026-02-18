@@ -3,8 +3,7 @@
 ## Unified Data Pattern (sprites AND maps)
 Both sprites and maps follow the same pattern:
 - `_sprites.json` / `_maps.json` — source of truth (JSON)
-- `sprites.js` / `maps.js` — generated files with globals + helper functions
-- `SPRITE_DEFS` / `MAP_DEFS` — global vars in generated JS
+- `sprites.js` / `maps.js` — generated files with global data (`SPRITE_DEFS` / `MAP_DEFS`). Sprite runtime (`drawSprite`, `getSprite`, `spriteFrames`) lives in `fa-renderer.js`; map helpers live in `maps.js`.
 - Hot-reload: SDK replaces globals on `FA_SPRITES_UPDATE` / `FA_MAP_UPDATE`
 - `apply_data_patch` MCP tool handles both `type: "sprites"` and `type: "maps"`
 

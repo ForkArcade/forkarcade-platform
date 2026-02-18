@@ -117,7 +117,7 @@ In the renderer display the bar with `alpha = Math.min(1, state.narrativeMessage
 - `ForkArcade.onReady(callback)` — call on startup
 - `ForkArcade.submitScore(score)` — call at end of game
 - `ForkArcade.updateNarrative(data)` — report narrative state to the platform
-- Platform may send `FA_SPRITES_UPDATE` to hot-reload sprites from the editor (handled by `sprites.js`)
+- Platform may send `FA_SPRITES_UPDATE` to hot-reload sprites from the editor (handled by SDK)
 
 ## Sprites
 
@@ -197,6 +197,7 @@ The game loop runs at ~60fps. Every allocation or expensive call per frame compo
 
 ## Platform Files (do not edit)
 
-- `forkarcade-sdk.js` — SDK (scoring, auth)
+- `forkarcade-sdk.js` — SDK (scoring, auth, hot-reload)
 - `fa-narrative.js` — narrative module (graph, variables, transition)
-- `sprites.js` — generated from `_sprites.json` (matrix format: frames per sprite)
+- `fa-renderer.js` — renderer + sprite runtime (`drawSprite`, `getSprite`, `spriteFrames`)
+- `sprites.js` — sprite data only, generated from `_sprites.json` (no code, just `var SPRITE_DEFS = {...}`)

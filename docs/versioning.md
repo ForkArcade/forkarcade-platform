@@ -14,7 +14,7 @@ Games evolve through GitHub issues. Every version is playable.
 2. Player clicks "Propose sprites" -> creates `[EVOLVE]` issue with `data-patch` label + JSON data in body
 3. Community votes (same mechanism, same threshold)
 4. `/evolve` skill detects `data-patch` label -> calls `apply_data_patch` MCP tool
-5. Tool writes `_sprites.json` + regenerates `sprites.js` deterministically — no LLM interpretation
+5. Tool writes `_sprites.json` + regenerates `sprites.js` (data only) deterministically — no LLM interpretation
 6. Changelog + publish as usual
 
 Issue body format: human-readable summary + ` ```json:data-patch ` code block with `{ "type": "sprites"|"maps", "data": {...} }`.
