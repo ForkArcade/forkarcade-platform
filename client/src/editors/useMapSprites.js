@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { gameFileUrl } from '../api'
-import { spriteToDataUrl, hydrateSpriteDefs, dehydrateToSheet } from '../utils/sprite'
+import { spriteToDataUrl, hydrateSpriteDefs } from '../utils/sprite'
 
 function loadImage(src) {
   return new Promise((resolve, reject) => {
@@ -55,16 +55,14 @@ export function useMapSprites(slug) {
     if (saved) {
       try {
         const parsed = JSON.parse(saved)
-        if (parsed._format === 'png') {
+        if (parsed._format === 'png-hydrated' && parsed._atlas) {
+          // Character grids + atlas — load directly, no image decoding
           formatRef.current = 'png'
-          const { _format, _sheetDataUrl, _sheetCols, ...atlas } = parsed
-          atlasRef.current = { sheet: { cols: _sheetCols, frameW: atlas.tiles?.[Object.keys(atlas.tiles)[0]]?.w || 10, frameH: atlas.tiles?.[Object.keys(atlas.tiles)[0]]?.h || 10 }, ...atlas }
-          loadImage(_sheetDataUrl).then(img => {
-            const hydrated = hydrateSpriteDefs(atlasRef.current, img)
-            setSpriteDefs(hydrated)
-            setHasLocalEdits(true)
-            spriteInitialRef.current = false
-          }).catch(() => fetchSpritesFromSource())
+          atlasRef.current = parsed._atlas
+          const { _format, _atlas, ...defs } = parsed
+          setSpriteDefs(defs)
+          setHasLocalEdits(true)
+          spriteInitialRef.current = false
           return
         }
         formatRef.current = 'legacy'
@@ -89,13 +87,9 @@ export function useMapSprites(slug) {
     clearTimeout(spriteSaveRef.current)
     spriteSaveRef.current = setTimeout(() => {
       if (formatRef.current === 'png' && atlasRef.current) {
-        const dataUrl = dehydrateToSheet(spriteDefs, atlasRef.current)
-        const atlas = atlasRef.current
-        const lsData = { _format: 'png', _sheetDataUrl: dataUrl, _sheetCols: atlas.sheet.cols }
-        for (const cat of Object.keys(atlas)) {
-          if (cat === 'sheet') continue
-          lsData[cat] = atlas[cat]
-        }
+        // Save character grids + atlas — no PNG encoding (fast)
+        // Dehydration to PNG happens in GamePage on hot-reload
+        const lsData = { _format: 'png-hydrated', _atlas: atlasRef.current, ...spriteDefs }
         localStorage.setItem(`fa-sprites-${slug}`, JSON.stringify(lsData))
       } else {
         localStorage.setItem(`fa-sprites-${slug}`, JSON.stringify(spriteDefs))
@@ -112,12 +106,9 @@ export function useMapSprites(slug) {
       if (e.key !== lsKey || !e.newValue) return
       try {
         const parsed = JSON.parse(e.newValue)
-        if (parsed._format === 'png') {
-          const { _format, _sheetDataUrl, _sheetCols, ...atlas } = parsed
-          const fullAtlas = { sheet: { cols: _sheetCols, frameW: 10, frameH: 10 }, ...atlas }
-          loadImage(_sheetDataUrl).then(img => {
-            setSpriteDefs(hydrateSpriteDefs(fullAtlas, img))
-          }).catch(() => {})
+        if (parsed._format === 'png-hydrated' && parsed._atlas) {
+          const { _format, _atlas, ...defs } = parsed
+          setSpriteDefs(defs)
         } else {
           setSpriteDefs(parsed)
         }

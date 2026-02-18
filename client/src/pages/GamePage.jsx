@@ -9,6 +9,7 @@ import { Trophy, BookOpen, Clock, Info, Loader, AlertCircle, FileText, Zap, Pale
 import EvolvePanel from '../components/EvolvePanel'
 import MdPopup from '../components/MdPopup'
 import { levelsToMapDefs } from '../editors/mapUtils'
+import { dehydrateToSheet } from '../utils/sprite'
 
 const isDev = window.location.hostname === 'localhost'
 const IFRAME_ORIGIN = isDev ? window.location.origin : `https://${GITHUB_ORG.toLowerCase()}.github.io`
@@ -16,9 +17,11 @@ const IFRAME_ORIGIN = isDev ? window.location.origin : `https://${GITHUB_ORG.toL
 function sendSpritesToIframe(iframe, raw, origin) {
   try {
     const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw
-    if (parsed._format === 'png') {
-      const { _format, _sheetDataUrl, _sheetCols, ...atlas } = parsed
-      iframe.postMessage({ type: 'FA_SPRITES_UPDATE', sheetDataUrl: _sheetDataUrl, sheetCols: _sheetCols, sprites: atlas }, origin)
+    if (parsed._format === 'png-hydrated' && parsed._atlas) {
+      // Dehydrate character grids → PNG for the game iframe
+      const { _format, _atlas, ...defs } = parsed
+      const sheetDataUrl = dehydrateToSheet(defs, _atlas)
+      iframe.postMessage({ type: 'FA_SPRITES_UPDATE', sheetDataUrl, sheetCols: _atlas.sheet.cols, sprites: _atlas }, origin)
     } else {
       iframe.postMessage({ type: 'FA_SPRITES_UPDATE', sprites: parsed }, origin)
     }
