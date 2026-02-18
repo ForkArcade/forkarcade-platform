@@ -5,7 +5,7 @@
 
   if (!window.FA) window.FA = {};
   var FA = window.FA;
-  var MAX_EVENTS = 20;
+  var MAX_EVENTS = 20; // max narrative events kept in buffer (shown in platform UI)
 
   FA.narrative = {
     variables: {},

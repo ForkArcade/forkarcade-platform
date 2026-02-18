@@ -10,9 +10,12 @@
   var _parentOrigin = null;
   var _readyCallbacks = [];
   var _readyRetryInterval = null;
+  var REQUEST_TIMEOUT = 10000;
+  var MAX_READY_ATTEMPTS = 60;
+  var READY_RETRY_MS = 500;
 
   function generateId() {
-    return Math.random().toString(36).substr(2, 9);
+    return Math.random().toString(36).substring(2, 11);
   }
 
   function sendToParent(msg) {
@@ -38,9 +41,9 @@
       setTimeout(function() {
         if (_pending[id]) {
           delete _pending[id];
-          reject(new Error(type + ' timed out after 10s'));
+          reject(new Error(type + ' timed out after ' + (REQUEST_TIMEOUT / 1000) + 's'));
         }
-      }, 10000);
+      }, REQUEST_TIMEOUT);
     });
   }
 
@@ -130,7 +133,7 @@
     sdkVersion: _sdkVersion
   };
 
-  // Send FA_READY and retry every 500ms until FA_INIT is received (max 60 attempts = 30s)
+  // Send FA_READY and retry until FA_INIT is received
   var _readyAttempts = 0;
   sendToParent({ type: 'FA_READY' });
   _readyRetryInterval = setInterval(function() {
@@ -140,11 +143,11 @@
       return;
     }
     _readyAttempts++;
-    if (_readyAttempts >= 60) {
+    if (_readyAttempts >= MAX_READY_ATTEMPTS) {
       clearInterval(_readyRetryInterval);
       _readyRetryInterval = null;
       return;
     }
     sendToParent({ type: 'FA_READY' });
-  }, 500);
+  }, READY_RETRY_MS);
 })(window);

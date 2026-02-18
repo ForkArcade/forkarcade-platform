@@ -137,7 +137,8 @@ def get_template_styles(key, repo=None):
         _cache["styles"][key] = styles
         _cache["styles_ts"][key] = now
         return styles
-    except Exception:
+    except Exception as e:
+        print(f"Warning: failed to fetch styles for {key}: {e}", file=sys.stderr)
         return None
 
 

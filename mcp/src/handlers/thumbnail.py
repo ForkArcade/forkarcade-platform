@@ -10,7 +10,7 @@ from PIL import Image, ImageDraw
 from context import validate_game_path
 from sprites import migrate_sprite_data
 
-W, H = 72, 32
+DEFAULT_THUMB_W, DEFAULT_THUMB_H = 72, 32
 
 # Built-in 3x5 pixel font (each glyph is a list of 5 row strings, 3 chars wide)
 PIXEL_FONT = {
@@ -86,7 +86,7 @@ RESAMPLE = {
 }
 
 
-def _hex(color):
+def _hex_to_rgba(color):
     h = color.lstrip("#")
     if len(h) == 3:
         h = h[0]*2 + h[1]*2 + h[2]*2
@@ -124,21 +124,21 @@ def _draw_glyphs(canvas, draw, text, x0, y0, color, scale):
 
 # --- Operation handlers ---
 
-def _op_fill(canvas, draw, op, game_path, warnings):
-    draw.rectangle([0, 0, canvas.width - 1, canvas.height - 1], fill=_hex(op["fill"]))
+def _op_fill(canvas, draw, op, _game_path, _warnings):
+    draw.rectangle([0, 0, canvas.width - 1, canvas.height - 1], fill=_hex_to_rgba(op["fill"]))
 
-def _op_rect(canvas, draw, op, game_path, warnings):
+def _op_rect(canvas, draw, op, _game_path, _warnings):
     r = op["rect"]
     x, y = r.get("x", 0), r.get("y", 0)
     w, h = r["w"], r["h"]
-    draw.rectangle([x, y, x + w - 1, y + h - 1], fill=_hex(r["color"]))
+    draw.rectangle([x, y, x + w - 1, y + h - 1], fill=_hex_to_rgba(r["color"]))
 
-def _op_gradient(canvas, draw, op, game_path, warnings):
+def _op_gradient(canvas, draw, op, _game_path, _warnings):
     g = op["gradient"]
     x0, y0 = g.get("x", 0), g.get("y", 0)
     gw = g.get("w", canvas.width)
     gh = g.get("h", canvas.height)
-    c1, c2 = _hex(g["from"]), _hex(g["to"])
+    c1, c2 = _hex_to_rgba(g["from"]), _hex_to_rgba(g["to"])
     vertical = g.get("direction", "vertical") == "vertical"
     steps = gh if vertical else gw
     for i in range(steps):
@@ -149,31 +149,31 @@ def _op_gradient(canvas, draw, op, game_path, warnings):
         else:
             draw.line([(x0 + i, y0), (x0 + i, y0 + gh - 1)], fill=c)
 
-def _op_circle(canvas, draw, op, game_path, warnings):
+def _op_circle(canvas, draw, op, _game_path, _warnings):
     c = op["circle"]
     cx, cy, r = c["cx"], c["cy"], c["r"]
-    fill = _hex(c["color"]) if "color" in c else None
-    outline = _hex(c["outline"]) if "outline" in c else None
+    fill = _hex_to_rgba(c["color"]) if "color" in c else None
+    outline = _hex_to_rgba(c["outline"]) if "outline" in c else None
     draw.ellipse([cx - r, cy - r, cx + r, cy + r], fill=fill, outline=outline, width=c.get("width", 1))
 
-def _op_polygon(canvas, draw, op, game_path, warnings):
+def _op_polygon(canvas, draw, op, _game_path, _warnings):
     p = op["polygon"]
     pts = [tuple(pt) for pt in p["points"]]
-    fill = _hex(p["color"]) if "color" in p else None
-    outline = _hex(p["outline"]) if "outline" in p else None
+    fill = _hex_to_rgba(p["color"]) if "color" in p else None
+    outline = _hex_to_rgba(p["outline"]) if "outline" in p else None
     draw.polygon(pts, fill=fill, outline=outline, width=p.get("width", 1))
 
-def _op_triangle(canvas, draw, op, game_path, warnings):
+def _op_triangle(canvas, draw, op, _game_path, _warnings):
     t = op["triangle"]
-    draw.polygon([tuple(p) for p in t["points"]], fill=_hex(t["color"]))
+    draw.polygon([tuple(p) for p in t["points"]], fill=_hex_to_rgba(t["color"]))
 
-def _op_line(canvas, draw, op, game_path, warnings):
+def _op_line(canvas, draw, op, _game_path, _warnings):
     ln = op["line"]
-    draw.line([(ln["x1"], ln["y1"]), (ln["x2"], ln["y2"])], fill=_hex(ln["color"]), width=ln.get("width", 1))
+    draw.line([(ln["x1"], ln["y1"]), (ln["x2"], ln["y2"])], fill=_hex_to_rgba(ln["color"]), width=ln.get("width", 1))
 
-def _op_scatter(canvas, draw, op, game_path, warnings):
+def _op_scatter(canvas, draw, op, _game_path, _warnings):
     s = op["scatter"]
-    color = _hex(s["color"])
+    color = _hex_to_rgba(s["color"])
     count = s.get("count", 20)
     x0, y0 = s.get("x", 0), s.get("y", 0)
     sw = s.get("w", canvas.width)
@@ -184,9 +184,9 @@ def _op_scatter(canvas, draw, op, game_path, warnings):
         if 0 <= px < canvas.width and 0 <= py < canvas.height:
             canvas.putpixel((px, py), color)
 
-def _op_dither(canvas, draw, op, game_path, warnings):
+def _op_dither(canvas, draw, op, _game_path, _warnings):
     d = op["dither"]
-    color = _hex(d["color"])
+    color = _hex_to_rgba(d["color"])
     x0, y0 = d.get("x", 0), d.get("y", 0)
     dw, dh = d.get("w", canvas.width), d.get("h", canvas.height)
     density = d.get("density", 0.3)
@@ -196,12 +196,12 @@ def _op_dither(canvas, draw, op, game_path, warnings):
             if rng.random() < density and 0 <= px < canvas.width and 0 <= py < canvas.height:
                 canvas.putpixel((px, py), color)
 
-def _op_pixels(canvas, draw, op, game_path, warnings):
+def _op_pixels(canvas, draw, op, _game_path, _warnings):
     p = op["pixels"]
     palette = p.get("palette", {})
     rows = p.get("rows", [])
     x0, y0 = p.get("x", 0), p.get("y", 0)
-    color_map = {ch: _hex(c) for ch, c in palette.items()}
+    color_map = {ch: _hex_to_rgba(c) for ch, c in palette.items()}
     for dy, row in enumerate(rows):
         for dx, ch in enumerate(row):
             if ch in color_map:
@@ -230,7 +230,7 @@ def _op_sprite(canvas, draw, op, game_path, warnings):
     if not frames:
         return
     pixel_rows = frames[frame % len(frames)]
-    color_map = {ch: _hex(c) for ch, c in palette.items()}
+    color_map = {ch: _hex_to_rgba(c) for ch, c in palette.items()}
     ox, oy = origin[0] * scale, origin[1] * scale
     for dy, row in enumerate(pixel_rows):
         for dx, ch in enumerate(row):
@@ -238,12 +238,12 @@ def _op_sprite(canvas, draw, op, game_path, warnings):
                 continue
             _put_scaled(canvas, draw, x0 - ox + dx * scale, y0 - oy + dy * scale, scale, color_map[ch])
 
-def _op_pixel_text(canvas, draw, op, game_path, warnings):
+def _op_pixel_text(canvas, draw, op, _game_path, _warnings):
     t = op["pixel_text"]
     text = t.get("text", "").upper()
     x0, y0 = t.get("x", 0), t.get("y", 0)
-    color = _hex(t["color"]) if "color" in t else (255, 255, 255, 255)
-    shadow = _hex(t["shadow"]) if "shadow" in t else None
+    color = _hex_to_rgba(t["color"]) if "color" in t else (255, 255, 255, 255)
+    shadow = _hex_to_rgba(t["shadow"]) if "shadow" in t else None
     scale = t.get("scale", 1)
     if shadow:
         _draw_glyphs(canvas, draw, text, x0 + scale, y0 + scale, shadow, scale)
@@ -257,9 +257,9 @@ def _op_hex_grid(canvas, draw, op, game_path, warnings):
     x0, y0 = g.get("x", 0), g.get("y", 0)
     terrain = g.get("terrain", [])
     colors = g.get("colors", {})
-    outline_color = _hex(g["outline"]) if "outline" in g else None
+    outline_color = _hex_to_rgba(g["outline"]) if "outline" in g else None
     outline_width = g.get("outline_width", 1)
-    default_color = _hex(g.get("default_color", "#5a8c3c"))
+    default_color = _hex_to_rgba(g.get("default_color", "#5a8c3c"))
     hex_w = hex_size * math.sqrt(3)
     hex_h = hex_size * 2
     for r in range(rows):
@@ -270,7 +270,7 @@ def _op_hex_grid(canvas, draw, op, game_path, warnings):
             if r < len(terrain) and c < len(terrain[r]):
                 t_name = terrain[r][c]
                 if t_name in colors:
-                    fill = _hex(colors[t_name])
+                    fill = _hex_to_rgba(colors[t_name])
                 else:
                     warnings.append(f"hex_grid: terrain '{t_name}' not in colors — using default")
             corners = []
@@ -311,8 +311,8 @@ def _draw_op(canvas, op, game_path=None, warnings=None):
 def create_thumbnail(args):
     game_path = validate_game_path(args["path"])
     layers = args.get("layers", [])
-    out_w = min(args.get("w", W), 1024)
-    out_h = min(args.get("h", H), 1024)
+    out_w = min(args.get("w", DEFAULT_THUMB_W), 1024)
+    out_h = min(args.get("h", DEFAULT_THUMB_H), 1024)
 
     if not layers:
         return json.dumps({"error": "layers is required — list of layers [{res, aa, ops}, ...]"})

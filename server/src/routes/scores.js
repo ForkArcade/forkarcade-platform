@@ -5,6 +5,7 @@ import { auth } from '../auth.js'
 
 const router = Router()
 
+// Cap coins earned from a single score submission to prevent exploitation
 const MAX_COINS_PER_SUBMISSION = 1000
 
 // Rate limit: max 6 score submissions per minute per user

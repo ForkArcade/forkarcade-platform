@@ -153,9 +153,7 @@ router.post('/api/games/:slug/evolve-trigger', auth, async (req, res) => {
   }
 })
 
-// =====================
-// NEW GAME PROPOSALS
-// =====================
+// --- New Game Proposals ---
 
 const PLATFORM_REPO = `${GITHUB_ORG}/forkarcade-platform`
 const NEW_GAME_SLUG = '_platform' // sentinel value in votes table

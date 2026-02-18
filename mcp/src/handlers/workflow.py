@@ -12,6 +12,7 @@ from maps import generate_maps_js
 from context import validate_game_path, PLATFORM_ROOT, GAMES_DIR
 
 SDK_DIR = PLATFORM_ROOT / "sdk"
+# Base files for version snapshots — includes generated sprite/map JS
 BASE_FILES = ["index.html", "style.css", "sprites.js", "maps.js", "forkarcade-sdk.js", "fa-narrative.js"]
 
 
@@ -47,7 +48,6 @@ def run(cmd_args, cwd=None):
     if result.returncode != 0:
         raise RuntimeError(result.stderr.strip() or f"Command failed: {cmd_args}")
     return result.stdout.strip()
-
 
 
 
@@ -227,10 +227,10 @@ To update it later, use the `update_sdk` tool.
 ### ForkArcade.onReady(callback)
 Called when the SDK connects to the platform.
 ```js
-ForkArcade.onReady(function(ctx) {{
+ForkArcade.onReady(function(ctx) {
   console.log('Game slug:', ctx.slug);
   startGame();
-}});
+});
 ```
 
 ### ForkArcade.submitScore(score) → Promise
@@ -243,28 +243,28 @@ await ForkArcade.submitScore(1250);
 Returns current player info. Returns error if not logged in.
 ```js
 const player = await ForkArcade.getPlayer();
-// {{ login: 'username', sub: 12345 }}
+// { login: 'username', sub: 12345 }
 ```
 
 ### ForkArcade.updateNarrative(data)
 Reports narrative state to the platform. Fire-and-forget (no Promise).
 ```js
-ForkArcade.updateNarrative({{
-  variables: {{ karma: 3, has_key: true }},
-  graphs: {{
-    arc: {{
+ForkArcade.updateNarrative({
+  variables: { karma: 3, has_key: true },
+  graphs: {
+    arc: {
       currentNode: 'dark-cellar',
       nodes: [
-        {{ id: 'intro', label: 'Start', type: 'scene' }},
-        {{ id: 'dark-cellar', label: 'Dark Cellar', type: 'scene' }},
+        { id: 'intro', label: 'Start', type: 'scene' },
+        { id: 'dark-cellar', label: 'Dark Cellar', type: 'scene' },
       ],
       edges: [
-        {{ from: 'intro', to: 'dark-cellar' }},
+        { from: 'intro', to: 'dark-cellar' },
       ]
-    }}
-  }},
+    }
+  },
   event: 'Entered dark cellar'
-}});
+});
 ```
 Node types: `scene`, `choice`, `condition`. Multiple named graphs supported (`arc`, `quest_*`, etc.).
 """
@@ -605,5 +605,3 @@ def apply_data_patch(args):
             "message": f"Map data patch applied: {map_count} maps written",
             "maps": map_count,
         })
-
-
