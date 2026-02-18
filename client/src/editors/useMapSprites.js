@@ -125,24 +125,37 @@ export function useMapSprites(slug) {
     )
   }, [spriteDefs])
 
+  // Per-sprite thumbnail cache — only regenerate the one that changed
+  const thumbCacheRef = useRef({})
   const tiles = useMemo(() => {
     const catData = spriteDefs?.[activeCategory]
     if (!catData) return []
-    return Object.entries(catData)
+    const cache = thumbCacheRef.current
+    const nextCache = {}
+    const result = Object.entries(catData)
       .filter(([, def]) => def?.frames)
-      .map(([name, def]) => ({
-        name,
-        label: name.replace(/_/g, ' '),
-        def,
-        thumb: spriteToDataUrl(def, 24, 0),
-      }))
+      .map(([name, def]) => {
+        const key = activeCategory + '/' + name
+        const framesKey = def.frames[0]?.[0] + (def.frames[0]?.[1] || '')
+        let thumb
+        if (cache[key] && cache[key].k === framesKey) {
+          nextCache[key] = cache[key]
+          thumb = cache[key].url
+        } else {
+          thumb = spriteToDataUrl(def, 24, 0)
+          nextCache[key] = { k: framesKey, url: thumb }
+        }
+        return { name, label: name.replace(/_/g, ' '), def, thumb }
+      })
+    thumbCacheRef.current = nextCache
+    return result
   }, [spriteDefs, activeCategory])
 
   const activeFrameThumbs = useMemo(() => {
     const tile = tiles[activeTile]
     if (!tile || tile.def.frames.length <= 1) return []
     return tile.def.frames.map((_, fi) => spriteToDataUrl(tile.def, 20, fi))
-  }, [tiles, activeTile])
+  }, [tiles, activeTile, spriteDefs])
 
   const handleSpriteUpdate = useCallback((mutator) => {
     const name = tiles[activeTile]?.name
