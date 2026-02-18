@@ -1,5 +1,6 @@
 import json
 import re
+import sys
 from pathlib import Path
 
 from github_templates import VALID_CATEGORIES, get_template, get_template_assets
@@ -75,14 +76,15 @@ def create_sprite(args):
         if not isinstance(val, str) or not re.match(r"^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$", val):
             return json.dumps({"error": f"Invalid color '{val}' for palette key '{key}'"})
 
-    if not isinstance(origin, list) or len(origin) != 2:
+    if not isinstance(origin, list) or len(origin) != 2 or not all(isinstance(v, int) for v in origin):
         return json.dumps({"error": "origin must be [ox, oy] — two integers"})
 
     data = {}
     if json_path.exists():
         try:
             data = migrate_sprite_data(json.loads(json_path.read_text()))
-        except Exception:
+        except Exception as e:
+            print(f"Warning: failed to parse {json_path}: {e}", file=sys.stderr)
             data = {}
 
     if category not in data:
@@ -148,7 +150,8 @@ def validate_assets(args):
     if json_path.exists():
         try:
             data = migrate_sprite_data(json.loads(json_path.read_text()))
-        except Exception:
+        except Exception as e:
+            print(f"Warning: failed to parse {json_path}: {e}", file=sys.stderr)
             data = {}
 
     sprites_in_html = False

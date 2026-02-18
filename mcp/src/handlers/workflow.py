@@ -2,6 +2,7 @@ import json
 import re
 import shutil
 import subprocess
+import sys
 from datetime import date
 from pathlib import Path
 
@@ -20,8 +21,8 @@ def _get_config(game_path):
     if config_path.exists():
         try:
             return json.loads(config_path.read_text())
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"Warning: failed to parse {config_path}: {e}", file=sys.stderr)
     return {}
 
 
@@ -492,8 +493,8 @@ def update_sdk(args):
             config = json.loads(config_path.read_text())
             config["sdkVersion"] = sdk_info["version"]
             config_path.write_text(json.dumps(config, indent=2) + "\n")
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"Warning: failed to update config sdkVersion: {e}", file=sys.stderr)
 
     msg = f"SDK updated from v{old_version} to v{sdk_info['version']}"
     if narrative_updated:

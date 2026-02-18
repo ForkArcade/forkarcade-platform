@@ -10,7 +10,10 @@ GAMES_DIR = PLATFORM_ROOT.parent / "games"
 def validate_game_path(path_str):
     """Validate that path resolves within GAMES_DIR. Returns resolved Path or raises."""
     game_path = Path(path_str).resolve()
-    game_path.relative_to(GAMES_DIR.resolve())
+    try:
+        game_path.relative_to(GAMES_DIR.resolve())
+    except ValueError:
+        raise ValueError(f"Path {game_path} is not inside games directory {GAMES_DIR.resolve()}")
     return game_path
 
 

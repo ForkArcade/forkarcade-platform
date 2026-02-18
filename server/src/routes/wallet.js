@@ -4,6 +4,8 @@ import { auth } from '../auth.js'
 import { GITHUB_ORG, ghHeaders } from './github.js'
 
 const router = Router()
+const EVOLVE_VOTE_THRESHOLD = 3
+const NEW_GAME_VOTE_THRESHOLD = 10
 
 // GET /api/wallet — current user's balance
 router.get('/api/wallet', auth, async (req, res) => {
@@ -14,7 +16,7 @@ router.get('/api/wallet', auth, async (req, res) => {
     })
     res.json({ balance: result.rows[0]?.balance ?? 0 })
   } catch (err) {
-    console.error('Wallet fetch error:', err.message)
+    console.error('Wallet fetch error:', err)
     res.status(500).json({ error: 'db_error' })
   }
 })
@@ -52,7 +54,7 @@ router.post('/api/games/:slug/evolve-issues', auth, async (req, res) => {
     const issue = await ghRes.json()
     res.json({ ok: true, issue_number: issue.number, html_url: issue.html_url })
   } catch (err) {
-    console.error('Evolve issue error:', err.message)
+    console.error('Evolve issue error:', err)
     res.status(500).json({ error: 'server_error' })
   }
 })
@@ -78,7 +80,7 @@ router.post('/api/games/:slug/vote', auth, async (req, res) => {
     if (results[0].rowsAffected === 0) return res.status(400).json({ error: 'insufficient_coins' })
     res.json({ ok: true, newBalance: results[2].rows[0]?.balance ?? 0 })
   } catch (err) {
-    console.error('Vote error:', err.message)
+    console.error('Vote error:', err)
     res.status(500).json({ error: 'db_error' })
   }
 })
@@ -98,7 +100,7 @@ router.get('/api/games/:slug/votes', async (req, res) => {
     }
     res.json(totals.rows.map(r => ({ ...r, voter_ids: voterMap[r.issue_number] || [] })))
   } catch (err) {
-    console.error('Votes fetch error:', err.message)
+    console.error('Votes fetch error:', err)
     res.status(500).json({ error: 'db_error' })
   }
 })
@@ -116,7 +118,7 @@ router.post('/api/games/:slug/evolve-trigger', auth, async (req, res) => {
         sql: 'SELECT COUNT(DISTINCT github_user_id) as unique_voters FROM votes WHERE game_slug = ? AND issue_number = ?',
         args: [slug, issue_number],
       }),
-      fetch(`https://api.github.com/repos/${GITHUB_ORG}/${slug}/issues/${issue_number}`, { headers: ghHeaders() }).then(r => r.ok ? r.json() : null),
+      fetch(`https://api.github.com/repos/${GITHUB_ORG}/${slug}/issues/${issue_number}`, { headers: ghHeaders() }).then(r => { if (!r.ok) console.warn(`GitHub issue fetch failed: ${r.status}`); return r.ok ? r.json() : null }),
     ])
     const uniqueVoters = voteCount.rows[0]?.unique_voters ?? 0
     const authorId = issueRes?.user?.id
@@ -128,8 +130,8 @@ router.post('/api/games/:slug/evolve-trigger', auth, async (req, res) => {
       })
       authorVoted = check.rows.length > 0
     }
-    if (!authorVoted && uniqueVoters < 3) {
-      return res.status(400).json({ error: 'not_enough_voters', required: 3, current: uniqueVoters })
+    if (!authorVoted && uniqueVoters < EVOLVE_VOTE_THRESHOLD) {
+      return res.status(400).json({ error: 'not_enough_voters', required: EVOLVE_VOTE_THRESHOLD, current: uniqueVoters })
     }
 
     // Add evolve label via GitHub API
@@ -146,7 +148,7 @@ router.post('/api/games/:slug/evolve-trigger', auth, async (req, res) => {
 
     res.json({ ok: true })
   } catch (err) {
-    console.error('Evolve trigger error:', err.message)
+    console.error('Evolve trigger error:', err)
     res.status(500).json({ error: 'server_error' })
   }
 })
@@ -183,7 +185,7 @@ router.post('/api/new-game/issues', auth, async (req, res) => {
     const issue = await ghRes.json()
     res.json({ ok: true, issue_number: issue.number, html_url: issue.html_url })
   } catch (err) {
-    console.error('New game issue error:', err.message)
+    console.error('New game issue error:', err)
     res.status(500).json({ error: 'server_error' })
   }
 })
@@ -208,7 +210,7 @@ router.post('/api/new-game/vote', auth, async (req, res) => {
     if (results[0].rowsAffected === 0) return res.status(400).json({ error: 'insufficient_coins' })
     res.json({ ok: true, newBalance: results[2].rows[0]?.balance ?? 0 })
   } catch (err) {
-    console.error('New game vote error:', err.message)
+    console.error('New game vote error:', err)
     res.status(500).json({ error: 'db_error' })
   }
 })
@@ -227,7 +229,7 @@ router.get('/api/new-game/votes', async (_req, res) => {
     }
     res.json(totals.rows.map(r => ({ ...r, voter_ids: voterMap[r.issue_number] || [] })))
   } catch (err) {
-    console.error('New game votes error:', err.message)
+    console.error('New game votes error:', err)
     res.status(500).json({ error: 'db_error' })
   }
 })
@@ -243,8 +245,8 @@ router.post('/api/new-game/trigger', auth, async (req, res) => {
       args: [NEW_GAME_SLUG, issue_number],
     })
     const uniqueVoters = voteCount.rows[0]?.unique_voters ?? 0
-    if (uniqueVoters < 10) {
-      return res.status(400).json({ error: 'not_enough_voters', required: 10, current: uniqueVoters })
+    if (uniqueVoters < NEW_GAME_VOTE_THRESHOLD) {
+      return res.status(400).json({ error: 'not_enough_voters', required: NEW_GAME_VOTE_THRESHOLD, current: uniqueVoters })
     }
 
     const ghRes = await fetch(`https://api.github.com/repos/${PLATFORM_REPO}/issues/${issue_number}/labels`, {
@@ -260,7 +262,7 @@ router.post('/api/new-game/trigger', auth, async (req, res) => {
 
     res.json({ ok: true })
   } catch (err) {
-    console.error('New game trigger error:', err.message)
+    console.error('New game trigger error:', err)
     res.status(500).json({ error: 'server_error' })
   }
 })

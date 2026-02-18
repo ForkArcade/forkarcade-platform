@@ -67,8 +67,8 @@
     }
 
     if (data.type === 'FA_SPRITES_UPDATE' && data.sprites) {
-      if (typeof SPRITE_DEFS !== 'undefined') {
-        SPRITE_DEFS = data.sprites;
+      if (typeof window.SPRITE_DEFS !== 'undefined') {
+        window.SPRITE_DEFS = data.sprites;
         var cats = Object.keys(SPRITE_DEFS);
         for (var ci = 0; ci < cats.length; ci++) {
           var names = Object.keys(SPRITE_DEFS[cats[ci]]);

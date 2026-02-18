@@ -3,7 +3,9 @@
 (function(window) {
   'use strict';
 
+  if (!window.FA) window.FA = {};
   var FA = window.FA;
+  var MAX_EVENTS = 20;
 
   FA.narrative = {
     variables: {},
@@ -44,7 +46,7 @@
       g.currentNode = nodeId;
       if (event) {
         this._events.push(event);
-        if (this._events.length > 20) this._events.shift();
+        if (this._events.length > MAX_EVENTS) this._events.shift();
       }
       this._sync();
       FA.emit('narrative:transition', { graph: graphId, from: prev, to: nodeId, event: event });
@@ -55,7 +57,7 @@
       this.variables[name] = value;
       var evt = reason || (name + ' = ' + value);
       this._events.push(evt);
-      if (this._events.length > 20) this._events.shift();
+      if (this._events.length > MAX_EVENTS) this._events.shift();
       this._sync();
       FA.emit('narrative:varChanged', { name: name, value: value, prev: prev, reason: reason });
       this._evaluate();
@@ -121,6 +123,7 @@
       var e = entries[i];
       if (e.node) {
         var p = e.node.indexOf(':');
+        if (p < 0) continue;
         var gId = e.node.substring(0, p);
         var nId = e.node.substring(p + 1);
         var node = FA.narrative.getNode(gId);

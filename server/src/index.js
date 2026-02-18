@@ -37,33 +37,34 @@ app.use(scoresRouter)
 app.use(githubRouter)
 app.use(walletRouter)
 
-const C = '\x1b[36m', Y = '\x1b[33m', D = '\x1b[2m', R = '\x1b[0m'
+const PORT = parseInt(process.env.PORT, 10) || 8787
+const CYAN = '\x1b[36m', YELLOW = '\x1b[33m', DIM = '\x1b[2m', RESET = '\x1b[0m'
 const banner = [
   '',
-  C + '  █▀▀ █▀█ █▀█ █▄▀',
+  CYAN + '  █▀▀ █▀█ █▀█ █▄▀',
   '  █▀  █▄█ █▀▄ █ █',
   '',
   '      ▄▀█ █▀█ █▀▀ ▄▀█ █▀▄ █▀▀',
-  '      █▀█ █▀▄ █▄▄ █▀█ █▄▀ ██▄' + R,
+  '      █▀█ █▀▄ █▄▄ █▀█ █▄▀ ██▄' + RESET,
   '',
-  `  ${Y}API${R}  http://localhost:${process.env.PORT}`,
+  `  ${YELLOW}API${RESET}  http://localhost:${PORT}`,
   '',
-  `  ${Y}Skills${R}`,
-  `  ${D}New game:${R}     cd forkarcade-platform ${D}&&${R} claude ${D}then${R} /new-game`,
-  `  ${D}Edit game:${R}    cd ../games/<slug> ${D}&&${R} claude`,
-  `  ${D}Evolve:${R}       cd ../games/<slug> ${D}&&${R} claude ${D}then${R} /evolve`,
-  `  ${D}Publish:${R}      cd ../games/<slug> ${D}&&${R} claude ${D}then${R} /publish`,
+  `  ${YELLOW}Skills${RESET}`,
+  `  ${DIM}New game:${RESET}     cd forkarcade-platform ${DIM}&&${RESET} claude ${DIM}then${RESET} /new-game`,
+  `  ${DIM}Edit game:${RESET}    cd ../games/<slug> ${DIM}&&${RESET} claude`,
+  `  ${DIM}Evolve:${RESET}       cd ../games/<slug> ${DIM}&&${RESET} claude ${DIM}then${RESET} /evolve`,
+  `  ${DIM}Publish:${RESET}      cd ../games/<slug> ${DIM}&&${RESET} claude ${DIM}then${RESET} /publish`,
   '',
-  `  ${Y}MCP Tools${R}`,
-  `  ${D}Workflow:${R}      list_templates  init_game  validate_game  publish_game`,
-  `  ${D}             ${R} get_sdk_docs  get_game_prompt  update_sdk  list_evolve_issues`,
-  `  ${D}Assets:${R}       get_asset_guide  create_sprite  validate_assets  preview_assets`,
-  `  ${D}Other:${R}        get_versions  create_thumbnail`,
+  `  ${YELLOW}MCP Tools${RESET}`,
+  `  ${DIM}Workflow:${RESET}      list_templates  init_game  validate_game  publish_game`,
+  `  ${DIM}             ${RESET} get_sdk_docs  get_game_prompt  update_sdk  list_evolve_issues`,
+  `  ${DIM}Assets:${RESET}       get_asset_guide  create_sprite  validate_assets  preview_assets`,
+  `  ${DIM}Other:${RESET}        get_versions  create_thumbnail`,
   '',
 ]
 
 initDb().then(() => {
-  app.listen(process.env.PORT, () => console.log(banner.join('\n')))
+  app.listen(PORT, () => console.log(banner.join('\n')))
 }).catch(err => {
   console.error('Failed to initialize database:', err)
   process.exit(1)

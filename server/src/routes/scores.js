@@ -20,7 +20,7 @@ router.post('/api/games/:slug/score', auth, scoreLimiter, async (req, res) => {
   if (typeof score !== 'number' || !Number.isFinite(score) || score < 0 || score > 1_000_000_000) {
     return res.status(400).json({ error: 'invalid_score' })
   }
-  const v = version != null ? parseInt(version) : null
+  const v = version != null ? parseInt(version, 10) : null
   if (version != null && (!Number.isInteger(v) || v < 1)) {
     return res.status(400).json({ error: 'invalid_version' })
   }
@@ -46,7 +46,7 @@ router.post('/api/games/:slug/score', auth, scoreLimiter, async (req, res) => {
 
     res.json({ ok: true, coins, isPersonalRecord })
   } catch (err) {
-    console.error('Score insert error:', err.message)
+    console.error('Score insert error:', err)
     res.status(500).json({ error: 'db_error' })
   }
 })
@@ -57,7 +57,7 @@ router.get('/api/games/:slug/leaderboard', async (req, res) => {
              FROM scores s JOIN users u ON u.github_user_id = s.github_user_id
              WHERE s.game_slug = ?`
   const args = [req.params.slug]
-  const v = version ? parseInt(version) : NaN
+  const v = version ? parseInt(version, 10) : NaN
   if (!Number.isNaN(v)) { sql += ` AND s.version = ?`; args.push(v) }
   sql += ` GROUP BY s.github_user_id ORDER BY best DESC LIMIT 50`
 
@@ -65,7 +65,7 @@ router.get('/api/games/:slug/leaderboard', async (req, res) => {
     const result = await db.execute({ sql, args })
     res.json(result.rows)
   } catch (err) {
-    console.error('Leaderboard error:', err.message)
+    console.error('Leaderboard error:', err)
     res.status(500).json({ error: 'db_error' })
   }
 })
@@ -80,7 +80,7 @@ router.get('/api/me', auth, async (req, res) => {
     if (!user) return res.status(404).json({ error: 'user_not_found' })
     res.json({ user })
   } catch (err) {
-    console.error('Me error:', err.message)
+    console.error('Me error:', err)
     res.status(500).json({ error: 'db_error' })
   }
 })

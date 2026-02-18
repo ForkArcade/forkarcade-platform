@@ -3,6 +3,7 @@ import sys
 import os
 import json
 import asyncio
+import traceback
 
 # Add src directory to path for local imports
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -85,6 +86,7 @@ async def handle_call_tool(name: str, arguments: dict | None) -> list[types.Text
     except ValueError as e:
         result = json.dumps({"error": f"Validation failed: {e}"})
     except Exception as e:
+        print(traceback.format_exc(), file=sys.stderr)
         result = json.dumps({"error": str(e)})
     return [types.TextContent(type="text", text=result)]
 

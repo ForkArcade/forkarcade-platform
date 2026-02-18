@@ -4,6 +4,8 @@ import crypto from 'crypto'
 import db from './db.js'
 
 const router = Router()
+const COOKIE_NAME = process.env.COOKIE_NAME || 'fa_token'
+const IS_PROD = process.env.NODE_ENV === 'production'
 
 export function sign(user) {
   return jwt.sign(
@@ -15,7 +17,7 @@ export function sign(user) {
 
 export function auth(req, res, next) {
   const hdr = req.headers.authorization
-  const t = (hdr && hdr.startsWith('Bearer ')) ? hdr.slice(7) : req.cookies[process.env.COOKIE_NAME]
+  const t = (hdr && hdr.startsWith('Bearer ')) ? hdr.slice(7) : req.cookies[COOKIE_NAME]
   if (!t) return res.status(401).json({ error: 'no_auth' })
   try {
     req.user = jwt.verify(t, process.env.JWT_SECRET)
@@ -28,7 +30,7 @@ export function auth(req, res, next) {
 // OAuth: redirect to GitHub
 router.get('/auth/github', (_req, res) => {
   const state = crypto.randomUUID()
-  res.cookie('oauth_state', state, { httpOnly: true, sameSite: 'lax', maxAge: 600_000 })
+  res.cookie('oauth_state', state, { httpOnly: true, sameSite: 'lax', secure: IS_PROD, maxAge: 600_000 })
   const params = new URLSearchParams({
     client_id: process.env.GITHUB_CLIENT_ID,
     redirect_uri: `${process.env.SERVER_ORIGIN || `http://localhost:${process.env.PORT}`}/auth/github/callback`,
@@ -43,7 +45,7 @@ router.get('/auth/github/callback', async (req, res) => {
   const { code, state } = req.query
   if (!code) return res.status(400).send('Missing code parameter')
   const expectedState = req.cookies?.oauth_state
-  res.clearCookie('oauth_state')
+  res.clearCookie('oauth_state', { httpOnly: true, sameSite: 'lax', secure: IS_PROD })
   if (!state || !expectedState || state !== expectedState) {
     return res.status(403).send('Invalid OAuth state — possible CSRF attack')
   }

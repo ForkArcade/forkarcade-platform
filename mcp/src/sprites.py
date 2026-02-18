@@ -65,7 +65,7 @@ def generate_sprites_js(data):
 
 
 def generate_preview_html(data):
-    sprites_json = json.dumps(data)
+    sprites_json = json.dumps(data).replace("</", "<\\/")
     return f"""<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>Sprite Preview</title>
 <style>

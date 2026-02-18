@@ -7,8 +7,10 @@ Template-specific data lives in each template repo:
   _prompt.md   — game design prompt for Claude
 """
 
+import base64
 import json
 import subprocess
+import sys
 import time
 
 ORG = "ForkArcade"
@@ -100,14 +102,14 @@ def get_template_assets(key):
         return None
 
     try:
-        import base64
         data = _gh_api(f"/repos/{tmpl['repo']}/contents/_assets.json")
         content = base64.b64decode(data["content"]).decode("utf-8")
         assets = json.loads(content)
         _cache["assets"][key] = assets
         _cache["assets_ts"][key] = now
         return assets
-    except Exception:
+    except Exception as e:
+        print(f"Warning: failed to fetch assets for {key}: {e}", file=sys.stderr)
         return None
 
 
@@ -129,7 +131,6 @@ def get_template_styles(key, repo=None):
         repo = tmpl["repo"]
 
     try:
-        import base64
         data = _gh_api(f"/repos/{repo}/contents/_styles.json")
         content = base64.b64decode(data["content"]).decode("utf-8")
         styles = json.loads(content)
@@ -151,11 +152,11 @@ def get_template_prompt(key):
         return None
 
     try:
-        import base64
         data = _gh_api(f"/repos/{tmpl['repo']}/contents/_prompt.md")
         content = base64.b64decode(data["content"]).decode("utf-8")
         _cache["prompts"][key] = content
         _cache["prompts_ts"][key] = now
         return content
-    except Exception:
+    except Exception as e:
+        print(f"Warning: failed to fetch prompt for {key}: {e}", file=sys.stderr)
         return None

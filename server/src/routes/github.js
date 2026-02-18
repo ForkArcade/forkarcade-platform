@@ -79,11 +79,11 @@ router.get('/api/github/proxy/*', async (req, res) => {
 
 // Raw file proxy — cached, authenticated
 router.get('/api/github/raw/*', async (req, res) => {
-  const path = req.params[0]
-  if (!path.startsWith(`${GITHUB_ORG}/`)) {
+  const rawPath = req.params[0]
+  if (!rawPath.startsWith(`${GITHUB_ORG}/`)) {
     return res.status(403).json({ error: 'forbidden' })
   }
-  const key = `raw:${path}`
+  const key = `raw:${rawPath}`
   const cached = cacheGet(key, RAW_TTL)
   if (cached) {
     res.set('Content-Type', cached.contentType || 'application/octet-stream')
@@ -91,15 +91,16 @@ router.get('/api/github/raw/*', async (req, res) => {
   }
 
   try {
-    const r = await fetch(`https://raw.githubusercontent.com/${path}`, { headers: ghHeaders() })
-    if (!r.ok) return res.status(r.status).end()
+    const r = await fetch(`https://raw.githubusercontent.com/${rawPath}`, { headers: ghHeaders() })
+    if (!r.ok) return res.status(r.status).json({ error: 'upstream_error' })
     const contentType = r.headers.get('content-type')
     const buf = Buffer.from(await r.arrayBuffer())
     cacheSet(key, buf, contentType)
     res.set('Content-Type', contentType)
     res.send(buf)
-  } catch {
-    res.status(502).end()
+  } catch (err) {
+    console.error('Raw proxy error:', err)
+    res.status(502).json({ error: 'proxy_error' })
   }
 })
 

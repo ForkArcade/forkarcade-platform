@@ -2,6 +2,8 @@ import json
 import math
 import random
 import subprocess
+import sys
+import time
 from pathlib import Path
 
 from PIL import Image, ImageDraw
@@ -64,7 +66,6 @@ _SPRITES_CACHE_TTL = 60  # 1 minute
 
 def _load_sprites(game_path):
     """Load sprites from _sprites.json in the game directory."""
-    import time
     key = str(game_path)
     now = time.time()
     if key in _sprites_cache and (now - _sprites_cache_ts.get(key, 0)) < _SPRITES_CACHE_TTL:
@@ -310,8 +311,8 @@ def _draw_op(canvas, op, game_path=None, warnings=None):
 def create_thumbnail(args):
     game_path = validate_game_path(args["path"])
     layers = args.get("layers", [])
-    out_w = args.get("w", W)
-    out_h = args.get("h", H)
+    out_w = min(args.get("w", W), 1024)
+    out_h = min(args.get("h", H), 1024)
 
     if not layers:
         return json.dumps({"error": "layers is required — list of layers [{res, aa, ops}, ...]"})
@@ -356,8 +357,8 @@ def create_thumbnail(args):
         subprocess.run(["git", "commit", "-m", "Update thumbnail"], cwd=game_path, capture_output=True, timeout=10)
         r = subprocess.run(["git", "push"], cwd=game_path, capture_output=True, timeout=30)
         pushed = r.returncode == 0
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"Warning: thumbnail git push failed: {e}", file=sys.stderr)
 
     git_msg = "Pushed to GitHub." if pushed else "Git push failed or skipped."
     result = {
