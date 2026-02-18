@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
-import { GITHUB_ORG, githubRawUrl } from '../api'
+import { gameFileUrl } from '../api'
 import { spriteToDataUrl } from '../utils/sprite'
 
 export function useMapSprites(slug) {
@@ -11,9 +11,9 @@ export function useMapSprites(slug) {
   const spriteInitialRef = useRef(true)
   const spriteSaveRef = useRef(null)
 
-  const fetchSpritesFromGitHub = useCallback(() => {
+  const fetchSpritesFromSource = useCallback(() => {
     spriteInitialRef.current = true
-    fetch(githubRawUrl(`${GITHUB_ORG}/${slug}/main/_sprites.json`))
+    fetch(gameFileUrl(slug, '_sprites.json'))
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         if (data) { setSpriteDefs(data); setHasLocalEdits(false); spriteInitialRef.current = false }
@@ -28,13 +28,13 @@ export function useMapSprites(slug) {
     if (saved) {
       try { setSpriteDefs(JSON.parse(saved)); setHasLocalEdits(true); spriteInitialRef.current = false; return } catch {}
     }
-    fetchSpritesFromGitHub()
-  }, [slug, fetchSpritesFromGitHub])
+    fetchSpritesFromSource()
+  }, [slug, fetchSpritesFromSource])
 
   const resetToPublished = useCallback(() => {
     localStorage.removeItem(`fa-sprites-${slug}`)
-    fetchSpritesFromGitHub()
-  }, [slug, fetchSpritesFromGitHub])
+    fetchSpritesFromSource()
+  }, [slug, fetchSpritesFromSource])
 
   // Debounced save to localStorage on edit
   useEffect(() => {

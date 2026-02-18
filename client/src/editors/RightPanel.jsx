@@ -5,6 +5,7 @@ import { apiFetch } from '../api'
 import {
   uid, createEmptyGrid, createEmptyZoneGrid, ZONE_COLORS,
   bakeAllAutotiles, DEFAULT_W, DEFAULT_H,
+  levelsToMapDefs, mapDefsToLevels,
 } from './mapUtils'
 
 const inputStyle = {
@@ -38,7 +39,7 @@ export default function RightPanel({
     const id = uid()
     const name = `Level ${levels.length + 1}`
     const g = createEmptyGrid(DEFAULT_W, DEFAULT_H)
-    setLevels(prev => [...prev, { id, name, grid: g, frameGrid: g.map(r => r.map(() => 0)), zoneGrid: createEmptyZoneGrid(DEFAULT_W, DEFAULT_H) }])
+    setLevels(prev => [...prev, { id, name, grid: g, frameGrid: g.map(r => r.map(() => 0)), zoneGrid: createEmptyZoneGrid(DEFAULT_W, DEFAULT_H), objects: [] }])
     setActiveId(id)
   }
 
@@ -55,6 +56,7 @@ export default function RightPanel({
       grid: level.grid.map(r => [...r]),
       frameGrid: level.frameGrid ? level.frameGrid.map(r => [...r]) : level.grid.map(r => r.map(() => 0)),
       zoneGrid: level.zoneGrid ? level.zoneGrid.map(r => [...r]) : createEmptyZoneGrid(level.grid[0]?.length || DEFAULT_W, level.grid.length || DEFAULT_H),
+      objects: level.objects ? level.objects.map(o => ({ ...o })) : [],
     }
     setLevels(prev => [...prev, dup])
     setActiveId(id)
@@ -79,11 +81,13 @@ export default function RightPanel({
       const newZg = Array.from({ length: h }, (_, y) =>
         Array.from({ length: w }, (_, x) => level.zoneGrid?.[y]?.[x] ?? '.')
       )
-      return { grid: newGrid, frameGrid: bakeAllAutotiles(newGrid, null, tiles), zoneGrid: newZg }
+      // Remove objects outside new bounds
+      const objects = (level.objects || []).filter(o => o.x < w && o.y < h)
+      return { grid: newGrid, frameGrid: bakeAllAutotiles(newGrid, null, tiles), zoneGrid: newZg, objects }
     })
   }
 
-  // Export
+  // Export — clipboard (data.js snippet)
   const handleExport = () => {
     let text = 'map: [\n' + grid.map(row => `  '${row.join('')}'`).join(',\n') + '\n]'
     if (zoneGrid && zoneDefs.length > 0 && zoneGrid.some(row => row.some(c => c !== '.'))) {
@@ -95,17 +99,13 @@ export default function RightPanel({
     navigator.clipboard.writeText(text).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000) })
   }
 
+  // Export — download _maps.json
   const handleDownloadJson = () => {
-    const data = { name: activeLevel?.name || 'map', w: cols, h: rows, map: grid.map(row => row.join('')) }
-    if (zoneGrid && zoneDefs.length > 0 && zoneGrid.some(row => row.some(c => c !== '.'))) {
-      data.zones = zoneGrid.map(row => row.join(''))
-      const usedKeys = new Set(zoneGrid.flat().filter(c => c !== '.'))
-      data.zoneDefs = Object.fromEntries(zoneDefs.filter(z => usedKeys.has(z.key)).map(z => [z.key, z.name]))
-    }
+    const data = levelsToMapDefs(levels, zoneDefs)
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
-    a.download = `${activeLevel?.name || 'map'}.json`
+    a.download = `${slug}_maps.json`
     a.href = url
     a.click()
     URL.revokeObjectURL(url)
@@ -119,7 +119,28 @@ export default function RightPanel({
     reader.onload = (ev) => {
       try {
         const data = JSON.parse(ev.target.result)
-        // Auto-detect: if it has a "map" array it's a map, otherwise treat as sprites
+        // Detect _maps.json format: named keys with .grid string arrays
+        const firstVal = Object.values(data)[0]
+        if (firstVal?.grid && Array.isArray(firstVal.grid) && typeof firstVal.grid[0] === 'string') {
+          const { levels: newLevels, zoneDefs: newZoneDefs } = mapDefsToLevels(data)
+          if (newLevels.length > 0) {
+            const withFrames = newLevels.map(l => ({
+              ...l,
+              frameGrid: bakeAllAutotiles(l.grid, null, tiles),
+            }))
+            setLevels(withFrames)
+            setActiveId(withFrames[0].id)
+            if (newZoneDefs.length > 0) {
+              setZoneDefs(prev => {
+                const existingKeys = new Set(prev.map(z => z.key))
+                const fresh = newZoneDefs.filter(z => !existingKeys.has(z.key))
+                return fresh.length > 0 ? [...prev, ...fresh] : prev
+              })
+            }
+            return
+          }
+        }
+        // Legacy single-map format: { map: [...], zones: [...] }
         if (data.map?.length) {
           const newGrid = data.map.map(s => [...s].map(Number))
           const newZoneGrid = data.zones
@@ -152,7 +173,7 @@ export default function RightPanel({
     e.target.value = ''
   }
 
-  // Propose
+  // Propose sprites
   const handlePropose = useCallback(async () => {
     if (!spriteDefs || !proposeTitle.trim()) return
     setProposeStatus('sending')
@@ -178,13 +199,18 @@ export default function RightPanel({
     } catch { setProposeStatus('error') }
   }, [spriteDefs, proposeTitle, slug])
 
+  // Propose maps — new _maps.json format
   const handleMapPropose = useCallback(async () => {
     if (!mapProposeTitle.trim()) return
     setMapProposeStatus('sending')
-    const summary = `Map changes proposed from the editor.\n\nLevels:\n${levels.map(l =>
-      `- ${l.name} (${l.grid[0]?.length || 0}x${l.grid.length || 0})`
-    ).join('\n')}`
-    const json = JSON.stringify({ type: 'maps', data: { levels, zoneDefs } })
+    const mapsData = levelsToMapDefs(levels, zoneDefs)
+    const mapNames = Object.keys(mapsData)
+    const summary = `Map changes proposed from the editor.\n\nMaps:\n${mapNames.map(name => {
+      const m = mapsData[name]
+      const objCount = m.objects?.length || 0
+      return `- ${name} (${m.w}x${m.h}${objCount ? `, ${objCount} objects` : ''})`
+    }).join('\n')}`
+    const json = JSON.stringify({ type: 'maps', data: mapsData })
     const body = `${summary}\n\n\`\`\`json:data-patch\n${json}\n\`\`\``
     if (body.length > 60000) { setMapProposeStatus('error'); return }
     try {
@@ -307,7 +333,7 @@ export default function RightPanel({
           {copied ? 'Copied!' : 'Copy to clipboard'}
         </Button>
         <Button onClick={handleDownloadJson} style={{ width: '100%', marginTop: T.sp[2] }}>
-          Download map JSON
+          Download _maps.json
         </Button>
         {spriteDefs && (
           <Button onClick={() => {
@@ -400,7 +426,7 @@ export default function RightPanel({
 
       {/* Actions */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: T.sp[2] }}>
-        <Button variant="ghost" onClick={() => { const g = createEmptyGrid(cols, rows); updateLevel(() => ({ grid: g, frameGrid: g.map(r => r.map(() => 0)), zoneGrid: createEmptyZoneGrid(cols, rows) })) }} style={{ width: '100%' }}>Clear all</Button>
+        <Button variant="ghost" onClick={() => { const g = createEmptyGrid(cols, rows); updateLevel(() => ({ grid: g, frameGrid: g.map(r => r.map(() => 0)), zoneGrid: createEmptyZoneGrid(cols, rows), objects: [] })) }} style={{ width: '100%' }}>Clear all</Button>
       </div>
     </div>
   )

@@ -47,6 +47,74 @@ export function parseMapsFromDataJs(text) {
   return maps
 }
 
+export const ROTATIONS = [
+  { value: 0, label: 'N' },
+  { value: 1, label: 'E' },
+  { value: 2, label: 'S' },
+  { value: 3, label: 'W' },
+]
+
+// Convert editor internal level to _maps.json entry
+export function levelToMapDef(level, zoneDefs) {
+  const def = {
+    w: level.grid[0]?.length || DEFAULT_W,
+    h: level.grid.length || DEFAULT_H,
+    grid: level.grid.map(row => row.join('')),
+  }
+  if (level.zoneGrid && zoneDefs.length > 0 && level.zoneGrid.some(row => row.some(c => c !== '.'))) {
+    def.zones = level.zoneGrid.map(row => row.join(''))
+    const usedKeys = new Set(level.zoneGrid.flat().filter(c => c !== '.'))
+    def.zoneDefs = Object.fromEntries(zoneDefs.filter(z => usedKeys.has(z.key)).map(z => [z.key, z.name]))
+  }
+  if (level.objects?.length > 0) {
+    def.objects = level.objects
+  }
+  if (level.playerStart) {
+    def.playerStart = level.playerStart
+  }
+  return def
+}
+
+// Convert _maps.json dict to editor internal levels
+export function mapDefsToLevels(data) {
+  const levels = []
+  const allZoneDefs = []
+  for (const [name, mapDef] of Object.entries(data)) {
+    if (!mapDef?.grid) continue
+    const grid = mapDef.grid.map(s => [...s].map(Number))
+    const zoneGrid = mapDef.zones
+      ? mapDef.zones.map(s => [...s])
+      : createEmptyZoneGrid(grid[0]?.length || DEFAULT_W, grid.length || DEFAULT_H)
+    if (mapDef.zoneDefs) {
+      for (const [key, zoneName] of Object.entries(mapDef.zoneDefs)) {
+        if (!allZoneDefs.find(z => z.key === key)) {
+          allZoneDefs.push({ key, name: zoneName, color: ZONE_COLORS[allZoneDefs.length % ZONE_COLORS.length] })
+        }
+      }
+    }
+    levels.push({
+      id: `map-${name}`,
+      name,
+      grid,
+      zoneGrid,
+      objects: mapDef.objects || [],
+      playerStart: mapDef.playerStart || null,
+      source: 'game',
+    })
+  }
+  return { levels, zoneDefs: allZoneDefs }
+}
+
+// Convert all editor levels to _maps.json format
+export function levelsToMapDefs(levels, zoneDefs) {
+  const result = {}
+  for (const level of levels) {
+    const name = level.name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '')
+    result[name] = levelToMapDef(level, zoneDefs)
+  }
+  return result
+}
+
 // Autotile: compute frame index from neighbors for 16-frame wall sprites
 // Frame layout: left(+8) + right(+4) + bottom(+2) + top-only(+1)
 export function computeAutotileFrame(grid, x, y, tid) {
