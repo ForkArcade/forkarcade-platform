@@ -279,7 +279,7 @@ export default function GamePage({ user, balance, onBalanceChange }) {
           ref={iframeRef}
           src={iframeUrl}
           sandbox="allow-scripts allow-same-origin"
-          style={{ width: '100%', height: '100%', border: 'none', display: 'block' }}
+          style={{ width: '100%', height: '100%', border: 'none', display: 'block', willChange: 'transform', contain: 'strict' }}
           title={game.title}
         />
         {gameStatus === 'ready' && !focused && (
