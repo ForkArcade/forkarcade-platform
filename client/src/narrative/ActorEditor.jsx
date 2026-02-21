@@ -71,6 +71,72 @@ export default function ActorEditor({ data, update }) {
                 <input type="number" value={actor.def ?? ''} onChange={e => update(d => { d.actors[activeId].def = e.target.value === '' ? undefined : Number(e.target.value) })} placeholder="-" style={{ ...inputStyle, width: 50 }} />
               </div>
             </div>
+            {/* Priorities — shown if jobs defined */}
+            {Object.keys(data.jobs || {}).length > 0 && (
+              <div style={{ marginTop: T.sp[4], borderTop: `1px solid ${T.border}`, paddingTop: T.sp[4] }}>
+                <div style={headingStyle}>Priorities</div>
+                {(actor.priorities || []).map((jobId, i) => (
+                  <div key={i} style={{ display: 'flex', gap: T.sp[2], alignItems: 'center', marginBottom: T.sp[1] }}>
+                    <span style={{ flex: 1, fontSize: T.fontSize.xs, fontFamily: T.mono, color: T.textBright }}>{i + 1}. {jobId}</span>
+                    <button
+                      disabled={i === 0}
+                      onClick={() => update(d => {
+                        const p = d.actors[activeId].priorities
+                        ;[p[i - 1], p[i]] = [p[i], p[i - 1]]
+                      })}
+                      style={{ ...smallBtnStyle, opacity: i === 0 ? 0.3 : 1 }}
+                    >{'\u25b2'}</button>
+                    <button
+                      disabled={i === (actor.priorities || []).length - 1}
+                      onClick={() => update(d => {
+                        const p = d.actors[activeId].priorities
+                        ;[p[i], p[i + 1]] = [p[i + 1], p[i]]
+                      })}
+                      style={{ ...smallBtnStyle, opacity: i === (actor.priorities || []).length - 1 ? 0.3 : 1 }}
+                    >{'\u25bc'}</button>
+                    <button onClick={() => update(d => { d.actors[activeId].priorities.splice(i, 1) })} style={xBtnStyle}>{'\u00d7'}</button>
+                  </div>
+                ))}
+                <select
+                  value=""
+                  onChange={e => {
+                    if (!e.target.value) return
+                    update(d => {
+                      if (!d.actors[activeId].priorities) d.actors[activeId].priorities = []
+                      d.actors[activeId].priorities.push(e.target.value)
+                    })
+                  }}
+                  style={{ ...selectStyle, width: '100%', marginTop: T.sp[2] }}
+                >
+                  <option value="">+ Add priority...</option>
+                  {Object.keys(data.jobs || {}).filter(j => !(actor.priorities || []).includes(j)).map(j => (
+                    <option key={j} value={j}>{j}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+            {/* Initial needs — shown if needs defined */}
+            {Object.keys(data.needs || {}).length > 0 && (actor.priorities || []).length > 0 && (
+              <div style={{ marginTop: T.sp[4], borderTop: `1px solid ${T.border}`, paddingTop: T.sp[4] }}>
+                <div style={headingStyle}>Initial needs</div>
+                <div style={{ display: 'flex', gap: T.sp[3], flexWrap: 'wrap' }}>
+                  {Object.keys(data.needs || {}).map(nid => (
+                    <div key={nid}>
+                      <label style={labelStyle}>{data.needs[nid].label || nid}</label>
+                      <input
+                        type="number"
+                        value={(actor.needs && actor.needs[nid]) ?? 100}
+                        onChange={e => update(d => {
+                          if (!d.actors[activeId].needs) d.actors[activeId].needs = {}
+                          d.actors[activeId].needs[nid] = Number(e.target.value)
+                        })}
+                        style={{ ...inputStyle, width: 50 }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             <div style={{ marginTop: T.sp[4], borderTop: `1px solid ${T.border}`, paddingTop: T.sp[4] }}>
               <button
                 onClick={() => {
@@ -115,6 +181,25 @@ const addBtnStyle = {
   fontSize: T.fontSize.xs, fontFamily: T.mono,
   padding: `${T.sp[2]}px ${T.sp[3]}px`, cursor: 'pointer',
   width: '100%', marginTop: T.sp[3],
+}
+
+const selectStyle = {
+  padding: `${T.sp[1]}px ${T.sp[2]}px`,
+  background: T.surface, border: `1px solid ${T.border}`,
+  borderRadius: T.radius.sm, color: T.textBright,
+  fontFamily: T.mono, fontSize: T.fontSize.xs,
+}
+
+const smallBtnStyle = {
+  background: 'transparent', border: `1px solid ${T.border}`,
+  borderRadius: T.radius.sm, color: T.muted,
+  fontSize: 9, padding: `0 ${T.sp[2]}px`, cursor: 'pointer',
+  lineHeight: '18px',
+}
+
+const xBtnStyle = {
+  background: 'transparent', border: 'none',
+  color: T.danger, fontSize: T.fontSize.sm, cursor: 'pointer',
 }
 
 const delBtnStyle = {

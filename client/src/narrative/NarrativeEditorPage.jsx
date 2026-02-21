@@ -7,8 +7,9 @@ import VariableEditor from './VariableEditor'
 import ActorEditor from './ActorEditor'
 import SceneEditor from './SceneEditor'
 import ContentEditor from './ContentEditor'
+import SimulationEditor from './SimulationEditor'
 
-const TABS = ['graphs', 'variables', 'actors', 'scenes', 'content']
+const TABS = ['graphs', 'variables', 'actors', 'scenes', 'content', 'simulation']
 
 export default function NarrativeEditorPage({ user }) {
   const { slug } = useParams()
@@ -80,6 +81,7 @@ export default function NarrativeEditorPage({ user }) {
         {tab === 'actors' && <ActorEditor data={data} update={update} />}
         {tab === 'scenes' && <SceneEditor data={data} update={update} />}
         {tab === 'content' && <ContentEditor data={data} update={update} />}
+        {tab === 'simulation' && <SimulationEditor data={data} update={update} />}
       </div>
     </div>
   )
