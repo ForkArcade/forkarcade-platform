@@ -79,7 +79,7 @@ export default function RotEditorPage({ user }) {
   const allSprites = useMemo(() => {
     if (!spriteDefs) return []
     const result = []
-    for (const [cat, sprites] of Object.entries(spriteDefs)) {
+    for (const [cat, sprites] of Object.entries(spriteDefs).filter(([c]) => c !== 'tiles')) {
       for (const [name, def] of Object.entries(sprites)) {
         if (!def?.frames) continue
         result.push({
