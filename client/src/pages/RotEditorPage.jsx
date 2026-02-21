@@ -97,7 +97,7 @@ export default function RotEditorPage({ user }) {
   const objCategories = useMemo(() => {
     if (!spriteDefs) return []
     return Object.keys(spriteDefs).filter(cat =>
-      Object.values(spriteDefs[cat]).some(d => d?.frames)
+      cat !== 'tiles' && Object.values(spriteDefs[cat]).some(d => d?.frames)
     )
   }, [spriteDefs])
 
