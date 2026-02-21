@@ -377,6 +377,27 @@ export default function SpriteEditor({ sprites, activeCat, activeName, onUpdate,
         </div>
       </div>
 
+      {/* Tiling */}
+      <div>
+        <div style={{ fontSize: 9, color: T.muted, textTransform: 'uppercase', marginBottom: T.sp[1] }}>Tiling</div>
+        <div style={{ display: 'flex', gap: T.sp[1] }}>
+          {['none', 'checker', 'autotile'].map(mode => (
+            <button
+              key={mode}
+              onClick={() => onUpdate(d => { if (mode === 'none') delete d.tiling; else d.tiling = mode })}
+              style={{
+                ...smallBtn,
+                background: (def.tiling || 'none') === mode ? T.accentColor : 'transparent',
+                color: (def.tiling || 'none') === mode ? '#000' : T.text,
+                borderColor: (def.tiling || 'none') === mode ? T.accentColor : T.border,
+              }}
+            >
+              {mode}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Hint */}
       <div style={{ marginTop: 'auto', fontSize: 9, color: T.muted, lineHeight: 1.5 }}>
         Ctrl+V paste image. Esc back to palette.
