@@ -31,9 +31,9 @@ export default defineConfig({
   build: {
     rollupOptions: {
       plugins: [{
-        name: 'resolve-editor-deps',
+        name: 'resolve-external-module-deps',
         resolveId(source, importer) {
-          if (importer?.includes('/editor/src/') && !source.startsWith('.') && !source.startsWith('/')) {
+          if ((importer?.includes('/editor/src/') || importer?.includes('/narrative/src/')) && !source.startsWith('.') && !source.startsWith('/')) {
             return this.resolve(source, path.resolve(__dirname, 'src/App.jsx'), { skipSelf: true })
           }
         }

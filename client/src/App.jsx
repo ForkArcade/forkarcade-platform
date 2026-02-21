@@ -8,6 +8,7 @@ import GamePage from './pages/GamePage'
 import TemplatesPage from './pages/TemplatesPage'
 import TemplateDetailPage from './pages/TemplateDetailPage'
 import RotEditorPage from '../../editor/src'
+import NarrativeEditorPage from '../../narrative/src'
 import LoginButton from './components/LoginButton'
 
 const navStyle = (isActive) => ({
@@ -23,7 +24,7 @@ export default function App() {
   const [user, setUser] = useState(null)
   const [walletBalance, setWalletBalance] = useState(null)
   const location = useLocation()
-  const isGamePage = location.pathname.startsWith('/play/') || location.pathname.startsWith('/edit/')
+  const isGamePage = location.pathname.startsWith('/play/') || location.pathname.startsWith('/edit/') || location.pathname.startsWith('/narrative/')
 
   async function me() {
     try {
@@ -87,6 +88,7 @@ export default function App() {
           <Route path="/templates/:slug" element={<TemplateDetailPage />} />
           <Route path="/play/:slug" element={<GamePage user={user} balance={walletBalance ?? 0} onBalanceChange={setWalletBalance} />} />
           <Route path="/edit/:slug" element={<RotEditorPage user={user} />} />
+          <Route path="/narrative/:slug" element={<NarrativeEditorPage user={user} />} />
         </Routes>
       </div>
       <footer style={{ borderTop: `1px solid ${T.border}`, padding: `${T.sp[6]}px ${T.sp[7]}px`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
