@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback } from 'react'
-import { T, formInput } from '../theme'
-import { Button } from '../components/ui'
-import { apiFetch } from '../api'
+import { T, formInput } from '../../client/src/theme'
+import { Button } from '../../client/src/components/ui'
+import { apiFetch } from '../../client/src/api'
 import {
   uid, createEmptyGrid, createEmptyZoneGrid, ZONE_COLORS,
   bakeAllAutotiles, DEFAULT_W, DEFAULT_H,

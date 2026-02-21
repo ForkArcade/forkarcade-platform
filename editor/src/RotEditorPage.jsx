@@ -1,18 +1,18 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { useParams } from 'react-router-dom'
-import { T } from '../theme'
-import { gameFileUrl } from '../api'
-import { renderSpriteToCanvas, spriteToDataUrl } from '../utils/sprite'
-import SpriteEditor from '../editors/SpriteEditor'
-import RightPanel from '../editors/RightPanel'
-import { useMapSprites } from '../editors/useMapSprites'
+import { T } from '../../client/src/theme'
+import { gameFileUrl } from '../../client/src/api'
+import { renderSpriteToCanvas, spriteToDataUrl } from '../../client/src/utils/sprite'
+import SpriteEditor from './SpriteEditor'
+import RightPanel from './RightPanel'
+import { useMapSprites } from './useMapSprites'
 import {
   DEFAULT_W, DEFAULT_H, ZONE_COLORS, ROTATIONS,
   createEmptyGrid, createEmptyZoneGrid, uid,
   parseMapsFromDataJs, mapDefsToLevels, computeAutotileFrame,
   resolveTiling, bakeFrameGrid, mergeZoneDefs,
-} from '../editors/mapUtils'
-import { storageKey } from '../utils/storage'
+} from './mapUtils'
+import { storageKey } from '../../client/src/utils/storage'
 
 function loadLevels(slug) {
   try {
