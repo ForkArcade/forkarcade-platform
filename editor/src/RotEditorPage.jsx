@@ -804,21 +804,6 @@ export default function RotEditorPage({ user }) {
               ))}
             </div>
           </div>
-          {/* Type override */}
-          <div style={{ marginTop: T.sp[3] }}>
-            <div style={{ fontSize: T.fontSize.xs, color: T.text, textTransform: 'uppercase', marginBottom: T.sp[2] }}>Type</div>
-            <input
-              value={objectBrush.type}
-              onChange={e => setObjectBrush(prev => ({ ...prev, type: e.target.value }))}
-              style={{
-                width: '100%', padding: `${T.sp[2]}px ${T.sp[3]}px`,
-                background: T.surface, border: `1px solid ${T.border}`,
-                borderRadius: T.radius.sm, color: T.textBright,
-                fontFamily: T.mono, fontSize: T.fontSize.xs,
-                boxSizing: 'border-box',
-              }}
-            />
-          </div>
           {/* Object count */}
           <div style={{ fontSize: T.fontSize.xs, color: T.muted, marginTop: T.sp[3] }}>
             {objects.length} object{objects.length !== 1 ? 's' : ''} on this level
