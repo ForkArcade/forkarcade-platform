@@ -220,7 +220,7 @@ export default function GamePage({ user, balance, onBalanceChange }) {
       cancelled = true
       if (cleanupFn) cleanupFn()
     }
-  }, [gameBaseUrl, slug, onBalanceChange])
+  }, [gameBaseUrl, slug, onBalanceChange, !!game])
 
   // Hot-reload sprites from editor (cross-tab localStorage)
   useEffect(() => {
