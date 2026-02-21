@@ -274,7 +274,7 @@ export default function GamePage({ user, balance, onBalanceChange }) {
           tabIndex={-1}
           style={{ width: '100%', height: '100%', outline: 'none' }}
         >
-          <canvas id="game" style={{ width: '100%', height: '100%', display: 'block' }} />
+          <canvas id="game" style={{ width: '100%', height: '100%', display: 'block', objectFit: 'contain' }} />
         </div>
         {gameStatus === 'ready' && !focused && (
           <div onClick={() => { setFocused(true); containerRef.current?.focus() }}
