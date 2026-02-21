@@ -139,11 +139,19 @@ export function bakeAllAutotiles(grid, frameGrid, tiles) {
   for (let y = 0; y < rows; y++) {
     for (let x = 0; x < cols; x++) {
       const tid = grid[y]?.[x]
-      const fc = tid != null ? tiles[tid]?.def?.frames?.length : 0
-      if (fc >= 16) {
+      const def = tid != null ? tiles[tid]?.def : null
+      if (!def || !def.frames?.length) continue
+      const tiling = def.tiling
+      if (tiling === 'autotile') {
         result[y][x] = computeAutotileFrame(grid, x, y, tid)
-      } else if (fc > 1) {
-        result[y][x] = (x * 31 + y * 17) % fc
+      } else if (tiling === 'checker') {
+        result[y][x] = (x + y) % def.frames.length
+      } else if (def.frames.length >= 16) {
+        // Legacy fallback: 16+ frames = autotile
+        result[y][x] = computeAutotileFrame(grid, x, y, tid)
+      } else if (def.frames.length > 1) {
+        // Legacy fallback: 2-15 frames = position hash
+        result[y][x] = (x * 31 + y * 17) % def.frames.length
       }
     }
   }

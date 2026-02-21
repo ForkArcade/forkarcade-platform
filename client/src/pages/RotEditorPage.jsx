@@ -519,19 +519,27 @@ export default function RotEditorPage({ user }) {
     if (!pos) return
     updateLevel(level => {
       const fg = level.frameGrid || level.grid.map(row => row.map(() => 0))
-      const isAutotile = tiles[activeTile]?.def?.frames?.length >= 16
-      if (level.grid[pos.y][pos.x] === activeTile && (isAutotile || fg[pos.y][pos.x] === activeFrame)) return {}
+      const tileDef = tiles[activeTile]?.def
+      const tiling = tileDef?.tiling || (tileDef?.frames?.length >= 16 ? 'autotile' : null)
+      if (level.grid[pos.y][pos.x] === activeTile && (tiling || fg[pos.y][pos.x] === activeFrame)) return {}
       const nextGrid = level.grid.map(row => [...row])
       const nextFg = fg.map(row => [...row])
       nextGrid[pos.y][pos.x] = activeTile
-      nextFg[pos.y][pos.x] = isAutotile
-        ? computeAutotileFrame(nextGrid, pos.x, pos.y, activeTile)
-        : activeFrame
+      if (tiling === 'autotile') {
+        nextFg[pos.y][pos.x] = computeAutotileFrame(nextGrid, pos.x, pos.y, activeTile)
+      } else if (tiling === 'checker') {
+        nextFg[pos.y][pos.x] = (pos.x + pos.y) % (tileDef?.frames?.length || 1)
+      } else {
+        nextFg[pos.y][pos.x] = activeFrame
+      }
+      // Update neighbors for autotile
       for (const [dy, dx] of [[-1,0],[1,0],[0,-1],[0,1]]) {
         const ny = pos.y + dy, nx = pos.x + dx
         if (ny < 0 || ny >= nextGrid.length || nx < 0 || nx >= (nextGrid[0]?.length || 0)) continue
         const nTid = nextGrid[ny][nx]
-        if (tiles[nTid]?.def?.frames?.length >= 16) {
+        const nDef = tiles[nTid]?.def
+        const nTiling = nDef?.tiling || (nDef?.frames?.length >= 16 ? 'autotile' : null)
+        if (nTiling === 'autotile') {
           nextFg[ny][nx] = computeAutotileFrame(nextGrid, nx, ny, nTid)
         }
       }
