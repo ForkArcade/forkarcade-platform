@@ -438,11 +438,6 @@ export default function RotEditorPage({ user }) {
     }
   }, [mapVersion, hoverPos, cellSize, cols, rows, showZones, zoneGrid, zoneDefs, objects, spriteDefs, editMode, activeLevel?.playerStart])
 
-  // Lock activeCategory to 'tiles' in tile painting mode
-  useEffect(() => {
-    if (editMode === 'tiles' && activeCategory !== 'tiles') setActiveCategory('tiles')
-  }, [editMode, activeCategory, setActiveCategory])
-
   // Keyboard: 0-9 to select tile
   useEffect(() => {
     const handler = (e) => {
@@ -616,6 +611,26 @@ export default function RotEditorPage({ user }) {
               </button>
             )}
           </div>
+          {categories.length > 1 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: T.sp[1], marginBottom: T.sp[3] }}>
+              {categories.map(cat => (
+                <button
+                  key={cat}
+                  onClick={() => { setActiveCategory(cat); setActiveTile(0); setActiveFrame(0) }}
+                  style={{
+                    background: activeCategory === cat ? T.accentColor : 'transparent',
+                    color: activeCategory === cat ? '#000' : T.text,
+                    border: `1px solid ${activeCategory === cat ? T.accentColor : T.border}`,
+                    borderRadius: T.radius.sm, padding: '2px 6px',
+                    fontSize: 9, fontFamily: T.mono, cursor: 'pointer',
+                    textTransform: 'uppercase', letterSpacing: '0.03em',
+                  }}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+          )}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 1, background: T.border, borderRadius: T.radius.sm, overflow: 'hidden' }}>
             {tiles.map((tile, idx) => (
               <div

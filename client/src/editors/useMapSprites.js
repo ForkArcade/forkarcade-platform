@@ -15,7 +15,7 @@ function loadImage(src) {
 
 export function useMapSprites(slug) {
   const [spriteDefs, setSpriteDefs] = useState(null)
-  const [activeCategory, setActiveCategory] = useState('tiles')
+  const [activeCategory, setActiveCategory] = useState(null)
   const [hasLocalEdits, setHasLocalEdits] = useState(false)
   const [activeTile, setActiveTile] = useState(0)
   const [activeFrame, setActiveFrame] = useState(0)
@@ -125,6 +125,13 @@ export function useMapSprites(slug) {
       Object.values(spriteDefs[cat]).some(d => d?.frames)
     )
   }, [spriteDefs])
+
+  // Default to first available category
+  useEffect(() => {
+    if (categories.length > 0 && (activeCategory === null || !categories.includes(activeCategory))) {
+      setActiveCategory(categories[0])
+    }
+  }, [categories, activeCategory])
 
   // Per-sprite thumbnail cache — only regenerate the one that changed
   const thumbCacheRef = useRef({})
