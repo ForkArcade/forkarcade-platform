@@ -71,7 +71,6 @@ export default function GamePage({ user, balance, onBalanceChange }) {
   const [selectedVersion, setSelectedVersion] = useState(null)
   const [gameStatus, setGameStatus] = useState('loading') // loading | ready | unavailable
   const gameStatusRef = useRef('loading')
-  const [focused, setFocused] = useState(false)
   const [sprites, setSprites] = useState(null)
   const [claudeMd, setClaudeMd] = useState(null)
   const [claudeMdPopup, setClaudeMdPopup] = useState(false)
@@ -118,20 +117,6 @@ export default function GamePage({ user, balance, onBalanceChange }) {
       ? `${GITHUB_PAGES_BASE}/${slug}/versions/v${selectedVersion}/`
       : `${GITHUB_PAGES_BASE}/${slug}/`
 
-  const wrapperRef = useRef(null)
-
-  // Blur detection — click outside game area
-  useEffect(() => {
-    const onMouseDown = (e) => {
-      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
-        setFocused(false)
-        containerRef.current?.blur()
-      }
-    }
-    document.addEventListener('mousedown', onMouseDown)
-    return () => document.removeEventListener('mousedown', onMouseDown)
-  }, [])
-
   // Stable refs for callbacks used in loadGame
   const userRef = useRef(user)
   userRef.current = user
@@ -147,7 +132,6 @@ export default function GamePage({ user, balance, onBalanceChange }) {
 
     setGameStatus('loading')
     gameStatusRef.current = 'loading'
-    setFocused(false)
 
     let cleanupFn = null
     let cancelled = false
@@ -210,6 +194,7 @@ export default function GamePage({ user, balance, onBalanceChange }) {
       cleanupFn = cleanup
       setGameStatus('ready')
       gameStatusRef.current = 'ready'
+      containerRef.current?.focus()
     }).catch(() => {
       if (!cancelled) {
         setGameStatus('unavailable')
@@ -265,26 +250,15 @@ export default function GamePage({ user, balance, onBalanceChange }) {
 
   return (
     <div style={{ display: 'flex', height: '100%', gap: T.sp[4] }}>
-      <div ref={wrapperRef} style={{
-        flex: 1,
-        background: '#000',
-        position: 'relative',
-      }}>
+      <div style={{ flex: 1, background: '#000', position: 'relative' }}>
         <div
           ref={containerRef}
           tabIndex={-1}
+          onClick={() => containerRef.current?.focus()}
           style={{ width: '100%', height: '100%', outline: 'none' }}
         >
           <canvas id="game" style={{ width: '100%', height: '100%', display: 'block', objectFit: 'contain' }} />
         </div>
-        {gameStatus === 'ready' && !focused && (
-          <div onClick={() => { setFocused(true); containerRef.current?.focus() }}
-            style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle, rgba(0,0,0,0.4) 0%, rgba(0,0,0,1) 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 1 }}>
-            <span style={{ fontSize: T.fontSize.sm, color: T.textBright, letterSpacing: T.tracking.wider, textTransform: 'uppercase', padding: `${T.sp[4]}px ${T.sp[6]}px`, border: `1px solid ${T.border}`, borderRadius: T.radius.md, background: T.surface }}>
-              Click to focus
-            </span>
-          </div>
-        )}
         {gameStatus !== 'ready' && (
           <div style={{ position: 'absolute', inset: 0, background: T.bg, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: T.sp[5] }}>
             <img src="/logo.svg" alt="" width={48} height={48} style={{ opacity: gameStatus === 'loading' ? 0.3 : 0.15 }} />
