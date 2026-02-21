@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { T } from '../../client/src/theme'
+import { T } from '../theme'
 
 const SUB_TABS = ['cutscenes', 'thoughts', 'notices', 'director']
 

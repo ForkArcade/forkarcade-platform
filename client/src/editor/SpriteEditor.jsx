@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
-import { T } from '../../client/src/theme'
-import { spriteToDataUrl, nextPaletteKey, setPixel } from '../../client/src/utils/sprite'
+import { T } from '../theme'
+import { spriteToDataUrl, nextPaletteKey, setPixel } from '../utils/sprite'
 import { Trash2, Plus, Copy, ArrowLeft } from 'lucide-react'
 
 const smallBtn = {

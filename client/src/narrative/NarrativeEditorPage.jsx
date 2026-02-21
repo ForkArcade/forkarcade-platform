@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { T } from '../../client/src/theme'
+import { T } from '../theme'
 import { useNarrativeData } from './useNarrativeData'
 import GraphEditor from './GraphEditor'
 import VariableEditor from './VariableEditor'

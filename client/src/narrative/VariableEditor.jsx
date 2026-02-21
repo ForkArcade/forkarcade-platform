@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { T } from '../../client/src/theme'
+import { T } from '../theme'
 
 export default function VariableEditor({ data, update }) {
   const [newName, setNewName] = useState('')

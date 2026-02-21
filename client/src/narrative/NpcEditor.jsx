@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { T } from '../../client/src/theme'
+import { T } from '../theme'
 import { conditionLabel } from './narrativeUtils'
 
 const TIME_PERIODS = ['morning', 'midday', 'evening']

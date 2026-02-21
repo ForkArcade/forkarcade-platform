@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { gameFileUrl } from '../../client/src/api'
-import { storageKey } from '../../client/src/utils/storage'
+import { gameFileUrl } from '../api'
+import { storageKey } from '../utils/storage'
 
 export function useNarrativeData(slug) {
   const [data, setData] = useState(null)

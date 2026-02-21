@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { T } from '../../client/src/theme'
+import { T } from '../theme'
 import { conditionLabel, uid } from './narrativeUtils'
 
 const NODE_TYPES = ['scene', 'state', 'choice', 'condition']

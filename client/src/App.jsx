@@ -7,8 +7,8 @@ import HomePage from './pages/HomePage'
 import GamePage from './pages/GamePage'
 import TemplatesPage from './pages/TemplatesPage'
 import TemplateDetailPage from './pages/TemplateDetailPage'
-import RotEditorPage from '../../editor/src'
-import NarrativeEditorPage from '../../narrative/src'
+import RotEditorPage from './editor'
+import NarrativeEditorPage from './narrative'
 import LoginButton from './components/LoginButton'
 
 const navStyle = (isActive) => ({

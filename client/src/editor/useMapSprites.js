@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
-import { gameFileUrl } from '../../client/src/api'
-import { spriteToDataUrl, hydrateSpriteDefs } from '../../client/src/utils/sprite'
-import { storageKey } from '../../client/src/utils/storage'
+import { gameFileUrl } from '../api'
+import { spriteToDataUrl, hydrateSpriteDefs } from '../utils/sprite'
+import { storageKey } from '../utils/storage'
 
 function loadImage(src) {
   return new Promise((resolve, reject) => {
