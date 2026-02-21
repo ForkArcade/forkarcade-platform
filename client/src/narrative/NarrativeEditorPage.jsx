@@ -6,8 +6,9 @@ import GraphEditor from './GraphEditor'
 import VariableEditor from './VariableEditor'
 import NpcEditor from './NpcEditor'
 import ContentEditor from './ContentEditor'
+import EventEditor from './EventEditor'
 
-const TABS = ['graphs', 'variables', 'npcs', 'content']
+const TABS = ['graphs', 'variables', 'events', 'npcs', 'content']
 
 export default function NarrativeEditorPage({ user }) {
   const { slug } = useParams()
@@ -76,6 +77,7 @@ export default function NarrativeEditorPage({ user }) {
       <div style={{ flex: 1, overflow: 'auto', padding: T.sp[5] }}>
         {tab === 'graphs' && <GraphEditor data={data} update={update} />}
         {tab === 'variables' && <VariableEditor data={data} update={update} />}
+        {tab === 'events' && <EventEditor data={data} update={update} />}
         {tab === 'npcs' && <NpcEditor data={data} update={update} />}
         {tab === 'content' && <ContentEditor data={data} update={update} />}
       </div>
