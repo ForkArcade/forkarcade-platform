@@ -10,7 +10,7 @@ import {
   DEFAULT_W, DEFAULT_H, ZONE_COLORS, ROTATIONS,
   createEmptyGrid, createEmptyZoneGrid, uid,
   parseMapsFromDataJs, mapDefsToLevels, computeAutotileFrame,
-  resolveTiling, bakeFrameGrid, mergeZoneDefs,
+  resolveTiling, bakeAllAutotiles, bakeFrameGrid, mergeZoneDefs,
 } from './mapUtils'
 import { storageKey } from '../../client/src/utils/storage'
 
@@ -818,32 +818,6 @@ export default function RotEditorPage({ user }) {
                 boxSizing: 'border-box',
               }}
             />
-          </div>
-          {/* Player start */}
-          <div style={{ marginTop: T.sp[3] }}>
-            <button
-              onClick={() => {
-                if (hoverPos) updateLevel(() => ({ playerStart: { x: hoverPos.x, y: hoverPos.y } }))
-              }}
-              style={{
-                width: '100%',
-                background: 'transparent',
-                border: `1px solid ${T.border}`,
-                borderRadius: T.radius.sm,
-                color: '#0f0',
-                fontSize: T.fontSize.xs,
-                fontFamily: T.mono,
-                padding: '4px 0',
-                cursor: 'pointer',
-              }}
-            >
-              Set player start at cursor
-            </button>
-            {activeLevel?.playerStart && (
-              <div style={{ fontSize: 9, color: T.muted, marginTop: T.sp[1], fontFamily: T.mono }}>
-                Start: {activeLevel.playerStart.x}, {activeLevel.playerStart.y}
-              </div>
-            )}
           </div>
           {/* Object count */}
           <div style={{ fontSize: T.fontSize.xs, color: T.muted, marginTop: T.sp[3] }}>
