@@ -520,7 +520,7 @@ export default function RotEditorPage({ user }) {
     updateLevel(level => {
       const fg = level.frameGrid || level.grid.map(row => row.map(() => 0))
       const tileDef = tiles[activeTile]?.def
-      const tiling = tileDef?.tiling || (tileDef?.frames?.length >= 16 ? 'autotile' : null)
+      const tiling = tileDef?.tiling ? tileDef.tiling : (!tileDef?.tiling && tileDef?.frames?.length >= 16 ? 'autotile' : null)
       if (level.grid[pos.y][pos.x] === activeTile && (tiling || fg[pos.y][pos.x] === activeFrame)) return {}
       const nextGrid = level.grid.map(row => [...row])
       const nextFg = fg.map(row => [...row])
@@ -538,7 +538,7 @@ export default function RotEditorPage({ user }) {
         if (ny < 0 || ny >= nextGrid.length || nx < 0 || nx >= (nextGrid[0]?.length || 0)) continue
         const nTid = nextGrid[ny][nx]
         const nDef = tiles[nTid]?.def
-        const nTiling = nDef?.tiling || (nDef?.frames?.length >= 16 ? 'autotile' : null)
+        const nTiling = nDef?.tiling ? nDef.tiling : (!nDef?.tiling && nDef?.frames?.length >= 16 ? 'autotile' : null)
         if (nTiling === 'autotile') {
           nextFg[ny][nx] = computeAutotileFrame(nextGrid, nx, ny, nTid)
         }

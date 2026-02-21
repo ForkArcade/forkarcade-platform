@@ -146,11 +146,9 @@ export function bakeAllAutotiles(grid, frameGrid, tiles) {
         result[y][x] = computeAutotileFrame(grid, x, y, tid)
       } else if (tiling === 'checker') {
         result[y][x] = (x + y) % def.frames.length
-      } else if (def.frames.length >= 16) {
-        // Legacy fallback: 16+ frames = autotile
+      } else if (!tiling && def.frames.length >= 16) {
         result[y][x] = computeAutotileFrame(grid, x, y, tid)
-      } else if (def.frames.length > 1) {
-        // Legacy fallback: 2-15 frames = position hash
+      } else if (!tiling && def.frames.length > 1) {
         result[y][x] = (x * 31 + y * 17) % def.frames.length
       }
     }

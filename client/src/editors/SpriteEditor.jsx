@@ -384,7 +384,7 @@ export default function SpriteEditor({ sprites, activeCat, activeName, onUpdate,
           {['none', 'checker', 'autotile'].map(mode => (
             <button
               key={mode}
-              onClick={() => onUpdate(d => { if (mode === 'none') delete d.tiling; else d.tiling = mode })}
+              onClick={() => onUpdate(d => { d.tiling = mode })}
               style={{
                 ...smallBtn,
                 background: (def.tiling || 'none') === mode ? T.accentColor : 'transparent',
