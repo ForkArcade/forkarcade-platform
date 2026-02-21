@@ -11,6 +11,7 @@ import MdPopup from '../components/MdPopup'
 import { levelsToMapDefs } from '../editors/mapUtils'
 import { dehydrateToSheet } from '../utils/sprite'
 import { loadGame } from '../utils/gameLoader'
+import { storageKey } from '../utils/storage'
 
 const isDev = window.location.hostname === 'localhost'
 const GITHUB_PAGES_BASE = `https://${GITHUB_ORG.toLowerCase()}.github.io`
@@ -190,9 +191,9 @@ export default function GamePage({ user, balance, onBalanceChange }) {
         if (cancelled) return
         // Apply saved sprites/maps from editor
         try {
-          const savedSprites = localStorage.getItem(`fa-sprites-${slug}`)
+          const savedSprites = localStorage.getItem(storageKey.sprites(slug))
           if (savedSprites) applySpritesDirect(savedSprites)
-          const savedMaps = localStorage.getItem(`fa-maps-${slug}`)
+          const savedMaps = localStorage.getItem(storageKey.maps(slug))
           if (savedMaps) {
             const maps = editorMapsToMapDefs(savedMaps)
             if (maps) {
@@ -224,7 +225,7 @@ export default function GamePage({ user, balance, onBalanceChange }) {
 
   // Hot-reload sprites from editor (cross-tab localStorage)
   useEffect(() => {
-    const key = `fa-sprites-${slug}`
+    const key = storageKey.sprites(slug)
     function onStorage(e) {
       if (e.key !== key || !e.newValue || gameStatusRef.current !== 'ready') return
       applySpritesDirect(e.newValue)
@@ -235,7 +236,7 @@ export default function GamePage({ user, balance, onBalanceChange }) {
 
   // Hot-reload maps from editor (cross-tab localStorage)
   useEffect(() => {
-    const key = `fa-maps-${slug}`
+    const key = storageKey.maps(slug)
     function onStorage(e) {
       if (e.key !== key || !e.newValue || gameStatusRef.current !== 'ready') return
       try {

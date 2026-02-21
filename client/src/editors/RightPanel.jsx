@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from 'react'
-import { T } from '../theme'
+import { T, formInput } from '../theme'
 import { Button } from '../components/ui'
 import { apiFetch } from '../api'
 import {
@@ -8,7 +8,7 @@ import {
   levelsToMapDefs, mapDefsToLevels,
 } from './mapUtils'
 
-const inputStyle = {
+const numInput = {
   width: 50, padding: T.sp[2],
   background: T.surface, border: `1px solid ${T.border}`,
   borderRadius: T.radius.sm, color: T.textBright,
@@ -320,9 +320,9 @@ export default function RightPanel({
         <div style={{ fontSize: T.fontSize.xs, color: T.text, textTransform: 'uppercase', marginBottom: T.sp[3] }}>Size</div>
         <div style={{ display: 'flex', gap: T.sp[3], alignItems: 'center' }}>
           <label style={{ fontSize: T.fontSize.xs, color: T.muted }}>W</label>
-          <input type="number" value={cols} onChange={e => handleResize(+e.target.value, rows)} style={inputStyle} />
+          <input type="number" value={cols} onChange={e => handleResize(+e.target.value, rows)} style={numInput} />
           <label style={{ fontSize: T.fontSize.xs, color: T.muted }}>H</label>
-          <input type="number" value={rows} onChange={e => handleResize(cols, +e.target.value)} style={inputStyle} />
+          <input type="number" value={rows} onChange={e => handleResize(cols, +e.target.value)} style={numInput} />
         </div>
       </div>
 
@@ -366,7 +366,7 @@ export default function RightPanel({
                 value={proposeTitle}
                 onChange={e => setProposeTitle(e.target.value)}
                 placeholder="Title"
-                style={{ padding: `${T.sp[2]}px ${T.sp[3]}px`, background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius.sm, color: T.textBright, fontSize: T.fontSize.xs }}
+                style={formInput}
               />
               <Button onClick={handlePropose} disabled={proposeStatus === 'sending' || !proposeTitle.trim()}>
                 {proposeStatus === 'sending' ? 'Sending...' : 'Submit'}
@@ -395,7 +395,7 @@ export default function RightPanel({
                 value={mapProposeTitle}
                 onChange={e => setMapProposeTitle(e.target.value)}
                 placeholder="Title"
-                style={{ padding: `${T.sp[2]}px ${T.sp[3]}px`, background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.radius.sm, color: T.textBright, fontSize: T.fontSize.xs }}
+                style={formInput}
               />
               <Button onClick={handleMapPropose} disabled={mapProposeStatus === 'sending' || !mapProposeTitle.trim()}>
                 {mapProposeStatus === 'sending' ? 'Sending...' : 'Submit'}

@@ -1,21 +1,38 @@
 import { useState, useEffect, useMemo } from 'react'
 import { apiFetch } from '../api'
-import { T } from '../theme'
+import { T, formInput } from '../theme'
 import { Badge, EmptyState } from './ui'
 import LoginButton from './LoginButton'
 import MdPopup from './MdPopup'
 
-const inputStyle = {
-  width: '100%',
-  padding: `${T.sp[3]}px ${T.sp[4]}px`,
-  background: T.bg,
-  border: `1px solid ${T.border}`,
-  borderRadius: T.radius.md,
-  color: T.textBright,
-  fontSize: T.fontSize.xs,
-  fontFamily: T.font,
-  outline: 'none',
-  boxSizing: 'border-box',
+function IssuePopup({ issue, votes: v, strip, isReady, canVote, done, onClose, onVote, onTrigger, triggerUrl, triggerLabel, voterDisplay, voteBtn, user }) {
+  const ready = isReady(issue, v)
+  return (
+    <MdPopup
+      title={strip(issue.title)}
+      text={issue.body || 'No description.'}
+      onClose={onClose}
+      footer={
+        <div style={{ display: 'flex', alignItems: 'center', gap: T.sp[4] }}>
+          <span style={{ fontFamily: T.mono, fontSize: T.fontSize.sm, fontWeight: T.weight.bold, color: T.gold }}>{v?.total_votes ?? 0} votes</span>
+          <span style={{ fontSize: T.fontSize.xs, color: T.muted }}>{voterDisplay(v?.unique_voters ?? 0)}</span>
+          <div style={{ flex: 1 }} />
+          {!done && (
+            <button onClick={onVote} disabled={!canVote}
+              style={{ ...voteBtn, background: canVote ? T.gold + '20' : 'transparent', border: `1px solid ${canVote ? T.gold : T.border}`, color: canVote ? T.gold : T.muted, cursor: canVote ? 'pointer' : 'default', opacity: !canVote ? 0.5 : 1 }}>
+              Vote 10c
+            </button>
+          )}
+          {triggerUrl && ready && !done && user && (
+            <button onClick={onTrigger}
+              style={{ ...voteBtn, background: T.success + '20', border: `1px solid ${T.success}`, color: T.success, cursor: 'pointer' }}>
+              {triggerLabel || 'Evolve'}
+            </button>
+          )}
+        </div>
+      }
+    />
+  )
 }
 
 export default function VotingPanel({
@@ -134,9 +151,9 @@ export default function VotingPanel({
           </button>
           {showForm && (
             <form onSubmit={handleSubmit} style={{ marginTop: T.sp[3] }}>
-              <input value={title} onChange={e => setTitle(e.target.value)} placeholder={titlePlaceholder} style={inputStyle} />
-              <textarea value={body} onChange={e => setBody(e.target.value)} placeholder={bodyPlaceholder} rows={3} style={{ ...inputStyle, marginTop: T.sp[2], resize: 'vertical' }} />
-              {renderFormExtra && renderFormExtra(extra, setExtra, inputStyle)}
+              <input value={title} onChange={e => setTitle(e.target.value)} placeholder={titlePlaceholder} style={formInput} />
+              <textarea value={body} onChange={e => setBody(e.target.value)} placeholder={bodyPlaceholder} rows={3} style={{ ...formInput, marginTop: T.sp[2], resize: 'vertical' }} />
+              {renderFormExtra && renderFormExtra(extra, setExtra, formInput)}
               <button type="submit" disabled={!title.trim()} style={{ marginTop: T.sp[3], width: '100%', padding: `${T.sp[3]}px`, background: T.accentColor, border: 'none', borderRadius: T.radius.md, color: '#000', fontSize: T.fontSize.xs, fontWeight: T.weight.bold, fontFamily: T.font, cursor: 'pointer', opacity: !title.trim() ? 0.5 : 1 }}>
                 Submit
               </button>
@@ -169,38 +186,15 @@ export default function VotingPanel({
         )
       })}
 
-      {viewIssue && (() => {
-        const v = votes[viewIssue.number]
-        const ready = isReady(viewIssue, v)
-        const canVote = user && balance >= 10
-        const done = viewIssue.labels?.some(l => l.name === doneLabel)
-        return (
-          <MdPopup
-            title={strip(viewIssue.title)}
-            text={viewIssue.body || 'No description.'}
-            onClose={() => setViewIssue(null)}
-            footer={
-              <div style={{ display: 'flex', alignItems: 'center', gap: T.sp[4] }}>
-                <span style={{ fontFamily: T.mono, fontSize: T.fontSize.sm, fontWeight: T.weight.bold, color: T.gold }}>{v?.total_votes ?? 0} votes</span>
-                <span style={{ fontSize: T.fontSize.xs, color: T.muted }}>{voterDisplay(v?.unique_voters ?? 0)}</span>
-                <div style={{ flex: 1 }} />
-                {!done && (
-                  <button onClick={() => handleVote(viewIssue.number)} disabled={!canVote}
-                    style={{ ...voteBtn, background: canVote ? T.gold + '20' : 'transparent', border: `1px solid ${canVote ? T.gold : T.border}`, color: canVote ? T.gold : T.muted, cursor: canVote ? 'pointer' : 'default', opacity: !canVote ? 0.5 : 1 }}>
-                    Vote 10c
-                  </button>
-                )}
-                {triggerUrl && ready && !done && user && (
-                  <button onClick={() => handleTrigger(viewIssue.number)}
-                    style={{ ...voteBtn, background: T.success + '20', border: `1px solid ${T.success}`, color: T.success, cursor: 'pointer' }}>
-                    {triggerLabel || 'Evolve'}
-                  </button>
-                )}
-              </div>
-            }
-          />
-        )
-      })()}
+      {viewIssue && <IssuePopup
+        issue={viewIssue} votes={votes[viewIssue.number]} strip={strip}
+        isReady={isReady} canVote={!!user && balance >= 10}
+        done={viewIssue.labels?.some(l => l.name === doneLabel)}
+        onClose={() => setViewIssue(null)} onVote={() => handleVote(viewIssue.number)}
+        onTrigger={() => handleTrigger(viewIssue.number)}
+        triggerUrl={triggerUrl} triggerLabel={triggerLabel}
+        voterDisplay={voterDisplay} voteBtn={voteBtn} user={user}
+      />}
     </div>
   )
 }

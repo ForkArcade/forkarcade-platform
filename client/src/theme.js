@@ -33,3 +33,16 @@ export const T = {
     lg: '0 8px 24px rgba(0,0,0,0.5)',
   },
 }
+
+export const formInput = {
+  width: '100%',
+  padding: `${T.sp[2]}px ${T.sp[3]}px`,
+  background: T.surface,
+  border: `1px solid ${T.border}`,
+  borderRadius: T.radius.sm,
+  color: T.textBright,
+  fontSize: T.fontSize.xs,
+  fontFamily: T.font,
+  outline: 'none',
+  boxSizing: 'border-box',
+}

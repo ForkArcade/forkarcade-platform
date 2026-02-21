@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { gameFileUrl } from '../api'
 import { spriteToDataUrl, hydrateSpriteDefs } from '../utils/sprite'
+import { storageKey } from '../utils/storage'
 
 function loadImage(src) {
   return new Promise((resolve, reject) => {
@@ -51,7 +52,7 @@ export function useMapSprites(slug) {
   // Load sprites: localStorage first, otherwise GitHub
   useEffect(() => {
     spriteInitialRef.current = true
-    const saved = localStorage.getItem(`fa-sprites-${slug}`)
+    const saved = localStorage.getItem(storageKey.sprites(slug))
     if (saved) {
       try {
         const parsed = JSON.parse(saved)
@@ -77,7 +78,7 @@ export function useMapSprites(slug) {
   }, [slug, fetchSpritesFromSource])
 
   const resetToPublished = useCallback(() => {
-    localStorage.removeItem(`fa-sprites-${slug}`)
+    localStorage.removeItem(storageKey.sprites(slug))
     fetchSpritesFromSource()
   }, [slug, fetchSpritesFromSource])
 
@@ -90,9 +91,9 @@ export function useMapSprites(slug) {
         // Save character grids + atlas — no PNG encoding (fast)
         // Dehydration to PNG happens in GamePage on hot-reload
         const lsData = { _format: 'png-hydrated', _atlas: atlasRef.current, ...spriteDefs }
-        localStorage.setItem(`fa-sprites-${slug}`, JSON.stringify(lsData))
+        localStorage.setItem(storageKey.sprites(slug), JSON.stringify(lsData))
       } else {
-        localStorage.setItem(`fa-sprites-${slug}`, JSON.stringify(spriteDefs))
+        localStorage.setItem(storageKey.sprites(slug), JSON.stringify(spriteDefs))
       }
       setHasLocalEdits(true)
     }, 400)
@@ -101,7 +102,7 @@ export function useMapSprites(slug) {
 
   // Cross-tab hot-reload
   useEffect(() => {
-    const lsKey = `fa-sprites-${slug}`
+    const lsKey = storageKey.sprites(slug)
     const handler = (e) => {
       if (e.key !== lsKey || !e.newValue) return
       try {
@@ -136,7 +137,7 @@ export function useMapSprites(slug) {
       .filter(([, def]) => def?.frames)
       .map(([name, def]) => {
         const key = activeCategory + '/' + name
-        const framesKey = def.frames[0]?.[0] + (def.frames[0]?.[1] || '')
+        const framesKey = def.frames[0]?.join('') || ''
         let thumb
         if (cache[key] && cache[key].k === framesKey) {
           nextCache[key] = cache[key]

@@ -2,13 +2,11 @@ import { T } from '../theme'
 import { EmptyState } from './ui'
 
 export default function Leaderboard({ rows = [] }) {
-  const list = Array.isArray(rows) ? rows : []
-
-  if (list.length === 0) return <EmptyState>No scores yet</EmptyState>
+  if (rows.length === 0) return <EmptyState>No scores yet</EmptyState>
 
   return (
     <div>
-      {list.map((r, i) => (
+      {rows.map((r, i) => (
         <div
           key={i}
           style={{

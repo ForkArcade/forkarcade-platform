@@ -18,6 +18,8 @@ function inline(text) {
   return parts.length === 1 && typeof parts[0] === 'string' ? parts[0] : parts
 }
 
+const HEADINGS = [['### ', 'h4', T.fontSize.sm, T.weight.semibold, T.sp[2]], ['## ', 'h3', T.fontSize.base, T.weight.semibold, T.sp[2]], ['# ', 'h2', T.fontSize.md, T.weight.bold, T.sp[3]]]
+
 export default function SimpleMd({ text }) {
   const lines = text.split('\n')
   const elements = []
@@ -89,8 +91,7 @@ export default function SimpleMd({ text }) {
       continue
     }
 
-    const hdg = [['### ', 'h4', T.fontSize.sm, T.weight.semibold, T.sp[2]], ['## ', 'h3', T.fontSize.base, T.weight.semibold, T.sp[2]], ['# ', 'h2', T.fontSize.md, T.weight.bold, T.sp[3]]]
-    const h = hdg.find(([p]) => line.startsWith(p))
+    const h = HEADINGS.find(([p]) => line.startsWith(p))
     if (h) { const Tag = h[1]; elements.push(<Tag key={elements.length} style={{ color: T.textBright, fontSize: h[2], fontWeight: h[3], margin: `${T.sp[5]}px 0 ${h[4]}px` }}>{inline(line.slice(h[0].length))}</Tag>); i++; continue }
 
     if (/^[-*] /.test(line)) {

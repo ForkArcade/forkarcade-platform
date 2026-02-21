@@ -11,12 +11,11 @@ import {
   createEmptyGrid, createEmptyZoneGrid, uid,
   parseMapsFromDataJs, mapDefsToLevels, computeAutotileFrame, bakeAllAutotiles,
 } from '../editors/mapUtils'
-
-const STORAGE_KEY = slug => `fa-maps-${slug}`
+import { storageKey } from '../utils/storage'
 
 function loadLevels(slug) {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY(slug))
+    const raw = localStorage.getItem(storageKey.maps(slug))
     if (raw) {
       const data = JSON.parse(raw)
       if (data.levels?.length) {
@@ -29,7 +28,7 @@ function loadLevels(slug) {
 }
 
 function saveLevels(slug, data) {
-  localStorage.setItem(STORAGE_KEY(slug), JSON.stringify(data))
+  localStorage.setItem(storageKey.maps(slug), JSON.stringify(data))
 }
 
 export default function RotEditorPage({ user }) {
@@ -40,7 +39,7 @@ export default function RotEditorPage({ user }) {
   const levelsSaveRef = useRef(null)
   const mapInitialRef = useRef(true)
 
-  const [hasLocalMapEdits, setHasLocalMapEdits] = useState(() => localStorage.getItem(STORAGE_KEY(slug)) !== null)
+  const [hasLocalMapEdits, setHasLocalMapEdits] = useState(() => localStorage.getItem(storageKey.maps(slug)) !== null)
 
   const [levels, setLevels] = useState(() => {
     const loaded = loadLevels(slug)
@@ -198,7 +197,7 @@ export default function RotEditorPage({ user }) {
   }, [slug])
 
   const resetMaps = useCallback(() => {
-    localStorage.removeItem(STORAGE_KEY(slug))
+    localStorage.removeItem(storageKey.maps(slug))
     setHasLocalMapEdits(false)
     mapInitialRef.current = true
     const emptyLevel = () => {
