@@ -1,6 +1,6 @@
 # ForkArcade Platform
 
-A platform for creating and playing web games with Claude Code. Games published on GitHub Pages, embedded in iframes.
+A platform for creating and playing web games with Claude Code. Games published on GitHub Pages, loaded directly into the platform page.
 
 > **TL;DR**: Tell Claude "make me a roguelike about zombies" — you get a GitHub repo with a working game, sprites, and a leaderboard.
 
@@ -62,10 +62,10 @@ http://localhost:5173 — the game will appear in the catalog.
 ```
 User -> Claude Code -> MCP tools -> GitHub (repo + Pages)
                                          |
-Platform (iframe) <----- GitHub Pages <--+
+Platform (direct load) <-- GitHub Pages <-+
      |
      +-- Leaderboard (server + SQLite)
-     +-- Narrative panel (postMessage)
+     +-- Narrative (bridge callback)
 ```
 
 1. **init_game** — forks a template repo to the `ForkArcade` org, clones locally, copies SDK
@@ -125,7 +125,7 @@ forkarcade-platform/
     github_templates.py   Dynamic templates from GitHub API
     handlers/             workflow, assets, versions
   sdk/
-    forkarcade-sdk.js     SDK (postMessage)
+    forkarcade-sdk.js     SDK (bridge / legacy postMessage)
     fa-narrative.js       Narrative module
     _platform.md          Platform golden rules
   .claude/skills/   new-game, evolve, publish

@@ -214,9 +214,9 @@ def get_sdk_docs(args):
     return """# ForkArcade SDK Documentation
 
 ## How it works
-The SDK communicates with the ForkArcade platform via postMessage.
-Games run in an iframe on the platform. The SDK sends messages to the parent window (platform),
-which handles authentication and API calls.
+The SDK provides a bridge between games and the ForkArcade platform.
+Games are loaded directly into the platform page (no iframe). The platform injects
+a `window.ForkArcade` bridge object before game scripts execute.
 
 ## Include in your game
 The file `forkarcade-sdk.js` is copied into your game directory by `init_game`.

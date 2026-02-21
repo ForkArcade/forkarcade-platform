@@ -1,6 +1,6 @@
 # ForkArcade Platform
 
-> **TL;DR**: Games = repos in `ForkArcade` org on GitHub Pages in iframes. Templates = discovered via GitHub API (topic `forkarcade-template`), self-contained. Platform provides SDK + narrative. Server = auth + scores + wallet + voting. No build step.
+> **TL;DR**: Games = repos in `ForkArcade` org on GitHub Pages, loaded as direct scripts (no iframe). Templates = discovered via GitHub API (topic `forkarcade-template`), self-contained. Platform provides SDK bridge + narrative. Server = auth + scores + wallet + voting. No build step.
 
 ## Architecture
 
@@ -22,7 +22,7 @@ docs/                Reference docs (endpoints, protocol, versioning, data forma
 
 - **Game catalog = GitHub API** — no games table. Repos filtered by `forkarcade-game` topic.
 - **Template catalog = GitHub API** — repos with `forkarcade-template` topic. No hardcoded list.
-- **Games in iframe** — GitHub Pages, communication via postMessage (SDK).
+- **Games loaded directly** — scripts injected into platform page via `gameLoader.js` (no iframe, no postMessage). Bridge object `window.ForkArcade` provides SDK API.
 - **Server is thin** — auth + scores + wallet + voting only. No game logic server-side.
 - **Narrative is client-side** — not persisted in database.
 - **No build step** — vanilla JS, `<script>` tags, GitHub Pages (`build_type=legacy`).
@@ -35,7 +35,7 @@ Defined by `.forkarcade.json` in template repo: `template`, `engineFiles`, `game
 
 Detailed reference moved to `docs/` to save tokens:
 - `docs/api-endpoints.md` — all server endpoints + database schema
-- `docs/protocol.md` — postMessage types (SDK <-> Platform)
+- `docs/protocol.md` — SDK bridge API (game <-> platform)
 - `docs/versioning.md` — evolve flows (text-based + data-patch), version structure, changelog
 - `docs/data-formats.md` — sprites/maps data pattern, `_maps.json` format, editor architecture
 
@@ -44,7 +44,7 @@ Detailed reference moved to `docs/` to save tokens:
 - `/` -> HomePage (game catalog + about sidebar)
 - `/templates` -> TemplatesPage
 - `/templates/:slug` -> TemplateDetailPage
-- `/play/:slug` -> GamePage (iframe + tabs + version selector)
+- `/play/:slug` -> GamePage (direct script load + tabs + version selector)
 - `/edit/:slug` -> RotEditorPage (map + sprite editor, localStorage, hot-reload)
 
 ## MCP Tools

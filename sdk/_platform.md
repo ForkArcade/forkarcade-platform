@@ -117,7 +117,7 @@ In the renderer display the bar with `alpha = Math.min(1, state.narrativeMessage
 - `ForkArcade.onReady(callback)` — call on startup
 - `ForkArcade.submitScore(score)` — call at end of game
 - `ForkArcade.updateNarrative(data)` — report narrative state to the platform
-- Platform may send `FA_SPRITES_UPDATE` to hot-reload sprites from the editor (handled by SDK)
+- Platform hot-reloads sprites/maps from the editor via direct global mutation and CustomEvents
 
 ## Sprites
 

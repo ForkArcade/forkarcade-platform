@@ -2,6 +2,9 @@
 (function(window) {
   'use strict';
 
+  // If platform already injected a bridge (direct load mode), skip postMessage setup
+  if (window.ForkArcade && window.ForkArcade.sdkVersion) return;
+
   var _sdkVersion = 1;
   var _pending = {};
   var _ready = false;

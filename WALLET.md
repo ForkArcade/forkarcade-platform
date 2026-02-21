@@ -12,7 +12,7 @@ if personal record: coins = floor(coins * 1.5)
 ```
 
 - Server calculates coins automatically — game only submits score as before
-- `FA_COIN_EARNED` postMessage sent to iframe after minting (fire-and-forget)
+- Coins added to balance automatically after score submit
 - Balance displayed in toolbar (`{balance}c`, gold, monospace)
 
 ## Spending
