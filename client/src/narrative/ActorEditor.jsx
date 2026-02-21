@@ -1,8 +1,6 @@
 import { useState } from 'react'
 import { T } from '../theme'
 
-const ACTOR_TYPES = ['npc', 'enemy', 'object']
-
 export default function ActorEditor({ data, update }) {
   const [selected, setSelected] = useState(null)
   const actors = data.actors || {}
@@ -27,8 +25,7 @@ export default function ActorEditor({ data, update }) {
               fontSize: T.fontSize.xs, fontFamily: T.mono, cursor: 'pointer',
             }}
           >
-            <div>{actors[id].name || id}</div>
-            <div style={{ fontSize: 9, color: T.muted, marginTop: 1 }}>{actors[id].type || 'npc'}</div>
+            {actors[id].name || id}
           </button>
         ))}
         <button
@@ -37,7 +34,7 @@ export default function ActorEditor({ data, update }) {
             if (!id) return
             update(d => {
               if (!d.actors) d.actors = {}
-              d.actors[id] = { name: id, type: 'npc', sprite: `npcs/${id}` }
+              d.actors[id] = { name: id, sprite: '' }
             })
             setSelected(id)
           }}
@@ -57,37 +54,23 @@ export default function ActorEditor({ data, update }) {
               <input value={actor.name || ''} onChange={e => update(d => { d.actors[activeId].name = e.target.value })} style={inputStyle} />
             </div>
             <div>
-              <label style={labelStyle}>Type</label>
-              <select value={actor.type || 'npc'} onChange={e => update(d => { d.actors[activeId].type = e.target.value })} style={selectStyle}>
-                {ACTOR_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-              </select>
-            </div>
-            <div>
               <label style={labelStyle}>Sprite</label>
               <input value={actor.sprite || ''} onChange={e => update(d => { d.actors[activeId].sprite = e.target.value })} style={inputStyle} />
             </div>
-            {actor.type === 'enemy' && (
-              <>
-                <div style={{ display: 'flex', gap: T.sp[3] }}>
-                  <div>
-                    <label style={labelStyle}>HP</label>
-                    <input type="number" value={actor.hp ?? 0} onChange={e => update(d => { d.actors[activeId].hp = Number(e.target.value) })} style={{ ...inputStyle, width: 50 }} />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>ATK</label>
-                    <input type="number" value={actor.atk ?? 0} onChange={e => update(d => { d.actors[activeId].atk = Number(e.target.value) })} style={{ ...inputStyle, width: 50 }} />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>DEF</label>
-                    <input type="number" value={actor.def ?? 0} onChange={e => update(d => { d.actors[activeId].def = Number(e.target.value) })} style={{ ...inputStyle, width: 50 }} />
-                  </div>
-                </div>
-                <div>
-                  <label style={labelStyle}>Behavior</label>
-                  <input value={actor.behavior || ''} onChange={e => update(d => { d.actors[activeId].behavior = e.target.value })} placeholder="chase, sentinel, patrol" style={inputStyle} />
-                </div>
-              </>
-            )}
+            <div style={{ display: 'flex', gap: T.sp[3] }}>
+              <div>
+                <label style={labelStyle}>HP</label>
+                <input type="number" value={actor.hp ?? ''} onChange={e => update(d => { d.actors[activeId].hp = e.target.value === '' ? undefined : Number(e.target.value) })} placeholder="-" style={{ ...inputStyle, width: 50 }} />
+              </div>
+              <div>
+                <label style={labelStyle}>ATK</label>
+                <input type="number" value={actor.atk ?? ''} onChange={e => update(d => { d.actors[activeId].atk = e.target.value === '' ? undefined : Number(e.target.value) })} placeholder="-" style={{ ...inputStyle, width: 50 }} />
+              </div>
+              <div>
+                <label style={labelStyle}>DEF</label>
+                <input type="number" value={actor.def ?? ''} onChange={e => update(d => { d.actors[activeId].def = e.target.value === '' ? undefined : Number(e.target.value) })} placeholder="-" style={{ ...inputStyle, width: 50 }} />
+              </div>
+            </div>
             <div style={{ marginTop: T.sp[4], borderTop: `1px solid ${T.border}`, paddingTop: T.sp[4] }}>
               <button
                 onClick={() => {
@@ -124,13 +107,6 @@ const inputStyle = {
   borderRadius: T.radius.sm, color: T.textBright,
   fontFamily: T.mono, fontSize: T.fontSize.xs,
   boxSizing: 'border-box',
-}
-
-const selectStyle = {
-  padding: `${T.sp[1]}px ${T.sp[2]}px`,
-  background: T.surface, border: `1px solid ${T.border}`,
-  borderRadius: T.radius.sm, color: T.textBright,
-  fontFamily: T.mono, fontSize: T.fontSize.xs,
 }
 
 const addBtnStyle = {
