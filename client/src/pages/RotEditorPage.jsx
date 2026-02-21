@@ -103,7 +103,7 @@ export default function RotEditorPage({ user }) {
 
   // Set default objCategory — prefer 'objects' category
   useEffect(() => {
-    if (objCategories.length > 0 && !objCategory) {
+    if (objCategories.length > 0 && (!objCategory || !objCategories.includes(objCategory))) {
       setObjCategory(objCategories.includes('objects') ? 'objects' : objCategories[0])
     }
   }, [objCategories, objCategory])
