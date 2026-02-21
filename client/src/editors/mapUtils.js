@@ -129,8 +129,27 @@ export function computeAutotileFrame(grid, x, y, tid) {
   return (left ? 8 : 0) + (right ? 4 : 0) + (bottom ? 2 : 0) + (!bottom && top ? 1 : 0)
 }
 
+// Resolve tiling mode: explicit > legacy fallback by frame count
+export function resolveTiling(def) {
+  if (!def) return null
+  if (def.tiling) return def.tiling
+  if (def.frames?.length >= 16) return 'autotile'
+  return null
+}
+
+// Bake frame grid from tile grid, or create empty one
+export function bakeFrameGrid(grid, tiles) {
+  return tiles.length > 0 ? bakeAllAutotiles(grid, null, tiles) : grid.map(r => r.map(() => 0))
+}
+
+// Merge zone defs, skipping duplicates by key
+export function mergeZoneDefs(existing, fresh) {
+  const keys = new Set(existing.map(z => z.key))
+  const newDefs = fresh.filter(z => !keys.has(z.key))
+  return newDefs.length > 0 ? [...existing, ...newDefs] : existing
+}
+
 // Bake autotile frames for entire grid
-// 16+ frames: neighbor-based autotile, 2-15 frames: position hash for variety
 export function bakeAllAutotiles(grid, frameGrid, tiles) {
   const rows = grid.length, cols = grid[0]?.length || 0
   const result = frameGrid

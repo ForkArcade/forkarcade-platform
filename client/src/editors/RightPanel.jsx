@@ -5,7 +5,7 @@ import { apiFetch } from '../api'
 import {
   uid, createEmptyGrid, createEmptyZoneGrid, ZONE_COLORS,
   bakeAllAutotiles, DEFAULT_W, DEFAULT_H,
-  levelsToMapDefs, mapDefsToLevels,
+  levelsToMapDefs, mapDefsToLevels, mergeZoneDefs,
 } from './mapUtils'
 
 const numInput = {
@@ -131,11 +131,7 @@ export default function RightPanel({
             setLevels(withFrames)
             setActiveId(withFrames[0].id)
             if (newZoneDefs.length > 0) {
-              setZoneDefs(prev => {
-                const existingKeys = new Set(prev.map(z => z.key))
-                const fresh = newZoneDefs.filter(z => !existingKeys.has(z.key))
-                return fresh.length > 0 ? [...prev, ...fresh] : prev
-              })
+              setZoneDefs(prev => mergeZoneDefs(prev, newZoneDefs))
             }
             return
           }
@@ -150,11 +146,7 @@ export default function RightPanel({
             const parsedDefs = Object.entries(data.zoneDefs).map(([key, name], i) => ({
               key, name, color: ZONE_COLORS[i % ZONE_COLORS.length],
             }))
-            setZoneDefs(prev => {
-              const existingKeys = new Set(prev.map(z => z.key))
-              const newDefs = parsedDefs.filter(z => !existingKeys.has(z.key))
-              return newDefs.length > 0 ? [...prev, ...newDefs] : prev
-            })
+            setZoneDefs(prev => mergeZoneDefs(prev, parsedDefs))
           }
           updateLevel(() => ({
             grid: newGrid,
@@ -173,10 +165,26 @@ export default function RightPanel({
     e.target.value = ''
   }
 
-  // Propose sprites
-  const handlePropose = useCallback(async () => {
-    if (!spriteDefs || !proposeTitle.trim()) return
-    setProposeStatus('sending')
+  // Generic propose: type='sprites' or 'maps'
+  const propose = useCallback(async (type, data, summary, title, setStatus, setOpen) => {
+    if (!title.trim()) return
+    setStatus('sending')
+    const json = JSON.stringify({ type, data })
+    const body = `${summary}\n\n\`\`\`json:data-patch\n${json}\n\`\`\``
+    if (body.length > 60000) { setStatus('error'); return }
+    try {
+      await apiFetch(`/api/games/${slug}/evolve-issues`, {
+        method: 'POST',
+        body: JSON.stringify({ title: title.trim(), body, category: 'data-patch' }),
+      })
+      setStatus('done')
+      setOpen(false)
+      setTimeout(() => setStatus(null), 3000)
+    } catch { setStatus('error') }
+  }, [slug])
+
+  const handlePropose = useCallback(() => {
+    if (!spriteDefs) return
     const lines = ['Sprite changes proposed from the editor.\n\nChanged sprites:']
     for (const [cat, sprites] of Object.entries(spriteDefs)) {
       for (const [name, def] of Object.entries(sprites)) {
@@ -184,45 +192,17 @@ export default function RightPanel({
         lines.push(`- ${cat}/${name} (${def.frames.length} frame${def.frames.length !== 1 ? 's' : ''})`)
       }
     }
-    const summary = lines.join('\n')
-    const json = JSON.stringify({ type: 'sprites', data: spriteDefs })
-    const body = `${summary}\n\n\`\`\`json:data-patch\n${json}\n\`\`\``
-    if (body.length > 60000) { setProposeStatus('error'); return }
-    try {
-      await apiFetch(`/api/games/${slug}/evolve-issues`, {
-        method: 'POST',
-        body: JSON.stringify({ title: proposeTitle.trim(), body, category: 'data-patch' }),
-      })
-      setProposeStatus('done')
-      setProposeOpen(false)
-      setTimeout(() => setProposeStatus(null), 3000)
-    } catch { setProposeStatus('error') }
-  }, [spriteDefs, proposeTitle, slug])
+    propose('sprites', spriteDefs, lines.join('\n'), proposeTitle, setProposeStatus, setProposeOpen)
+  }, [spriteDefs, proposeTitle, propose])
 
-  // Propose maps — new _maps.json format
-  const handleMapPropose = useCallback(async () => {
-    if (!mapProposeTitle.trim()) return
-    setMapProposeStatus('sending')
+  const handleMapPropose = useCallback(() => {
     const mapsData = levelsToMapDefs(levels, zoneDefs)
     const mapNames = Object.keys(mapsData)
-    const summary = `Map changes proposed from the editor.\n\nMaps:\n${mapNames.map(name => {
-      const m = mapsData[name]
-      const objCount = m.objects?.length || 0
-      return `- ${name} (${m.w}x${m.h}${objCount ? `, ${objCount} objects` : ''})`
+    const summary = `Map changes proposed from the editor.\n\nMaps:\n${mapNames.map(n => {
+      const m = mapsData[n]; return `- ${n} (${m.w}x${m.h}${m.objects?.length ? `, ${m.objects.length} objects` : ''})`
     }).join('\n')}`
-    const json = JSON.stringify({ type: 'maps', data: mapsData })
-    const body = `${summary}\n\n\`\`\`json:data-patch\n${json}\n\`\`\``
-    if (body.length > 60000) { setMapProposeStatus('error'); return }
-    try {
-      await apiFetch(`/api/games/${slug}/evolve-issues`, {
-        method: 'POST',
-        body: JSON.stringify({ title: mapProposeTitle.trim(), body, category: 'data-patch' }),
-      })
-      setMapProposeStatus('done')
-      setMapProposeOpen(false)
-      setTimeout(() => setMapProposeStatus(null), 3000)
-    } catch { setMapProposeStatus('error') }
-  }, [levels, zoneDefs, mapProposeTitle, slug])
+    propose('maps', mapsData, summary, mapProposeTitle, setMapProposeStatus, setMapProposeOpen)
+  }, [levels, zoneDefs, mapProposeTitle, propose])
 
   return (
     <div style={{

@@ -9,7 +9,8 @@ import { useMapSprites } from '../editors/useMapSprites'
 import {
   DEFAULT_W, DEFAULT_H, ZONE_COLORS, ROTATIONS,
   createEmptyGrid, createEmptyZoneGrid, uid,
-  parseMapsFromDataJs, mapDefsToLevels, computeAutotileFrame, bakeAllAutotiles,
+  parseMapsFromDataJs, mapDefsToLevels, computeAutotileFrame,
+  resolveTiling, bakeFrameGrid, mergeZoneDefs,
 } from '../editors/mapUtils'
 import { storageKey } from '../utils/storage'
 
@@ -171,72 +172,27 @@ export default function RotEditorPage({ user }) {
   }, [tiles])
 
   // Fetch game maps: try _maps.json first, fall back to data.js
-  useEffect(() => {
-    fetch(gameFileUrl(slug, '_maps.json'))
-      .then(r => r.ok ? r.json() : null)
-      .then(data => {
-        if (data && Object.keys(data).length > 0) {
-          const { levels: gameLevels, zoneDefs: gameZoneDefs } = mapDefsToLevels(data)
-          if (gameLevels.length > 0) {
-            if (gameZoneDefs.length > 0) {
-              setZoneDefs(prev => {
-                const existingKeys = new Set(prev.map(z => z.key))
-                const newDefs = gameZoneDefs.filter(z => !existingKeys.has(z.key))
-                return newDefs.length > 0 ? [...prev, ...newDefs] : prev
-              })
-            }
-            setLevels(prev => {
-              if (prev.some(l => l.source === 'game')) return prev
-              const curTiles = tilesRef.current
-              const withFrames = gameLevels.map(l => ({
-                ...l,
-                frameGrid: curTiles.length > 0 ? bakeAllAutotiles(l.grid, null, curTiles) : l.grid.map(r => r.map(() => 0)),
-              }))
-              setActiveId(withFrames[0].id)
-              return [...withFrames, ...prev]
-            })
-            return
-          }
-        }
-        // Fall back to data.js parsing (legacy)
-        return fetch(gameFileUrl(slug, 'data.js'))
-          .then(r => r.ok ? r.text() : null)
-          .then(text => {
-            if (!text) return
-            const gameMaps = parseMapsFromDataJs(text)
-            if (gameMaps.length === 0) return
-            const allGameZoneDefs = gameMaps.flatMap(m => m.zoneDefs || [])
-            if (allGameZoneDefs.length > 0) {
-              setZoneDefs(prev => {
-                const existingKeys = new Set(prev.map(z => z.key))
-                const newDefs = allGameZoneDefs.filter(z => !existingKeys.has(z.key))
-                return newDefs.length > 0 ? [...prev, ...newDefs] : prev
-              })
-            }
-            setLevels(prev => {
-              if (prev.some(l => l.source === 'game')) return prev
-              const curTiles = tilesRef.current
-              const gameLevels = gameMaps.map(m => ({
-                id: `game-${m.name}`,
-                name: m.name,
-                grid: m.grid,
-                frameGrid: curTiles.length > 0 ? bakeAllAutotiles(m.grid, null, curTiles) : m.grid.map(r => r.map(() => 0)),
-                zoneGrid: m.zoneGrid || createEmptyZoneGrid(m.grid[0]?.length || DEFAULT_W, m.grid.length || DEFAULT_H),
-                objects: [],
-                source: 'game',
-              }))
-              setActiveId(gameLevels[0].id)
-              return [...gameLevels, ...prev]
-            })
-          })
-      })
-      .catch(() => {})
-  }, [slug])
-
-  const resetMaps = useCallback(() => {
-    localStorage.removeItem(storageKey.maps(slug))
-    setHasLocalMapEdits(false)
-    mapInitialRef.current = true
+  // mode='merge' appends to existing levels, mode='replace' replaces them
+  const fetchGameMaps = useCallback((mode) => {
+    const curTiles = tilesRef.current
+    const prepareLevels = (gameLevels) => gameLevels.map(l => ({
+      ...l,
+      frameGrid: bakeFrameGrid(l.grid, curTiles),
+      zoneGrid: l.zoneGrid || createEmptyZoneGrid(l.grid[0]?.length || DEFAULT_W, l.grid.length || DEFAULT_H),
+      objects: l.objects || [],
+      source: l.source || 'game',
+    }))
+    const applyLevels = (gameLevels, gameZoneDefs) => {
+      const prepared = prepareLevels(gameLevels)
+      if (mode === 'replace') {
+        setZoneDefs(gameZoneDefs)
+        setLevels(prepared)
+      } else {
+        if (gameZoneDefs.length > 0) setZoneDefs(prev => mergeZoneDefs(prev, gameZoneDefs))
+        setLevels(prev => prev.some(l => l.source === 'game') ? prev : [...prepared, ...prev])
+      }
+      setActiveId(prepared[0].id)
+    }
     const emptyLevel = () => {
       const id = uid()
       setLevels([{ id, name: 'Level 1', grid: createEmptyGrid(DEFAULT_W, DEFAULT_H), frameGrid: createEmptyGrid(DEFAULT_W, DEFAULT_H).map(r => r.map(() => 0)), zoneGrid: createEmptyZoneGrid(DEFAULT_W, DEFAULT_H), objects: [] }])
@@ -248,40 +204,30 @@ export default function RotEditorPage({ user }) {
       .then(data => {
         if (data && Object.keys(data).length > 0) {
           const { levels: gameLevels, zoneDefs: gameZoneDefs } = mapDefsToLevels(data)
-          if (gameLevels.length > 0) {
-            setZoneDefs(gameZoneDefs)
-            const curTiles = tilesRef.current
-            const withFrames = gameLevels.map(l => ({
-              ...l,
-              frameGrid: curTiles.length > 0 ? bakeAllAutotiles(l.grid, null, curTiles) : l.grid.map(r => r.map(() => 0)),
-            }))
-            setLevels(withFrames)
-            setActiveId(withFrames[0].id)
-            return
-          }
+          if (gameLevels.length > 0) { applyLevels(gameLevels, gameZoneDefs); return }
         }
-        // Fall back to data.js
         return fetch(gameFileUrl(slug, 'data.js'))
           .then(r => r.ok ? r.text() : null)
           .then(text => {
-            if (!text) { emptyLevel(); return }
+            if (!text) { if (mode === 'replace') emptyLevel(); return }
             const gameMaps = parseMapsFromDataJs(text)
-            if (gameMaps.length === 0) { emptyLevel(); return }
+            if (gameMaps.length === 0) { if (mode === 'replace') emptyLevel(); return }
             const allZoneDefs = gameMaps.flatMap(m => m.zoneDefs || [])
-            setZoneDefs(allZoneDefs)
-            const curTiles = tilesRef.current
-            const gameLevels = gameMaps.map(m => ({
-              id: `game-${m.name}`, name: m.name, grid: m.grid,
-              frameGrid: curTiles.length > 0 ? bakeAllAutotiles(m.grid, null, curTiles) : m.grid.map(r => r.map(() => 0)),
-              zoneGrid: m.zoneGrid || createEmptyZoneGrid(m.grid[0]?.length || DEFAULT_W, m.grid.length || DEFAULT_H),
-              objects: [], source: 'game',
-            }))
-            setLevels(gameLevels)
-            setActiveId(gameLevels[0].id)
+            const gameLevels = gameMaps.map(m => ({ id: `game-${m.name}`, name: m.name, grid: m.grid, zoneGrid: m.zoneGrid, source: 'game' }))
+            applyLevels(gameLevels, allZoneDefs)
           })
       })
-      .catch(() => emptyLevel())
+      .catch(() => { if (mode === 'replace') emptyLevel() })
   }, [slug])
+
+  useEffect(() => { fetchGameMaps('merge') }, [slug])
+
+  const resetMaps = useCallback(() => {
+    localStorage.removeItem(storageKey.maps(slug))
+    setHasLocalMapEdits(false)
+    mapInitialRef.current = true
+    fetchGameMaps('replace')
+  }, [slug, fetchGameMaps])
 
   const [isPainting, setIsPainting] = useState(false)
   const [hoverPos, setHoverPos] = useState(null)
@@ -353,7 +299,7 @@ export default function RotEditorPage({ user }) {
         for (let x = 0; x < cols; x++) {
           const tid = grid[y]?.[x] ?? 0
           const fid = frameGrid?.[y]?.[x] ?? 0
-          if (tid === (prev.grid[y]?.[x] ?? 0) && fid === (prev.fg?.[y]?.[x] ?? 0)) continue
+          if (tid === (prev.grid[y]?.[x] ?? 0) && fid === (prev.frameGrid?.[y]?.[x] ?? 0)) continue
           const px = x * cellSize, py = y * cellSize
           ctx.fillStyle = '#000'
           ctx.fillRect(px, py, cellSize, cellSize)
@@ -368,7 +314,7 @@ export default function RotEditorPage({ user }) {
       }
     }
 
-    prevMapRef.current = { grid, fg: frameGrid, tiles }
+    prevMapRef.current = { grid, frameGrid, tiles }
     setMapVersion(v => v + 1)
   }, [grid, frameGrid, cellSize, cols, rows, tiles])
 
@@ -520,7 +466,7 @@ export default function RotEditorPage({ user }) {
     updateLevel(level => {
       const fg = level.frameGrid || level.grid.map(row => row.map(() => 0))
       const tileDef = tiles[activeTile]?.def
-      const tiling = tileDef?.tiling ? tileDef.tiling : (!tileDef?.tiling && tileDef?.frames?.length >= 16 ? 'autotile' : null)
+      const tiling = resolveTiling(tileDef)
       if (level.grid[pos.y][pos.x] === activeTile && (tiling || fg[pos.y][pos.x] === activeFrame)) return {}
       const nextGrid = level.grid.map(row => [...row])
       const nextFg = fg.map(row => [...row])
@@ -538,7 +484,7 @@ export default function RotEditorPage({ user }) {
         if (ny < 0 || ny >= nextGrid.length || nx < 0 || nx >= (nextGrid[0]?.length || 0)) continue
         const nTid = nextGrid[ny][nx]
         const nDef = tiles[nTid]?.def
-        const nTiling = nDef?.tiling ? nDef.tiling : (!nDef?.tiling && nDef?.frames?.length >= 16 ? 'autotile' : null)
+        const nTiling = resolveTiling(nDef)
         if (nTiling === 'autotile') {
           nextFg[ny][nx] = computeAutotileFrame(nextGrid, nx, ny, nTid)
         }
