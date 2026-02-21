@@ -10,20 +10,31 @@ import EvolvePanel from '../components/EvolvePanel'
 import MdPopup from '../components/MdPopup'
 import { levelsToMapDefs } from '../editors/mapUtils'
 import { dehydrateToSheet } from '../utils/sprite'
+import { loadGame } from '../utils/gameLoader'
 
 const isDev = window.location.hostname === 'localhost'
-const IFRAME_ORIGIN = isDev ? window.location.origin : `https://${GITHUB_ORG.toLowerCase()}.github.io`
+const GITHUB_PAGES_BASE = `https://${GITHUB_ORG.toLowerCase()}.github.io`
 
-function sendSpritesToIframe(iframe, raw, origin) {
+function applySpritesDirect(raw) {
   try {
     const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw
     if (parsed._format === 'png-hydrated' && parsed._atlas) {
-      // Dehydrate character grids → PNG for the game iframe
       const { _format, _atlas, ...defs } = parsed
       const sheetDataUrl = dehydrateToSheet(defs, _atlas)
-      iframe.postMessage({ type: 'FA_SPRITES_UPDATE', sheetDataUrl, sheetCols: _atlas.sheet.cols, sprites: _atlas }, origin)
-    } else {
-      iframe.postMessage({ type: 'FA_SPRITES_UPDATE', sprites: parsed }, origin)
+      if (window.SPRITESHEET) window.SPRITESHEET.src = sheetDataUrl
+      if (typeof window.SPRITE_DEFS !== 'undefined') {
+        window.SPRITE_DEFS = _atlas
+        window.SPRITE_SHEET_COLS = _atlas.sheet?.cols || window.SPRITE_SHEET_COLS
+      }
+    } else if (typeof window.SPRITE_DEFS !== 'undefined') {
+      window.SPRITE_DEFS = parsed
+      const cats = Object.keys(parsed)
+      for (let ci = 0; ci < cats.length; ci++) {
+        const names = Object.keys(parsed[cats[ci]])
+        for (let ni = 0; ni < names.length; ni++) {
+          if (parsed[cats[ci]][names[ni]]._c) delete parsed[cats[ci]][names[ni]]._c
+        }
+      }
     }
   } catch {}
 }
@@ -61,11 +72,11 @@ export default function GamePage({ user, balance, onBalanceChange }) {
   const gameStatusRef = useRef('loading')
   const [focused, setFocused] = useState(false)
   const [sprites, setSprites] = useState(null)
-  const [claudeMd, setClaudeMd] = useState(null) // null = not loaded yet, string = loaded content
+  const [claudeMd, setClaudeMd] = useState(null)
   const [claudeMdPopup, setClaudeMdPopup] = useState(false)
-  const [changelogPopup, setChangelogPopup] = useState(null) // { version, text } | null
+  const [changelogPopup, setChangelogPopup] = useState(null)
   const changelogCache = useRef({})
-  const iframeRef = useRef(null)
+  const containerRef = useRef(null)
 
   const currentVersion = selectedVersion || (versions.length > 0 ? versions[versions.length - 1].version : null)
 
@@ -76,6 +87,7 @@ export default function GamePage({ user, balance, onBalanceChange }) {
       .catch(() => setLeaderboard([]))
   }, [slug, selectedVersion])
 
+  // Fetch game metadata
   useEffect(() => {
     githubFetch(`/repos/${GITHUB_ORG}/${slug}`)
       .then(repo => setGame({ slug: repo.name, title: formatSlug(repo.name), description: repo.description || '', topics: repo.topics || [] }))
@@ -99,71 +111,129 @@ export default function GamePage({ user, balance, onBalanceChange }) {
 
   useEffect(() => { loadLeaderboard() }, [loadLeaderboard])
 
-  const iframeUrl = isDev
+  const gameBaseUrl = isDev
     ? `/local-games/${slug}/`
     : selectedVersion
-      ? `${IFRAME_ORIGIN}/${slug}/versions/v${selectedVersion}/`
-      : `${IFRAME_ORIGIN}/${slug}/`
+      ? `${GITHUB_PAGES_BASE}/${slug}/versions/v${selectedVersion}/`
+      : `${GITHUB_PAGES_BASE}/${slug}/`
 
   const wrapperRef = useRef(null)
 
+  // Blur detection — click outside game area
   useEffect(() => {
     const onMouseDown = (e) => {
       if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
         setFocused(false)
+        containerRef.current?.blur()
       }
     }
     document.addEventListener('mousedown', onMouseDown)
     return () => document.removeEventListener('mousedown', onMouseDown)
   }, [])
 
+  // Stable refs for callbacks used in loadGame
+  const userRef = useRef(user)
+  userRef.current = user
+  const loadLeaderboardRef = useRef(loadLeaderboard)
+  loadLeaderboardRef.current = loadLeaderboard
+  const currentVersionRef = useRef(currentVersion)
+  currentVersionRef.current = currentVersion
+
+  // Load game scripts directly (no iframe)
   useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+
     setGameStatus('loading')
     gameStatusRef.current = 'loading'
     setFocused(false)
 
-    // Retry: 4s → 8s → 16s (28s total, covers GitHub Pages deploy time)
-    const delays = [4000, 8000, 16000]
-    let attempt = 0
-    let timer = null
+    let cleanupFn = null
     let cancelled = false
 
-    function scheduleRetry() {
-      if (cancelled || attempt >= delays.length) {
-        if (!cancelled && gameStatusRef.current === 'loading') {
-          setGameStatus('unavailable')
-          gameStatusRef.current = 'unavailable'
+    loadGame(container, gameBaseUrl, {
+      slug,
+      version: currentVersionRef.current,
+      onSubmitScore(score) {
+        return apiFetch(`/api/games/${slug}/score`, {
+          method: 'POST',
+          body: JSON.stringify({ score, version: currentVersionRef.current }),
+        }).then(result => {
+          if (result.coins > 0) {
+            onBalanceChange(prev => (prev ?? 0) + result.coins)
+          }
+          loadLeaderboardRef.current()
+          return result
+        })
+      },
+      onGetPlayer() {
+        const u = userRef.current
+        return u
+          ? Promise.resolve({ login: u.login, sub: u.sub })
+          : Promise.reject(new Error('not_logged_in'))
+      },
+      onNarrative(data) {
+        const nr = narrativeRef.current
+        narrativeRef.current = {
+          variables: data.variables || nr.variables,
+          graphs: data.graphs || nr.graphs,
+          events: data.event ? [...nr.events, data.event].slice(-20) : nr.events,
         }
+        if (tabRef.current === 'narrative' && !narrativeFlushTimer.current) {
+          narrativeFlushTimer.current = setTimeout(() => {
+            narrativeFlushTimer.current = null
+            setNarrativeState({ ...narrativeRef.current })
+          }, 500)
+        }
+      },
+      onLoaded() {
+        if (cancelled) return
+        // Apply saved sprites/maps from editor
+        try {
+          const savedSprites = localStorage.getItem(`fa-sprites-${slug}`)
+          if (savedSprites) applySpritesDirect(savedSprites)
+          const savedMaps = localStorage.getItem(`fa-maps-${slug}`)
+          if (savedMaps) {
+            const maps = editorMapsToMapDefs(savedMaps)
+            if (maps) {
+              window.dispatchEvent(new CustomEvent('fa-map-update', { detail: maps }))
+            }
+          }
+        } catch {}
+      },
+    }).then(cleanup => {
+      if (cancelled) {
+        cleanup()
         return
       }
-      timer = setTimeout(() => {
-        if (cancelled || gameStatusRef.current !== 'loading') return
-        if (iframeRef.current) iframeRef.current.src = iframeUrl
-        attempt++
-        scheduleRetry()
-      }, delays[attempt])
-    }
-
-    scheduleRetry()
+      cleanupFn = cleanup
+      setGameStatus('ready')
+      gameStatusRef.current = 'ready'
+    }).catch(() => {
+      if (!cancelled) {
+        setGameStatus('unavailable')
+        gameStatusRef.current = 'unavailable'
+      }
+    })
 
     return () => {
       cancelled = true
-      if (timer) clearTimeout(timer)
+      if (cleanupFn) cleanupFn()
     }
-  }, [iframeUrl])
+  }, [gameBaseUrl, slug, onBalanceChange])
 
-  // Hot-reload sprites when editor saves to localStorage (cross-tab)
+  // Hot-reload sprites from editor (cross-tab localStorage)
   useEffect(() => {
     const key = `fa-sprites-${slug}`
     function onStorage(e) {
       if (e.key !== key || !e.newValue || gameStatusRef.current !== 'ready') return
-      sendSpritesToIframe(iframeRef.current?.contentWindow, e.newValue, IFRAME_ORIGIN)
+      applySpritesDirect(e.newValue)
     }
     window.addEventListener('storage', onStorage)
     return () => window.removeEventListener('storage', onStorage)
   }, [slug])
 
-  // Hot-reload maps when editor saves to localStorage (cross-tab)
+  // Hot-reload maps from editor (cross-tab localStorage)
   useEffect(() => {
     const key = `fa-maps-${slug}`
     function onStorage(e) {
@@ -171,86 +241,13 @@ export default function GamePage({ user, balance, onBalanceChange }) {
       try {
         const maps = editorMapsToMapDefs(e.newValue)
         if (maps) {
-          iframeRef.current?.contentWindow.postMessage(
-            { type: 'FA_MAP_UPDATE', maps }, IFRAME_ORIGIN
-          )
+          window.dispatchEvent(new CustomEvent('fa-map-update', { detail: maps }))
         }
-      } catch (err) {}
+      } catch {}
     }
     window.addEventListener('storage', onStorage)
     return () => window.removeEventListener('storage', onStorage)
   }, [slug])
-
-  useEffect(() => {
-    function handleMessage(event) {
-      const { data } = event
-      if (!data || !data.type) return
-      if (iframeRef.current && event.source !== iframeRef.current.contentWindow) return
-
-      switch (data.type) {
-        case 'FA_READY':
-          setGameStatus('ready')
-          gameStatusRef.current = 'ready'
-          iframeRef.current?.contentWindow.postMessage({ type: 'FA_INIT', slug, version: currentVersion }, IFRAME_ORIGIN)
-          try {
-            const savedSprites = localStorage.getItem(`fa-sprites-${slug}`)
-            if (savedSprites) {
-              sendSpritesToIframe(iframeRef.current?.contentWindow, savedSprites, IFRAME_ORIGIN)
-            }
-            const savedMaps = localStorage.getItem(`fa-maps-${slug}`)
-            if (savedMaps) {
-              const maps = editorMapsToMapDefs(savedMaps)
-              if (maps) {
-                iframeRef.current?.contentWindow.postMessage(
-                  { type: 'FA_MAP_UPDATE', maps }, IFRAME_ORIGIN
-                )
-              }
-            }
-          } catch (e) {}
-          break
-        case 'FA_SUBMIT_SCORE':
-          apiFetch(`/api/games/${slug}/score`, {
-            method: 'POST',
-            body: JSON.stringify({ score: data.score, version: data.version || currentVersion }),
-          }).then(result => {
-            iframeRef.current?.contentWindow.postMessage({ type: 'FA_SCORE_RESULT', ok: result.ok, requestId: data.requestId }, IFRAME_ORIGIN)
-            if (result.coins > 0) {
-              iframeRef.current?.contentWindow.postMessage({ type: 'FA_COIN_EARNED', coins: result.coins, isPersonalRecord: result.isPersonalRecord }, IFRAME_ORIGIN)
-              onBalanceChange(prev => (prev ?? 0) + result.coins)
-            }
-            loadLeaderboard()
-          }).catch(() => {
-            iframeRef.current?.contentWindow.postMessage({ type: 'FA_SCORE_RESULT', error: 'submit_failed', requestId: data.requestId }, IFRAME_ORIGIN)
-          })
-          break
-        case 'FA_GET_PLAYER':
-          iframeRef.current?.contentWindow.postMessage(
-            user
-              ? { type: 'FA_PLAYER_INFO', login: user.login, sub: user.sub, requestId: data.requestId }
-              : { type: 'FA_PLAYER_INFO', error: 'not_logged_in', requestId: data.requestId },
-            IFRAME_ORIGIN
-          )
-          break
-        case 'FA_NARRATIVE_UPDATE': {
-          const nr = narrativeRef.current
-          narrativeRef.current = {
-            variables: data.variables || nr.variables,
-            graphs: data.graphs || nr.graphs,
-            events: data.event ? [...nr.events, data.event].slice(-20) : nr.events,
-          }
-          if (tabRef.current === 'narrative' && !narrativeFlushTimer.current) {
-            narrativeFlushTimer.current = setTimeout(() => {
-              narrativeFlushTimer.current = null
-              setNarrativeState({ ...narrativeRef.current })
-            }, 500)
-          }
-          break
-        }
-      }
-    }
-    window.addEventListener('message', handleMessage)
-    return () => window.removeEventListener('message', handleMessage)
-  }, [slug, user, loadLeaderboard, currentVersion])
 
   // Sync narrative ref to state when switching to narrative tab
   useEffect(() => {
@@ -270,20 +267,17 @@ export default function GamePage({ user, balance, onBalanceChange }) {
       <div ref={wrapperRef} style={{
         flex: 1,
         background: '#000',
-        border: `1px solid ${T.border}`,
-        borderRadius: T.radius.lg,
-        overflow: 'hidden',
         position: 'relative',
       }}>
-        <iframe
-          ref={iframeRef}
-          src={iframeUrl}
-          sandbox="allow-scripts allow-same-origin"
-          style={{ width: '100%', height: '100%', border: 'none', display: 'block', willChange: 'transform', contain: 'strict' }}
-          title={game.title}
-        />
+        <div
+          ref={containerRef}
+          tabIndex={-1}
+          style={{ width: '100%', height: '100%', outline: 'none' }}
+        >
+          <canvas id="game" style={{ width: '100%', height: '100%', display: 'block' }} />
+        </div>
         {gameStatus === 'ready' && !focused && (
-          <div onClick={() => { setFocused(true); iframeRef.current?.focus() }}
+          <div onClick={() => { setFocused(true); containerRef.current?.focus() }}
             style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle, rgba(0,0,0,0.4) 0%, rgba(0,0,0,1) 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 1 }}>
             <span style={{ fontSize: T.fontSize.sm, color: T.textBright, letterSpacing: T.tracking.wider, textTransform: 'uppercase', padding: `${T.sp[4]}px ${T.sp[6]}px`, border: `1px solid ${T.border}`, borderRadius: T.radius.md, background: T.surface }}>
               Click to focus
