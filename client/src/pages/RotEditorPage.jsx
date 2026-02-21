@@ -63,6 +63,7 @@ export default function RotEditorPage({ user }) {
   // Object brush state
   const [objectBrush, setObjectBrush] = useState({ type: '', sprite: '', rot: 0 })
   const [objCategory, setObjCategory] = useState(null)
+  const [activeSet, setActiveSet] = useState(null)
 
   const {
     spriteDefs, setSpriteDefs, hasLocalEdits, resetToPublished,
@@ -112,6 +113,42 @@ export default function RotEditorPage({ user }) {
     if (!objCategory) return allSprites
     return allSprites.filter(s => s.cat === objCategory)
   }, [allSprites, objCategory])
+
+  // Lock tiles mode to 'tiles' category; sets handle sub-grouping
+  useEffect(() => {
+    if (editMode === 'tiles' && activeCategory !== 'tiles' && categories.includes('tiles')) {
+      setActiveCategory('tiles')
+    }
+  }, [editMode, activeCategory, categories, setActiveCategory])
+
+  // Auto-group tiles into sets by name prefix (e.g. dungeon_* → "dungeon", rest → "surface")
+  const tileSets = useMemo(() => {
+    if (!tiles.length) return []
+    const groups = {}
+    tiles.forEach((tile, idx) => {
+      const ui = tile.name.indexOf('_')
+      const prefix = ui > 0 ? tile.name.slice(0, ui) : '_surface'
+      if (!groups[prefix]) groups[prefix] = []
+      groups[prefix].push(idx)
+    })
+    const entries = Object.entries(groups)
+    if (entries.length <= 1) return []
+    return entries.map(([k, indices]) => ({ key: k === '_surface' ? 'surface' : k, indices }))
+  }, [tiles])
+
+  // Default to first set when sets change
+  useEffect(() => {
+    if (tileSets.length > 0 && (!activeSet || !tileSets.some(s => s.key === activeSet))) {
+      setActiveSet(tileSets[0].key)
+    }
+  }, [tileSets, activeSet])
+
+  // Visible tile indices filtered by active set
+  const visibleTileIndices = useMemo(() => {
+    if (tileSets.length === 0) return tiles.map((_, i) => i)
+    const set = tileSets.find(s => s.key === activeSet)
+    return set ? set.indices : tiles.map((_, i) => i)
+  }, [tiles, tileSets, activeSet])
 
   // Rebake autotile frames when tile defs change
   useEffect(() => {
@@ -611,28 +648,30 @@ export default function RotEditorPage({ user }) {
               </button>
             )}
           </div>
-          {categories.length > 1 && (
+          {tileSets.length > 1 && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: T.sp[1], marginBottom: T.sp[3] }}>
-              {categories.map(cat => (
+              {tileSets.map(s => (
                 <button
-                  key={cat}
-                  onClick={() => { setActiveCategory(cat); setActiveTile(0); setActiveFrame(0) }}
+                  key={s.key}
+                  onClick={() => { setActiveSet(s.key); setActiveTile(0); setActiveFrame(0) }}
                   style={{
-                    background: activeCategory === cat ? T.accentColor : 'transparent',
-                    color: activeCategory === cat ? '#000' : T.text,
-                    border: `1px solid ${activeCategory === cat ? T.accentColor : T.border}`,
+                    background: activeSet === s.key ? T.accentColor : 'transparent',
+                    color: activeSet === s.key ? '#000' : T.text,
+                    border: `1px solid ${activeSet === s.key ? T.accentColor : T.border}`,
                     borderRadius: T.radius.sm, padding: '2px 6px',
                     fontSize: 9, fontFamily: T.mono, cursor: 'pointer',
                     textTransform: 'uppercase', letterSpacing: '0.03em',
                   }}
                 >
-                  {cat}
+                  {s.key}
                 </button>
               ))}
             </div>
           )}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 1, background: T.border, borderRadius: T.radius.sm, overflow: 'hidden' }}>
-            {tiles.map((tile, idx) => (
+            {visibleTileIndices.map(idx => {
+              const tile = tiles[idx]
+              return (
               <div
                 key={tile.name}
                 onClick={() => { setActiveTile(idx); setActiveFrame(0) }}
@@ -654,9 +693,10 @@ export default function RotEditorPage({ user }) {
                   {tile.label}
                 </div>
               </div>
-            ))}
+              )
+            })}
           </div>
-          {tiles.length === 0 && (
+          {visibleTileIndices.length === 0 && (
             <div style={{ fontSize: T.fontSize.xs, color: T.muted, padding: T.sp[3] }}>No sprites in this category</div>
           )}
           {tiles[activeTile] && (
