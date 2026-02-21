@@ -184,24 +184,6 @@ export function CardTags({ children }) {
   )
 }
 
-// --- Shared Styles ---
-
-export const smallBtnStyle = {
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  gap: T.sp[2],
-  padding: `${T.sp[2]}px ${T.sp[3]}px`,
-  height: 26,
-  background: T.elevated,
-  color: T.text,
-  border: `1px solid ${T.border}`,
-  borderRadius: T.radius.sm,
-  cursor: 'pointer',
-  fontSize: T.fontSize.xs,
-  fontFamily: T.mono,
-}
-
 // --- Controls ---
 
 export function Button({ children, variant, active, size, onClick, style, ...props }) {

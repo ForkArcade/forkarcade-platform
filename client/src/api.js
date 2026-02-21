@@ -28,7 +28,7 @@ export async function apiFetch(path, options = {}) {
   return res.json()
 }
 
-export const isDev = window.location.hostname === 'localhost'
+const isDev = window.location.hostname === 'localhost'
 
 export function githubRawUrl(path) {
   return `${API}/api/github/raw/${path}`

@@ -14,7 +14,7 @@ export function uid() {
   return Math.random().toString(36).slice(2, 10)
 }
 
-export function parseZonesFromSection(section) {
+function parseZonesFromSection(section) {
   const zonesMatch = section.match(/zones:\s*\[([\s\S]*?)\]/)
   if (!zonesMatch) return { zoneGrid: null, zoneDefs: [] }
   const zoneStrings = [...zonesMatch[1].matchAll(/['"]([.a-z]+)['"]/g)].map(m => m[1])
@@ -55,7 +55,7 @@ export const ROTATIONS = [
 ]
 
 // Convert editor internal level to _maps.json entry
-export function levelToMapDef(level, zoneDefs) {
+function levelToMapDef(level, zoneDefs) {
   const def = {
     w: level.grid[0]?.length || DEFAULT_W,
     h: level.grid.length || DEFAULT_H,
