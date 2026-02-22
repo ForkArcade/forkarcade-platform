@@ -10,6 +10,7 @@ export const T = {
   accentColor: '#0af',
   gold: '#eab308',
   danger: '#ef4444',
+  warning: '#f59e0b',
   success: '#22c55e',
   muted: '#71717a',
   nodeColors: { scene: '#4a9eff', choice: '#ff9f43', condition: '#a55eea' },

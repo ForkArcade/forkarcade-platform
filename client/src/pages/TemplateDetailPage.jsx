@@ -65,6 +65,7 @@ export default function TemplateDetailPage() {
   const palette = assets?.palette ? Object.entries(assets.palette) : []
   const categories = assets?.categories ? Object.entries(assets.categories) : []
   const sizeMap = Object.fromEntries(tree.map(f => [f.path, f.size]))
+  const findSize = (name) => sizeMap[name] ?? null
 
   const crumbStyle = { display: 'flex', alignItems: 'center', gap: T.sp[2], color: T.muted, textDecoration: 'none', fontSize: T.fontSize.xs, letterSpacing: T.tracking.wider, textTransform: 'uppercase' }
 
