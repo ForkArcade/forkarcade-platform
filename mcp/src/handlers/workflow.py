@@ -18,6 +18,10 @@ SDK_DIR = PLATFORM_ROOT / "sdk"
 # Base files for version snapshots — includes generated sprite/map JS
 BASE_FILES = ["index.html", "style.css", "sprites.js", "maps.js", "forkarcade-sdk.js", "fa-narrative.js"]
 
+# Engine CDN — canonical engine files served via jsDelivr
+ENGINE_CDN_BASE = "https://cdn.jsdelivr.net/gh/ForkArcade/forkarcade-engine"
+LATEST_ENGINE_VERSION = 1
+
 
 def _get_config(game_path):
     """Read .forkarcade.json from game directory."""
@@ -407,8 +411,8 @@ def publish_game(args):
                 index_path = game_path / "index.html"
                 if index_path.exists():
                     html = index_path.read_text()
-                    html = re.sub(r'(src="[^"]+?\.js)(\?v=\d+)?(")', rf'\1?v={cb_ver}\3', html)
-                    html = re.sub(r'(href="[^"]+?\.css)(\?v=\d+)?(")', rf'\1?v={cb_ver}\3', html)
+                    html = re.sub(r'(src="(?!https?://)[^"]+?\.js)(\?v=\d+)?(")', rf'\1?v={cb_ver}\3', html)
+                    html = re.sub(r'(href="(?!https?://)[^"]+?\.css)(\?v=\d+)?(")', rf'\1?v={cb_ver}\3', html)
                     index_path.write_text(html)
         except Exception as e:
             results.append(f"Cache bust skipped: {e}")
@@ -515,18 +519,36 @@ def update_sdk(args):
         narrative_dst.write_text(narrative_src.read_text())
         narrative_updated = True
 
+    # Update engine CDN version in index.html
+    engine_updated = False
+    index_path = game_path / "index.html"
+    if index_path.exists():
+        html = index_path.read_text()
+        new_html = re.sub(
+            r'(cdn\.jsdelivr\.net/gh/ForkArcade/forkarcade-engine@v)\d+/',
+            rf'\g<1>{LATEST_ENGINE_VERSION}/',
+            html
+        )
+        if new_html != html:
+            index_path.write_text(new_html)
+            engine_updated = True
+
     config_path = game_path / ".forkarcade.json"
     if config_path.exists():
         try:
             config = json.loads(config_path.read_text())
             config["sdkVersion"] = sdk_info["version"]
+            if engine_updated:
+                config["engineVersion"] = LATEST_ENGINE_VERSION
             config_path.write_text(json.dumps(config, indent=2) + "\n")
         except Exception as e:
-            print(f"Warning: failed to update config sdkVersion: {e}", file=sys.stderr)
+            print(f"Warning: failed to update config: {e}", file=sys.stderr)
 
     msg = f"SDK updated from v{old_version} to v{sdk_info['version']}"
     if narrative_updated:
         msg += ", fa-narrative.js updated"
+    if engine_updated:
+        msg += f", engine CDN updated to v{LATEST_ENGINE_VERSION}"
 
     return json.dumps({
         "ok": True,

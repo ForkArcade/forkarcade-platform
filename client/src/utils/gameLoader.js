@@ -85,6 +85,7 @@ export async function loadGame(container, gameBaseUrl, callbacks) {
   }
 
   // 5. Fetch, parse, and load scripts (with guaranteed patch restore)
+  let resizeObserver = null
   try {
     const html = await fetch(gameBaseUrl + 'index.html').then(r => {
       if (!r.ok) throw new Error(`Game not found (${r.status})`)
@@ -100,9 +101,30 @@ export async function loadGame(container, gameBaseUrl, callbacks) {
       scripts.push(src)
     }
 
+    // Sync canvas internal resolution to actual display size.
+    // Canvas CSS is 100%x100% (no object-fit). Games adapt to actual dimensions.
+    // This eliminates all object-fit coordinate mapping issues.
+    const canvasEl = container.querySelector('canvas')
+    if (canvasEl) {
+      const syncSize = () => {
+        const dpr = 1 // keep 1:1 for pixel-perfect games
+        const w = Math.round(container.clientWidth * dpr)
+        const h = Math.round(container.clientHeight * dpr)
+        if (canvasEl.width !== w || canvasEl.height !== h) {
+          canvasEl.width = w
+          canvasEl.height = h
+          if (window.FA) window.FA.emit('canvas:resize', { width: w, height: h })
+        }
+      }
+      syncSize()
+      resizeObserver = new ResizeObserver(syncSize)
+      resizeObserver.observe(container)
+    }
+
     // Load scripts sequentially
     for (const src of scripts) {
-      await loadScript(gameBaseUrl + src, container)
+      const url = /^https?:\/\//.test(src) ? src : gameBaseUrl + src
+      await loadScript(url, container)
       // Fix spritesheet URL after sprites.js loads
       if (src === 'sprites.js' && window.SPRITESHEET) {
         window.SPRITESHEET.src = gameBaseUrl + '_spritesheet.png'
@@ -120,6 +142,9 @@ export async function loadGame(container, gameBaseUrl, callbacks) {
 
   // 9. Return cleanup function
   return function cleanup() {
+    // Stop canvas resize observer
+    if (resizeObserver) resizeObserver.disconnect()
+
     // Stop game loop
     if (window.FA && window.FA.stop) window.FA.stop()
 

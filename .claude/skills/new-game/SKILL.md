@@ -5,8 +5,8 @@ description: Creates a new game on the ForkArcade platform. Asks about game type
 
 You are creating a new game on the ForkArcade platform. Follow these steps:
 
-1. Ask the user about their game vision — what kind of game, what atmosphere, what mechanics
-2. Use the `list_templates` tool to see available templates
+1. Ask the user about their game vision — what kind of game, what atmosphere, what mechanics. Use AskUserQuestion for this. Do NOT do anything else yet — wait for the user's answer before proceeding.
+2. AFTER the user responds with their vision: use `list_templates` to see available templates
 3. Suggest the best template based on the user's description
 4. If the template has style presets (shown in `list_templates` output), show available styles with descriptions and ask the user to pick one
 5. Ask for a slug (repo name, lowercase-with-hyphens) and game title

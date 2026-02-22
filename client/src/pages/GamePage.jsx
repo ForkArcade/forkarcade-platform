@@ -208,6 +208,8 @@ export default function GamePage({ user, balance, onBalanceChange }) {
     }
   }, [gameBaseUrl, slug, onBalanceChange, !!game])
 
+
+
   // Hot-reload sprites from editor (cross-tab localStorage)
   useEffect(() => {
     const key = storageKey.sprites(slug)
@@ -255,9 +257,9 @@ export default function GamePage({ user, balance, onBalanceChange }) {
           ref={containerRef}
           tabIndex={-1}
           onClick={() => containerRef.current?.focus()}
-          style={{ width: '100%', height: '100%', outline: 'none' }}
+          style={{ width: '100%', height: '100%', outline: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
         >
-          <canvas id="game" style={{ width: '100%', height: '100%', display: 'block', objectFit: 'contain' }} />
+          <canvas id="game" style={{ width: '100%', height: '100%', display: 'block' }} />
         </div>
         {gameStatus !== 'ready' && (
           <div style={{ position: 'absolute', inset: 0, background: T.bg, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: T.sp[5] }}>
