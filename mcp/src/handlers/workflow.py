@@ -20,7 +20,7 @@ BASE_FILES = ["index.html", "style.css", "sprites.js", "maps.js", "forkarcade-sd
 
 # Engine CDN — canonical engine files served via jsDelivr
 ENGINE_CDN_BASE = "https://cdn.jsdelivr.net/gh/ForkArcade/forkarcade-engine"
-LATEST_ENGINE_VERSION = 1
+LATEST_ENGINE_VERSION = 2
 
 
 def _get_config(game_path):
@@ -525,8 +525,8 @@ def update_sdk(args):
     if index_path.exists():
         html = index_path.read_text()
         new_html = re.sub(
-            r'(cdn\.jsdelivr\.net/gh/ForkArcade/forkarcade-engine@v)\d+/',
-            rf'\g<1>{LATEST_ENGINE_VERSION}/',
+            r'(cdn\.jsdelivr\.net/gh/ForkArcade/forkarcade-engine@)[\w.]+/',
+            rf'\g<1>{LATEST_ENGINE_VERSION}.0.0/',
             html
         )
         if new_html != html:
