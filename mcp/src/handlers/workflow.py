@@ -191,6 +191,17 @@ def init_game(args):
         (game_path / "_maps.json").write_text("{}\n")
         (game_path / "maps.js").write_text(generate_maps_js({}))
 
+        # Narrative — mandatory for every game
+        default_narrative = {
+            "graphs": {"arc": {"startNode": "start", "nodes": [{"id": "start", "label": "Start", "type": "scene"}], "edges": []}},
+            "variables": {},
+            "actors": {},
+            "scenes": [],
+            "content": {},
+            "simulation": {},
+        }
+        (game_path / "_narrative.json").write_text(json.dumps(default_narrative, indent=2) + "\n")
+
         return json.dumps({
             "ok": True,
             "message": f'Game "{title}" created from template {tmpl["name"]}',
@@ -303,6 +314,20 @@ def validate_game(args):
     # Narrative module check (platform infrastructure)
     if not (game_path / "fa-narrative.js").exists():
         issues.append("Missing fa-narrative.js — platform narrative module")
+
+    # Narrative data check — mandatory for every game
+    narrative_path = game_path / "_narrative.json"
+    if not narrative_path.exists():
+        issues.append("Missing _narrative.json — narrative data is required for every game")
+    else:
+        try:
+            nd = json.loads(narrative_path.read_text())
+            if "graphs" not in nd:
+                issues.append("_narrative.json missing 'graphs' key")
+            if "variables" not in nd:
+                warnings.append("_narrative.json missing 'variables' key")
+        except Exception:
+            issues.append("_narrative.json is not valid JSON")
 
     # Engine files check (from template)
     engine_files = _get_engine_files(game_path)

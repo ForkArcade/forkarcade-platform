@@ -2,6 +2,15 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { gameFileUrl } from '../api'
 import { storageKey } from '../utils/storage'
 
+const EMPTY_NARRATIVE = {
+  graphs: { arc: { startNode: 'start', nodes: [{ id: 'start', label: 'Start', type: 'scene' }], edges: [] } },
+  variables: {},
+  actors: {},
+  scenes: [],
+  content: {},
+  simulation: {},
+}
+
 export function useNarrativeData(slug) {
   const [data, setData] = useState(null)
   const [hasLocalEdits, setHasLocalEdits] = useState(false)
@@ -13,12 +22,15 @@ export function useNarrativeData(slug) {
     fetch(gameFileUrl(slug, '_narrative.json'))
       .then(r => r.ok ? r.json() : null)
       .then(d => {
-        if (!d) return
-        setData(d)
+        setData(d || structuredClone(EMPTY_NARRATIVE))
         setHasLocalEdits(false)
         initialRef.current = false
       })
-      .catch(() => {})
+      .catch(() => {
+        setData(structuredClone(EMPTY_NARRATIVE))
+        setHasLocalEdits(false)
+        initialRef.current = false
+      })
   }, [slug])
 
   // Load: localStorage first, then source
