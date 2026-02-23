@@ -29,8 +29,8 @@ router.post('/api/games/:slug/score', auth, scoreLimiter, async (req, res) => {
   try {
     // Get personal best + insert score + mint coins in one batch (single round-trip to Turso)
     const results = await db.batch([
-      { sql: 'SELECT MAX(score) as best FROM scores WHERE github_user_id = ? AND game_slug = ?', args: [req.user.sub, req.params.slug] },
-      { sql: 'INSERT INTO scores (github_user_id, game_slug, score, version, created_at) VALUES (?, ?, ?, ?, ?)', args: [req.user.sub, req.params.slug, score, v, new Date().toISOString()] },
+      { sql: 'SELECT MAX(score) as best FROM scores WHERE github_user_id = ? AND game_slug = ?', args: [req.user.userId, req.params.slug] },
+      { sql: 'INSERT INTO scores (github_user_id, game_slug, score, version, created_at) VALUES (?, ?, ?, ?, ?)', args: [req.user.userId, req.params.slug, score, v, new Date().toISOString()] },
     ])
     const personalBest = results[0].rows[0]?.best ?? 0
     const isPersonalRecord = score > personalBest
@@ -41,13 +41,13 @@ router.post('/api/games/:slug/score', auth, scoreLimiter, async (req, res) => {
       await db.execute({
         sql: `INSERT INTO wallets (github_user_id, balance) VALUES (?, ?)
               ON CONFLICT(github_user_id) DO UPDATE SET balance = balance + ?`,
-        args: [req.user.sub, coins, coins],
+        args: [req.user.userId, coins, coins],
       })
     }
 
     res.json({ ok: true, coins, isPersonalRecord })
   } catch (err) {
-    console.error('Score insert error:', { user: req.user.sub, slug: req.params.slug, score }, err)
+    console.error('Score insert error:', { user: req.user.userId, slug: req.params.slug, score }, err)
     res.status(500).json({ error: 'db_error' })
   }
 })
@@ -75,13 +75,13 @@ router.get('/api/me', auth, async (req, res) => {
   try {
     const result = await db.execute({
       sql: 'SELECT github_user_id, login, avatar FROM users WHERE github_user_id = ?',
-      args: [req.user.sub],
+      args: [req.user.userId],
     })
     const user = result.rows[0]
     if (!user) return res.status(404).json({ error: 'user_not_found' })
     res.json({ user })
   } catch (err) {
-    console.error('Me error:', { user: req.user.sub }, err)
+    console.error('Me error:', { user: req.user.userId }, err)
     res.status(500).json({ error: 'db_error' })
   }
 })

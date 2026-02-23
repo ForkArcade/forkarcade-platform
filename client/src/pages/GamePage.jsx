@@ -147,7 +147,7 @@ export default function GamePage({ user, balance, onBalanceChange }) {
       onGetPlayer() {
         const u = userRef.current
         return u
-          ? Promise.resolve({ login: u.login, sub: u.sub })
+          ? Promise.resolve({ login: u.login })
           : Promise.reject(new Error('not_logged_in'))
       },
       onNarrative(data) {

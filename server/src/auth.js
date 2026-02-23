@@ -20,7 +20,8 @@ export function auth(req, res, next) {
   const t = (hdr && hdr.startsWith('Bearer ')) ? hdr.slice(7) : req.cookies[COOKIE_NAME]
   if (!t) return res.status(401).json({ error: 'no_auth' })
   try {
-    req.user = jwt.verify(t, process.env.JWT_SECRET)
+    const payload = jwt.verify(t, process.env.JWT_SECRET)
+    req.user = { ...payload, userId: payload.sub }
     next()
   } catch {
     res.status(401).json({ error: 'invalid' })

@@ -28,11 +28,11 @@ router.get('/api/wallet', auth, async (req, res) => {
   try {
     const result = await db.execute({
       sql: 'SELECT balance FROM wallets WHERE github_user_id = ?',
-      args: [req.user.sub],
+      args: [req.user.userId],
     })
     res.json({ balance: result.rows[0]?.balance ?? 0 })
   } catch (err) {
-    console.error('Wallet fetch error:', { user: req.user.sub }, err)
+    console.error('Wallet fetch error:', { user: req.user.userId }, err)
     res.status(500).json({ error: 'db_error' })
   }
 })
@@ -47,7 +47,7 @@ router.post('/api/games/:slug/evolve-issues', auth, async (req, res) => {
     // Check user has at least 1 score in this game
     const scores = await db.execute({
       sql: 'SELECT id FROM scores WHERE github_user_id = ? AND game_slug = ? LIMIT 1',
-      args: [req.user.sub, slug],
+      args: [req.user.userId, slug],
     })
     if (scores.rows.length === 0) return res.status(403).json({ error: 'must_play_first' })
 
@@ -58,7 +58,7 @@ router.post('/api/games/:slug/evolve-issues', auth, async (req, res) => {
     if (!issue) return res.status(502).json({ error: 'github_error' })
     res.json({ ok: true, issue_number: issue.number, html_url: issue.html_url })
   } catch (err) {
-    console.error('Evolve issue error:', { user: req.user.sub, slug }, err)
+    console.error('Evolve issue error:', { user: req.user.userId, slug }, err)
     res.status(500).json({ error: 'server_error' })
   }
 })
@@ -78,25 +78,25 @@ router.post('/api/games/:slug/vote', auth, async (req, res) => {
     // Step 1: deduct coins (WHERE balance >= coins ensures sufficient funds)
     const deduct = await db.execute({
       sql: 'UPDATE wallets SET balance = balance - ? WHERE github_user_id = ? AND balance >= ?',
-      args: [coins, req.user.sub, coins],
+      args: [coins, req.user.userId, coins],
     })
     if (deduct.rowsAffected === 0) return res.status(400).json({ error: 'insufficient_coins' })
 
     // Step 2: insert vote + read new balance (coins already deducted)
     try {
       const results = await db.batch([
-        { sql: 'INSERT INTO votes (github_user_id, game_slug, issue_number, coins_spent, created_at) VALUES (?, ?, ?, ?, ?)', args: [req.user.sub, slug, issue_number, coins, new Date().toISOString()] },
-        { sql: 'SELECT balance FROM wallets WHERE github_user_id = ?', args: [req.user.sub] },
+        { sql: 'INSERT INTO votes (github_user_id, game_slug, issue_number, coins_spent, created_at) VALUES (?, ?, ?, ?, ?)', args: [req.user.userId, slug, issue_number, coins, new Date().toISOString()] },
+        { sql: 'SELECT balance FROM wallets WHERE github_user_id = ?', args: [req.user.userId] },
       ])
       res.json({ ok: true, newBalance: results[1].rows[0]?.balance ?? 0 })
     } catch (insertErr) {
       // Rollback: refund coins if vote insert fails
-      await db.execute({ sql: 'UPDATE wallets SET balance = balance + ? WHERE github_user_id = ?', args: [coins, req.user.sub] })
-        .catch(rollbackErr => console.error('CRITICAL: coin rollback failed for user', req.user.sub, coins, 'coins lost:', rollbackErr))
+      await db.execute({ sql: 'UPDATE wallets SET balance = balance + ? WHERE github_user_id = ?', args: [coins, req.user.userId] })
+        .catch(rollbackErr => console.error('CRITICAL: coin rollback failed for user', req.user.userId, coins, 'coins lost:', rollbackErr))
       throw insertErr
     }
   } catch (err) {
-    console.error('Vote error:', { user: req.user.sub, slug, issue_number, coins }, err)
+    console.error('Vote error:', { user: req.user.userId, slug, issue_number, coins }, err)
     res.status(500).json({ error: 'db_error' })
   }
 })
@@ -155,7 +155,7 @@ router.post('/api/games/:slug/evolve-trigger', auth, async (req, res) => {
     if (!result) return res.status(502).json({ error: 'github_error' })
     res.json({ ok: true })
   } catch (err) {
-    console.error('Evolve trigger error:', { user: req.user.sub, slug, issue_number }, err)
+    console.error('Evolve trigger error:', { user: req.user.userId, slug, issue_number }, err)
     res.status(500).json({ error: 'server_error' })
   }
 })
@@ -176,7 +176,7 @@ router.post('/api/new-game/issues', auth, async (req, res) => {
     if (!issue) return res.status(502).json({ error: 'github_error' })
     res.json({ ok: true, issue_number: issue.number, html_url: issue.html_url })
   } catch (err) {
-    console.error('New game issue error:', { user: req.user.sub }, err)
+    console.error('New game issue error:', { user: req.user.userId }, err)
     res.status(500).json({ error: 'server_error' })
   }
 })
@@ -195,25 +195,25 @@ router.post('/api/new-game/vote', auth, async (req, res) => {
     // Step 1: deduct coins (WHERE balance >= coins ensures sufficient funds)
     const deduct = await db.execute({
       sql: 'UPDATE wallets SET balance = balance - ? WHERE github_user_id = ? AND balance >= ?',
-      args: [coins, req.user.sub, coins],
+      args: [coins, req.user.userId, coins],
     })
     if (deduct.rowsAffected === 0) return res.status(400).json({ error: 'insufficient_coins' })
 
     // Step 2: insert vote + read new balance (coins already deducted)
     try {
       const results = await db.batch([
-        { sql: 'INSERT INTO votes (github_user_id, game_slug, issue_number, coins_spent, created_at) VALUES (?, ?, ?, ?, ?)', args: [req.user.sub, NEW_GAME_SLUG, issue_number, coins, new Date().toISOString()] },
-        { sql: 'SELECT balance FROM wallets WHERE github_user_id = ?', args: [req.user.sub] },
+        { sql: 'INSERT INTO votes (github_user_id, game_slug, issue_number, coins_spent, created_at) VALUES (?, ?, ?, ?, ?)', args: [req.user.userId, NEW_GAME_SLUG, issue_number, coins, new Date().toISOString()] },
+        { sql: 'SELECT balance FROM wallets WHERE github_user_id = ?', args: [req.user.userId] },
       ])
       res.json({ ok: true, newBalance: results[1].rows[0]?.balance ?? 0 })
     } catch (insertErr) {
       // Rollback: refund coins if vote insert fails
-      await db.execute({ sql: 'UPDATE wallets SET balance = balance + ? WHERE github_user_id = ?', args: [coins, req.user.sub] })
-        .catch(rollbackErr => console.error('CRITICAL: coin rollback failed for user', req.user.sub, coins, 'coins lost:', rollbackErr))
+      await db.execute({ sql: 'UPDATE wallets SET balance = balance + ? WHERE github_user_id = ?', args: [coins, req.user.userId] })
+        .catch(rollbackErr => console.error('CRITICAL: coin rollback failed for user', req.user.userId, coins, 'coins lost:', rollbackErr))
       throw insertErr
     }
   } catch (err) {
-    console.error('New game vote error:', { user: req.user.sub, issue_number, coins }, err)
+    console.error('New game vote error:', { user: req.user.userId, issue_number, coins }, err)
     res.status(500).json({ error: 'db_error' })
   }
 })
@@ -256,7 +256,7 @@ router.post('/api/new-game/trigger', auth, async (req, res) => {
     if (!result) return res.status(502).json({ error: 'github_error' })
     res.json({ ok: true })
   } catch (err) {
-    console.error('New game trigger error:', { user: req.user.sub, issue_number }, err)
+    console.error('New game trigger error:', { user: req.user.userId, issue_number }, err)
     res.status(500).json({ error: 'server_error' })
   }
 })
