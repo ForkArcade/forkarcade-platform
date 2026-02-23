@@ -30,7 +30,7 @@ function applySpritesDirect(raw) {
       window.FA.clearSpriteCache(parsed)
       window.FA.assets.spriteDefs = parsed
     }
-  } catch {}
+  } catch (e) { console.warn('applySpritesDirect:', e.message) }
 }
 
 function editorMapsToMapDefs(raw) {
@@ -38,7 +38,7 @@ function editorMapsToMapDefs(raw) {
     const parsed = JSON.parse(raw)
     if (parsed.levels) return levelsToMapDefs(parsed.levels, parsed.zoneDefs || [])
     return parsed
-  } catch { return null }
+  } catch (e) { console.warn('editorMapsToMapDefs:', e.message); return null }
 }
 
 const TAB_ICONS = {
@@ -177,7 +177,7 @@ export default function GamePage({ user, balance, onBalanceChange }) {
               window.dispatchEvent(new CustomEvent('fa-map-update', { detail: maps }))
             }
           }
-        } catch {}
+        } catch (e) { console.warn('Editor asset apply:', e.message) }
       },
     }).then(cleanup => {
       if (cancelled) {
@@ -201,8 +201,6 @@ export default function GamePage({ user, balance, onBalanceChange }) {
     }
   }, [gameBaseUrl, slug, onBalanceChange])
 
-
-
   // Hot-reload sprites from editor (cross-tab localStorage)
   useEffect(() => {
     const key = storageKey.sprites(slug)
@@ -224,7 +222,7 @@ export default function GamePage({ user, balance, onBalanceChange }) {
         if (maps) {
           window.dispatchEvent(new CustomEvent('fa-map-update', { detail: maps }))
         }
-      } catch {}
+      } catch (e) { console.warn('Map hot-reload:', e.message) }
     }
     window.addEventListener('storage', onStorage)
     return () => window.removeEventListener('storage', onStorage)

@@ -1,5 +1,7 @@
 node_modules
 .env
 *.sqlite
+*.pem
+.DS_Store
 dist/
 client/public/cache/

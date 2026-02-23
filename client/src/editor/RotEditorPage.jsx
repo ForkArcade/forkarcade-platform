@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { useParams } from 'react-router-dom'
 import { T } from '../theme'
 import { gameFileUrl } from '../api'
-import { renderSpriteToCanvas, spriteToDataUrl } from '../utils/sprite'
+import { drawSprite, spriteToDataUrl } from '../utils/sprite'
 import SpriteEditor from './SpriteEditor'
 import RightPanel from './RightPanel'
 import { useMapSprites } from './useMapSprites'
@@ -24,7 +24,7 @@ function loadLevels(slug) {
         if (data.levels.length > 0) return data
       }
     }
-  } catch {}
+  } catch (e) { console.warn('Failed to parse cached maps:', e.message) }
   return null
 }
 
@@ -61,6 +61,17 @@ export default function RotEditorPage({ user }) {
   const [activeZone, setActiveZone] = useState(0)
   const [showZones, setShowZones] = useState(true)
 
+  // Sound definitions loaded from _narrative.json
+  const [soundDefs, setSoundDefs] = useState(null)
+  const [playingSound, setPlayingSound] = useState(null)
+  const audioCtxRef = useRef(null)
+  useEffect(() => {
+    fetch(gameFileUrl(slug, '_narrative.json'))
+      .then(r => r.json())
+      .then(d => { if (d.sounds) setSoundDefs(d.sounds) })
+      .catch(e => console.warn('Failed to load sounds:', e.message))
+  }, [slug])
+
   // Object brush state
   const [objectBrush, setObjectBrush] = useState({ type: '', sprite: '', rot: 0 })
   const [objCategory, setObjCategory] = useState(null)
@@ -72,6 +83,25 @@ export default function RotEditorPage({ user }) {
     activeTile, setActiveTile, activeFrame, setActiveFrame,
     handleSpriteUpdate,
   } = useMapSprites(slug)
+
+  // Sprite update handler for objects/player (non-tile sprites)
+  const handleObjSpriteUpdate = useCallback((mutator) => {
+    const parts = objectBrush.sprite?.split('/')
+    if (!parts || parts.length < 2) return
+    const [cat, name] = parts
+    setSpriteDefs(prev => {
+      const prevDef = prev[cat]?.[name]
+      if (!prevDef) return prev
+      const newDef = {
+        ...prevDef,
+        palette: { ...prevDef.palette },
+        frames: prevDef.frames.map(f => [...f]),
+        origin: prevDef.origin ? [...prevDef.origin] : undefined,
+      }
+      mutator(newDef)
+      return { ...prev, [cat]: { ...prev[cat], [name]: newDef } }
+    })
+  }, [objectBrush.sprite, setSpriteDefs])
 
   const tilesRef = useRef([])
   tilesRef.current = tiles
@@ -287,7 +317,7 @@ export default function RotEditorPage({ user }) {
           const tid = grid[y]?.[x] ?? 0
           const tile = tiles[tid]
           if (tile?.def) {
-            renderSpriteToCanvas(ctx, tile.def, frameGrid?.[y]?.[x] ?? 0, x * cellSize, y * cellSize, cellSize)
+            drawSprite(ctx, tile.def, x * cellSize, y * cellSize, cellSize, frameGrid?.[y]?.[x] ?? 0)
           } else {
             ctx.fillStyle = '#222'
             ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize)
@@ -305,7 +335,7 @@ export default function RotEditorPage({ user }) {
           ctx.fillRect(px, py, cellSize, cellSize)
           const tile = tiles[tid]
           if (tile?.def) {
-            renderSpriteToCanvas(ctx, tile.def, fid, px, py, cellSize)
+            drawSprite(ctx, tile.def, px, py, cellSize, fid)
           } else {
             ctx.fillStyle = '#222'
             ctx.fillRect(px, py, cellSize, cellSize)
@@ -373,7 +403,7 @@ export default function RotEditorPage({ user }) {
         const cx = px + cellSize / 2, cy = py + cellSize / 2
         ctx.translate(cx, cy)
         ctx.rotate((obj.rot || 0) * Math.PI / 2)
-        renderSpriteToCanvas(ctx, def, 0, -cellSize / 2, -cellSize / 2, cellSize)
+        drawSprite(ctx, def, -cellSize / 2, -cellSize / 2, cellSize, 0)
         ctx.restore()
       } else {
         ctx.fillStyle = '#f808'
@@ -413,13 +443,64 @@ export default function RotEditorPage({ user }) {
       ctx.lineTo(px + cellSize - 3, py + cellSize / 2)
       ctx.stroke()
     }
+    // Sound overlay (in sounds mode)
+    if (editMode === 'sounds' && soundDefs?.ambient) {
+      // Build zone→soundNames and objType→soundNames maps
+      const zoneSounds = {}, objSounds = {}
+      for (const [name, def] of Object.entries(soundDefs.ambient)) {
+        const t = def.target || ''
+        if (t.startsWith('zone:')) {
+          const z = t.slice(5)
+          if (!zoneSounds[z]) zoneSounds[z] = []
+          zoneSounds[z].push(name)
+        } else if (t.startsWith('object:')) {
+          const o = t.slice(7)
+          if (!objSounds[o]) objSounds[o] = []
+          objSounds[o].push(name)
+        }
+      }
+      // Zone sound overlay
+      if (zoneGrid) {
+        const zoneNameMap = {}
+        for (const zd of zoneDefs) zoneNameMap[zd.key] = zd.name
+        ctx.font = `bold ${Math.max(7, cellSize * 0.35)}px ${T.mono}`
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+        for (let y = 0; y < rows; y++) {
+          for (let x = 0; x < cols; x++) {
+            const zk = zoneGrid[y]?.[x]
+            if (!zk || zk === '.') continue
+            const zName = zoneNameMap[zk]
+            const sndNames = zoneSounds[zName]
+            if (!sndNames) continue
+            ctx.fillStyle = 'rgba(78,238,255,0.12)'
+            ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize)
+          }
+        }
+      }
+      // Object sound rings
+      for (const obj of objects) {
+        const sndNames = objSounds[obj.type]
+        if (!sndNames) continue
+        const cx = obj.x * cellSize + cellSize / 2, cy = obj.y * cellSize + cellSize / 2
+        const range = soundDefs.ambient[sndNames[0]]?.range || 8
+        ctx.strokeStyle = 'rgba(255,136,0,0.3)'
+        ctx.lineWidth = 1
+        ctx.beginPath()
+        ctx.arc(cx, cy, range * cellSize, 0, Math.PI * 2)
+        ctx.stroke()
+        ctx.fillStyle = '#f80'
+        ctx.font = `bold ${Math.max(6, cellSize * 0.3)}px ${T.mono}`
+        ctx.textAlign = 'center'; ctx.textBaseline = 'bottom'
+        ctx.fillText(sndNames[0], cx, obj.y * cellSize - 2)
+      }
+    }
     // Hover
     if (hoverPos && hoverPos.x >= 0 && hoverPos.x < cols && hoverPos.y >= 0 && hoverPos.y < rows) {
       ctx.strokeStyle = '#fff'
       ctx.lineWidth = 2
       ctx.strokeRect(hoverPos.x * cellSize + 1, hoverPos.y * cellSize + 1, cellSize - 2, cellSize - 2)
     }
-  }, [mapVersion, hoverPos, cellSize, cols, rows, showZones, zoneGrid, zoneDefs, objects, spriteDefs, editMode, activeLevel?.playerStart])
+  }, [mapVersion, hoverPos, cellSize, cols, rows, showZones, zoneGrid, zoneDefs, objects, spriteDefs, editMode, activeLevel?.playerStart, soundDefs])
 
   // Keyboard: 0-9 to select tile
   useEffect(() => {
@@ -478,8 +559,8 @@ export default function RotEditorPage({ user }) {
       } else {
         nextFg[pos.y][pos.x] = activeFrame
       }
-      // Update neighbors for autotile
-      for (const [dy, dx] of [[-1,0],[1,0],[0,-1],[0,1]]) {
+      // Update neighbors for autotile (cardinal + diagonal for inner corners)
+      for (const [dy, dx] of [[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[-1,1],[1,-1],[1,1]]) {
         const ny = pos.y + dy, nx = pos.x + dx
         if (ny < 0 || ny >= nextGrid.length || nx < 0 || nx >= (nextGrid[0]?.length || 0)) continue
         const nTid = nextGrid[ny][nx]
@@ -564,7 +645,7 @@ export default function RotEditorPage({ user }) {
       }}>
         {/* Mode toggle */}
         <div style={{ display: 'flex', gap: T.sp[1], marginBottom: T.sp[3] }}>
-          {['tiles', 'zones', 'objects'].map(mode => (
+          {['tiles', 'zones', 'objects', 'sounds'].map(mode => (
             <button
               key={mode}
               onClick={() => setEditMode(mode)}
@@ -577,7 +658,7 @@ export default function RotEditorPage({ user }) {
                 textTransform: 'uppercase', letterSpacing: '0.05em',
               }}
             >
-              {mode === 'objects' ? 'obj' : mode}
+              {mode === 'objects' ? 'obj' : mode === 'sounds' ? 'snd' : mode}
             </button>
           ))}
         </div>
@@ -782,28 +863,6 @@ export default function RotEditorPage({ user }) {
           {objSprites.length === 0 && (
             <div style={{ fontSize: T.fontSize.xs, color: T.muted, padding: T.sp[3] }}>No sprites available</div>
           )}
-          {/* Rotation */}
-          <div style={{ marginTop: T.sp[3] }}>
-            <div style={{ fontSize: T.fontSize.xs, color: T.text, textTransform: 'uppercase', marginBottom: T.sp[2] }}>Rotation</div>
-            <div style={{ display: 'flex', gap: T.sp[1] }}>
-              {ROTATIONS.map(r => (
-                <button
-                  key={r.value}
-                  onClick={() => setObjectBrush(prev => ({ ...prev, rot: r.value }))}
-                  style={{
-                    flex: 1,
-                    background: objectBrush.rot === r.value ? T.accentColor : 'transparent',
-                    color: objectBrush.rot === r.value ? '#000' : T.text,
-                    border: `1px solid ${objectBrush.rot === r.value ? T.accentColor : T.border}`,
-                    borderRadius: T.radius.sm, padding: '3px 0',
-                    fontSize: 10, fontFamily: T.mono, cursor: 'pointer',
-                  }}
-                >
-                  {r.label}
-                </button>
-              ))}
-            </div>
-          </div>
           {/* Object count */}
           <div style={{ fontSize: T.fontSize.xs, color: T.muted, marginTop: T.sp[3] }}>
             {objects.length} object{objects.length !== 1 ? 's' : ''} on this level
@@ -811,6 +870,117 @@ export default function RotEditorPage({ user }) {
           <div style={{ fontSize: T.fontSize.xs, color: T.muted, lineHeight: 1.6 }}>
             Click to place. Right-click to remove.
           </div>
+          {objectBrush.sprite && (() => {
+            const parts = objectBrush.sprite.split('/')
+            return parts.length >= 2 && spriteDefs?.[parts[0]]?.[parts[1]] ? (
+              <div style={{ borderTop: `1px solid ${T.border}`, marginTop: T.sp[3], paddingTop: T.sp[3] }}>
+                <SpriteEditor
+                  sprites={spriteDefs}
+                  activeCat={parts[0]}
+                  activeName={parts[1]}
+                  onUpdate={handleObjSpriteUpdate}
+                />
+              </div>
+            ) : null
+          })()}
+        </>)}
+        {editMode === 'sounds' && (<>
+          {soundDefs ? (<>
+            <div style={{ fontSize: T.fontSize.xs, color: T.text, textTransform: 'uppercase', marginBottom: T.sp[2] }}>
+              One-shot sounds
+            </div>
+            {soundDefs.oneshot && Object.entries(soundDefs.oneshot).map(([key, def]) => (
+              <div key={key} style={{
+                display: 'flex', alignItems: 'center', gap: T.sp[2],
+                padding: `${T.sp[1]}px ${T.sp[2]}px`, borderRadius: T.radius.sm,
+                background: playingSound === key ? T.elevated : 'transparent',
+                border: `1px solid ${playingSound === key ? T.accentColor : 'transparent'}`,
+                marginBottom: 2,
+              }}>
+                <button
+                  onClick={() => {
+                    if (!audioCtxRef.current) audioCtxRef.current = new AudioContext()
+                    const ctx = audioCtxRef.current
+                    const t = ctx.currentTime
+                    const v = def.vol || 0.03, a = def.attack || 0.01, r = def.release || 0.2
+                    const playTone = (freq) => {
+                      const o = ctx.createOscillator(), g = ctx.createGain()
+                      o.type = 'sine'; o.frequency.value = freq
+                      g.gain.setValueAtTime(0, t)
+                      g.gain.linearRampToValueAtTime(v, t + a)
+                      g.gain.linearRampToValueAtTime(0, t + a + r)
+                      o.connect(g); g.connect(ctx.destination)
+                      o.start(t); o.stop(t + a + r + 0.05)
+                    }
+                    if (def.chord) def.chord.forEach(f => playTone(f))
+                    else if (def.freqStart) {
+                      const o = ctx.createOscillator(), g = ctx.createGain()
+                      o.type = 'sine'
+                      o.frequency.setValueAtTime(def.freqStart, t)
+                      o.frequency.linearRampToValueAtTime(def.freqEnd, t + a + r * 0.8)
+                      g.gain.setValueAtTime(0, t)
+                      g.gain.linearRampToValueAtTime(v, t + a)
+                      g.gain.linearRampToValueAtTime(0, t + a + r)
+                      o.connect(g); g.connect(ctx.destination)
+                      o.start(t); o.stop(t + a + r + 0.05)
+                    } else {
+                      playTone(def.freq || 300)
+                      if (def.freq2) playTone(def.freq2)
+                    }
+                    setPlayingSound(key)
+                    setTimeout(() => setPlayingSound(p => p === key ? null : p), (a + r) * 1000 + 100)
+                  }}
+                  style={{
+                    background: 'none', border: `1px solid ${T.border}`, borderRadius: T.radius.sm,
+                    color: T.accentColor, cursor: 'pointer', padding: '1px 6px',
+                    fontSize: 10, fontFamily: T.mono, flexShrink: 0,
+                  }}
+                >&#9654;</button>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 10, fontFamily: T.mono, color: T.textBright, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {key}
+                  </div>
+                  <div style={{ fontSize: 8, fontFamily: T.mono, color: T.muted }}>
+                    {def.label} · {def.trigger}
+                  </div>
+                </div>
+                <div style={{ fontSize: 8, fontFamily: T.mono, color: T.muted, flexShrink: 0 }}>
+                  {def.freq || def.freqStart || (def.chord && def.chord[0]) || '?'}Hz
+                </div>
+              </div>
+            ))}
+
+            <div style={{ fontSize: T.fontSize.xs, color: T.text, textTransform: 'uppercase', marginTop: T.sp[4], marginBottom: T.sp[2] }}>
+              Ambient sounds
+            </div>
+            {soundDefs.ambient && Object.entries(soundDefs.ambient).map(([key, def]) => (
+              <div key={key} style={{
+                display: 'flex', alignItems: 'center', gap: T.sp[2],
+                padding: `${T.sp[1]}px ${T.sp[2]}px`, borderRadius: T.radius.sm,
+                marginBottom: 2,
+              }}>
+                <div style={{
+                  width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
+                  background: def.target?.startsWith('zone:') ? '#4ef' : '#f80',
+                }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 10, fontFamily: T.mono, color: T.textBright, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {key}
+                  </div>
+                  <div style={{ fontSize: 8, fontFamily: T.mono, color: T.muted }}>
+                    {def.label} · {def.target}
+                  </div>
+                </div>
+                <div style={{ fontSize: 8, fontFamily: T.mono, color: T.muted, flexShrink: 0 }}>
+                  {def.type === 'noise' ? 'noise' : `${def.freq}Hz`}
+                </div>
+              </div>
+            ))}
+          </>) : (
+            <div style={{ fontSize: T.fontSize.xs, color: T.muted, padding: T.sp[3] }}>
+              No sound data. Add "sounds" section to _narrative.json.
+            </div>
+          )}
         </>)}
         <div style={{ marginTop: 'auto', paddingTop: T.sp[4] }}>
           {hoverPos && (
@@ -824,8 +994,22 @@ export default function RotEditorPage({ user }) {
               {hoverObj && (
                 <span style={{ color: '#f80', marginLeft: 6 }}>
                   {hoverObj.type}
+                  {editMode === 'sounds' && soundDefs?.ambient && (() => {
+                    const match = Object.entries(soundDefs.ambient).find(([, d]) => d.target === 'object:' + hoverObj.type)
+                    return match ? <span style={{ color: '#4ef' }}> {match[0]}</span> : null
+                  })()}
                 </span>
               )}
+              {editMode === 'sounds' && soundDefs?.ambient && (() => {
+                const zKey = zoneGrid?.[hoverPos.y]?.[hoverPos.x]
+                if (!zKey || zKey === '.') return null
+                const zoneName = zoneDefs.find(z => z.key === zKey)?.name
+                if (!zoneName) return null
+                const matches = Object.entries(soundDefs.ambient).filter(([, d]) => d.target === 'zone:' + zoneName)
+                return matches.length > 0
+                  ? <span style={{ color: '#4ef', marginLeft: 6 }}>{matches.map(m => m[0]).join(', ')}</span>
+                  : null
+              })()}
             </div>
           )}
         </div>

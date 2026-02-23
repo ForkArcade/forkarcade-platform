@@ -13,6 +13,24 @@ function loadImage(src) {
   })
 }
 
+// Atlas = source of truth for structure (w, h, origin, tiling).
+// Cached defs override only pixel data (palette, frames).
+function mergeAtlasMetadata(defs, atlas) {
+  for (const cat of Object.keys(atlas)) {
+    if (cat === 'sheet' || !defs[cat]) continue
+    for (const [name, entry] of Object.entries(atlas[cat])) {
+      const cached = defs[cat][name]
+      if (!cached) continue
+      defs[cat][name] = {
+        ...entry,                    // atlas metadata: w, h, origin, tiling, etc.
+        palette: cached.palette,     // pixel data from cache
+        frames: cached.frames,       // character grids from cache (NOT atlas indices)
+      }
+    }
+  }
+  return defs
+}
+
 export function useMapSprites(slug) {
   const [spriteDefs, setSpriteDefs] = useState(null)
   const [activeCategory, setActiveCategory] = useState(null)
@@ -46,7 +64,7 @@ export function useMapSprites(slug) {
         setHasLocalEdits(false)
         spriteInitialRef.current = false
       })
-      .catch(() => {})
+      .catch(e => console.warn('Failed to load sprites:', e.message))
   }, [slug])
 
   // Load sprites: localStorage first, otherwise GitHub
@@ -57,11 +75,10 @@ export function useMapSprites(slug) {
       try {
         const parsed = JSON.parse(saved)
         if (parsed._format === 'png-hydrated' && parsed._atlas) {
-          // Character grids + atlas — load directly, no image decoding
           formatRef.current = 'png'
           atlasRef.current = parsed._atlas
           const { _format, _atlas, ...defs } = parsed
-          setSpriteDefs(defs)
+          setSpriteDefs(mergeAtlasMetadata(defs, _atlas))
           setHasLocalEdits(true)
           spriteInitialRef.current = false
           return
@@ -72,7 +89,7 @@ export function useMapSprites(slug) {
         setHasLocalEdits(true)
         spriteInitialRef.current = false
         return
-      } catch {}
+      } catch (e) { console.warn('Failed to parse cached sprites:', e.message) }
     }
     fetchSpritesFromSource()
   }, [slug, fetchSpritesFromSource])
@@ -109,11 +126,11 @@ export function useMapSprites(slug) {
         const parsed = JSON.parse(e.newValue)
         if (parsed._format === 'png-hydrated' && parsed._atlas) {
           const { _format, _atlas, ...defs } = parsed
-          setSpriteDefs(defs)
+          setSpriteDefs(mergeAtlasMetadata(defs, _atlas))
         } else {
           setSpriteDefs(parsed)
         }
-      } catch {}
+      } catch (e) { console.warn('Sprite cross-tab sync:', e.message) }
     }
     window.addEventListener('storage', handler)
     return () => window.removeEventListener('storage', handler)
