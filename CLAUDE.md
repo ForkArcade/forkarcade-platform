@@ -6,10 +6,12 @@
 
 ```
 client/              React + Vite (port 5173)
-  src/pages/         HomePage, GamePage, TemplatesPage, TemplateDetailPage, RotEditorPage
-  src/components/    ui.jsx (shared), Leaderboard, NarrativePanel, EvolvePanel, VotingPanel
-  src/theme.js       Design tokens — imported as T everywhere
+  src/pages/         HomePage, GamePage, TemplatesPage, TemplateDetailPage
+  src/editor/        RotEditorPage, SpriteEditor, RightPanel, SoundPanel, useMapCanvas, useMapSprites, mapUtils
+  src/components/    ui.jsx (shared), Leaderboard, NarrativePanel, EvolvePanel, VotingPanel, NewGamePanel
+  src/theme.js       Design tokens + shared styles (smallBtn, numInput) — imported as T everywhere
   src/api.js         API client (apiFetch, githubFetch, githubRawUrl)
+  src/utils/sprite.js  Sprite rendering (drawSprite), hydrate/dehydrate sheet ↔ defs
 server/              Express + Turso/libsql (port 8787)
   src/routes/        scores.js, wallet.js, github.js (proxy + cache)
 mcp/                 MCP server (Python) — tools for Claude Code
