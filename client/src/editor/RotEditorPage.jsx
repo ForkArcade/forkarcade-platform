@@ -2,12 +2,14 @@ import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { useParams } from 'react-router-dom'
 import { T } from '../theme'
 import { gameFileUrl } from '../api'
-import { drawSprite, spriteToDataUrl } from '../utils/sprite'
+import { spriteToDataUrl } from '../utils/sprite'
 import SpriteEditor from './SpriteEditor'
+import SoundPanel from './SoundPanel'
 import RightPanel from './RightPanel'
 import { useMapSprites } from './useMapSprites'
+import { useMapCanvas } from './useMapCanvas'
 import {
-  DEFAULT_W, DEFAULT_H, ZONE_COLORS, ROTATIONS,
+  DEFAULT_W, DEFAULT_H, ZONE_COLORS,
   createEmptyGrid, createEmptyZoneGrid, uid,
   parseMapsFromDataJs, mapDefsToLevels, computeAutotileFrame,
   resolveTiling, bakeAllAutotiles, bakeFrameGrid, mergeZoneDefs,
@@ -35,7 +37,6 @@ function saveLevels(slug, data) {
 export default function RotEditorPage({ user }) {
   const { slug } = useParams()
   const canvasRef = useRef(null)
-  const offscreenRef = useRef(null)
   const containerRef = useRef(null)
   const levelsSaveRef = useRef(null)
   const mapInitialRef = useRef(true)
@@ -45,8 +46,7 @@ export default function RotEditorPage({ user }) {
   const [levels, setLevels] = useState(() => {
     const loaded = loadLevels(slug)
     if (loaded) return loaded.levels
-    const id = uid()
-    return [{ id, name: 'Level 1', grid: createEmptyGrid(DEFAULT_W, DEFAULT_H), objects: [] }]
+    return [{ id: uid(), name: 'Level 1', grid: createEmptyGrid(DEFAULT_W, DEFAULT_H), objects: [] }]
   })
   const [activeId, setActiveId] = useState(() => {
     const loaded = loadLevels(slug)
@@ -63,8 +63,6 @@ export default function RotEditorPage({ user }) {
 
   // Sound definitions loaded from _narrative.json
   const [soundDefs, setSoundDefs] = useState(null)
-  const [playingSound, setPlayingSound] = useState(null)
-  const audioCtxRef = useRef(null)
   useEffect(() => {
     fetch(gameFileUrl(slug, '_narrative.json'))
       .then(r => r.json())
@@ -113,12 +111,7 @@ export default function RotEditorPage({ user }) {
     for (const [cat, sprites] of Object.entries(spriteDefs).filter(([c]) => c !== 'tiles')) {
       for (const [name, def] of Object.entries(sprites)) {
         if (!def?.frames) continue
-        result.push({
-          cat, name, def,
-          sprite: `${cat}/${name}`,
-          label: name.replace(/_/g, ' '),
-          thumb: spriteToDataUrl(def, 24, 0),
-        })
+        result.push({ cat, name, def, sprite: `${cat}/${name}`, label: name.replace(/_/g, ' '), thumb: spriteToDataUrl(def, 24, 0) })
       }
     }
     return result
@@ -127,54 +120,43 @@ export default function RotEditorPage({ user }) {
   // Categories for object picker
   const objCategories = useMemo(() => {
     if (!spriteDefs) return []
-    return Object.keys(spriteDefs).filter(cat =>
-      cat !== 'tiles' && Object.values(spriteDefs[cat]).some(d => d?.frames)
-    )
+    return Object.keys(spriteDefs).filter(cat => cat !== 'tiles' && Object.values(spriteDefs[cat]).some(d => d?.frames))
   }, [spriteDefs])
 
-  // Set default objCategory — prefer 'objects' category
   useEffect(() => {
-    if (objCategories.length > 0 && (!objCategory || !objCategories.includes(objCategory))) {
+    if (objCategories.length > 0 && (!objCategory || !objCategories.includes(objCategory)))
       setObjCategory(objCategories.includes('objects') ? 'objects' : objCategories[0])
-    }
   }, [objCategories, objCategory])
 
-  // Sprites filtered by objCategory
   const objSprites = useMemo(() => {
     if (!objCategory) return allSprites
     return allSprites.filter(s => s.cat === objCategory)
   }, [allSprites, objCategory])
 
-  // Lock tiles mode to 'tiles' category; sets handle sub-grouping
   useEffect(() => {
-    if (editMode === 'tiles' && activeCategory !== 'tiles' && categories.includes('tiles')) {
+    if (editMode === 'tiles' && activeCategory !== 'tiles' && categories.includes('tiles'))
       setActiveCategory('tiles')
-    }
   }, [editMode, activeCategory, categories, setActiveCategory])
 
-  // Auto-group tiles into sets by name prefix (e.g. dungeon_* → "dungeon", rest → "surface")
+  // Auto-group tiles into sets by name prefix
   const tileSets = useMemo(() => {
     if (!tiles.length) return []
     const groups = {}
     tiles.forEach((tile, idx) => {
       const ui = tile.name.indexOf('_')
       const prefix = ui > 0 ? tile.name.slice(0, ui) : '_surface'
-      if (!groups[prefix]) groups[prefix] = []
-      groups[prefix].push(idx)
+      ;(groups[prefix] ??= []).push(idx)
     })
     const entries = Object.entries(groups)
     if (entries.length <= 1) return []
     return entries.map(([k, indices]) => ({ key: k === '_surface' ? 'surface' : k, indices }))
   }, [tiles])
 
-  // Default to first set when sets change
   useEffect(() => {
-    if (tileSets.length > 0 && (!activeSet || !tileSets.some(s => s.key === activeSet))) {
+    if (tileSets.length > 0 && (!activeSet || !tileSets.some(s => s.key === activeSet)))
       setActiveSet(tileSets[0].key)
-    }
   }, [tileSets, activeSet])
 
-  // Visible tile indices filtered by active set
   const visibleTileIndices = useMemo(() => {
     if (tileSets.length === 0) return tiles.map((_, i) => i)
     const set = tileSets.find(s => s.key === activeSet)
@@ -201,23 +183,19 @@ export default function RotEditorPage({ user }) {
     })
   }, [tiles])
 
-  // Fetch game maps: try _maps.json first, fall back to data.js
-  // mode='merge' appends to existing levels, mode='replace' replaces them
+  // Fetch game maps
   const fetchGameMaps = useCallback((mode) => {
     const curTiles = tilesRef.current
     const prepareLevels = (gameLevels) => gameLevels.map(l => ({
       ...l,
       frameGrid: bakeFrameGrid(l.grid, curTiles),
       zoneGrid: l.zoneGrid || createEmptyZoneGrid(l.grid[0]?.length || DEFAULT_W, l.grid.length || DEFAULT_H),
-      objects: l.objects || [],
-      source: l.source || 'game',
+      objects: l.objects || [], source: l.source || 'game',
     }))
     const applyLevels = (gameLevels, gameZoneDefs) => {
       const prepared = prepareLevels(gameLevels)
-      if (mode === 'replace') {
-        setZoneDefs(gameZoneDefs)
-        setLevels(prepared)
-      } else {
+      if (mode === 'replace') { setZoneDefs(gameZoneDefs); setLevels(prepared) }
+      else {
         if (gameZoneDefs.length > 0) setZoneDefs(prev => mergeZoneDefs(prev, gameZoneDefs))
         setLevels(prev => prev.some(l => l.source === 'game') ? prev : [...prepared, ...prev])
       }
@@ -226,8 +204,7 @@ export default function RotEditorPage({ user }) {
     const emptyLevel = () => {
       const id = uid()
       setLevels([{ id, name: 'Level 1', grid: createEmptyGrid(DEFAULT_W, DEFAULT_H), frameGrid: createEmptyGrid(DEFAULT_W, DEFAULT_H).map(r => r.map(() => 0)), zoneGrid: createEmptyZoneGrid(DEFAULT_W, DEFAULT_H), objects: [] }])
-      setActiveId(id)
-      setZoneDefs([])
+      setActiveId(id); setZoneDefs([])
     }
     fetch(gameFileUrl(slug, '_maps.json'))
       .then(r => r.ok ? r.json() : null)
@@ -254,14 +231,12 @@ export default function RotEditorPage({ user }) {
 
   const resetMaps = useCallback(() => {
     localStorage.removeItem(storageKey.maps(slug))
-    setHasLocalMapEdits(false)
-    mapInitialRef.current = true
+    setHasLocalMapEdits(false); mapInitialRef.current = true
     fetchGameMaps('replace')
   }, [slug, fetchGameMaps])
 
   const [isPainting, setIsPainting] = useState(false)
   const [hoverPos, setHoverPos] = useState(null)
-  const [cellSize, setCellSize] = useState(20)
 
   const activeLevel = levels.find(l => l.id === activeId) || levels[0]
   const grid = activeLevel?.grid || createEmptyGrid(DEFAULT_W, DEFAULT_H)
@@ -282,225 +257,12 @@ export default function RotEditorPage({ user }) {
     return () => clearTimeout(levelsSaveRef.current)
   }, [levels, activeId, slug, zoneDefs])
 
-  // Compute cell size to fit container
-  useEffect(() => {
-    const el = containerRef.current
-    if (!el) return
-    const ro = new ResizeObserver(() => {
-      const rect = el.getBoundingClientRect()
-      const maxW = Math.floor(rect.width / cols)
-      const maxH = Math.floor(rect.height / rows)
-      setCellSize(Math.max(10, Math.min(maxW, maxH, 28)))
-    })
-    ro.observe(el)
-    return () => ro.disconnect()
-  }, [cols, rows])
-
-  // Render sprites to offscreen canvas (incremental)
-  const prevMapRef = useRef(null)
-  const [mapVersion, setMapVersion] = useState(0)
-  useEffect(() => {
-    const w = cols * cellSize, h = rows * cellSize
-    if (!offscreenRef.current) offscreenRef.current = document.createElement('canvas')
-    const off = offscreenRef.current
-    const ctx = off.getContext('2d')
-    const prev = prevMapRef.current
-    const fullRedraw = off.width !== w || off.height !== h || !prev || prev.tiles !== tiles
-
-    if (fullRedraw) {
-      off.width = w
-      off.height = h
-      ctx.fillStyle = '#000'
-      ctx.fillRect(0, 0, w, h)
-      for (let y = 0; y < rows; y++) {
-        for (let x = 0; x < cols; x++) {
-          const tid = grid[y]?.[x] ?? 0
-          const tile = tiles[tid]
-          if (tile?.def) {
-            drawSprite(ctx, tile.def, x * cellSize, y * cellSize, cellSize, frameGrid?.[y]?.[x] ?? 0)
-          } else {
-            ctx.fillStyle = '#222'
-            ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize)
-          }
-        }
-      }
-    } else {
-      for (let y = 0; y < rows; y++) {
-        for (let x = 0; x < cols; x++) {
-          const tid = grid[y]?.[x] ?? 0
-          const fid = frameGrid?.[y]?.[x] ?? 0
-          if (tid === (prev.grid[y]?.[x] ?? 0) && fid === (prev.frameGrid?.[y]?.[x] ?? 0)) continue
-          const px = x * cellSize, py = y * cellSize
-          ctx.fillStyle = '#000'
-          ctx.fillRect(px, py, cellSize, cellSize)
-          const tile = tiles[tid]
-          if (tile?.def) {
-            drawSprite(ctx, tile.def, px, py, cellSize, fid)
-          } else {
-            ctx.fillStyle = '#222'
-            ctx.fillRect(px, py, cellSize, cellSize)
-          }
-        }
-      }
-    }
-
-    prevMapRef.current = { grid, frameGrid, tiles }
-    setMapVersion(v => v + 1)
-  }, [grid, frameGrid, cellSize, cols, rows, tiles])
-
-  // Blit offscreen + grid lines + objects + zones + hover
-  useEffect(() => {
-    const canvas = canvasRef.current
-    const off = offscreenRef.current
-    if (!canvas || !off || !off.width) return
-    const w = off.width, h = off.height
-    canvas.width = w
-    canvas.height = h
-    const ctx = canvas.getContext('2d')
-    ctx.drawImage(off, 0, 0)
-    ctx.strokeStyle = 'rgba(255,255,255,0.04)'
-    ctx.lineWidth = 0.5
-    for (let x = 0; x <= cols; x++) {
-      ctx.beginPath()
-      ctx.moveTo(x * cellSize + 0.5, 0)
-      ctx.lineTo(x * cellSize + 0.5, h)
-      ctx.stroke()
-    }
-    for (let y = 0; y <= rows; y++) {
-      ctx.beginPath()
-      ctx.moveTo(0, y * cellSize + 0.5)
-      ctx.lineTo(w, y * cellSize + 0.5)
-      ctx.stroke()
-    }
-    // Zone overlay
-    if (showZones && zoneGrid) {
-      const zoneColorMap = {}
-      for (const zd of zoneDefs) zoneColorMap[zd.key] = zd.color
-      ctx.font = `bold ${Math.max(8, cellSize * 0.5)}px ${T.mono}`
-      ctx.textAlign = 'center'
-      ctx.textBaseline = 'middle'
-      for (let y = 0; y < rows; y++) {
-        for (let x = 0; x < cols; x++) {
-          const zk = zoneGrid[y]?.[x]
-          if (!zk || zk === '.') continue
-          const color = zoneColorMap[zk]
-          if (!color) continue
-          const px = x * cellSize, py = y * cellSize
-          ctx.fillStyle = color + '4d'
-          ctx.fillRect(px, py, cellSize, cellSize)
-          ctx.fillStyle = color
-          ctx.fillText(zk, px + cellSize / 2, py + cellSize / 2)
-        }
-      }
-    }
-    // Objects overlay
-    for (const obj of objects) {
-      const px = obj.x * cellSize, py = obj.y * cellSize
-      const [cat, name] = (obj.sprite || '').split('/')
-      const def = spriteDefs?.[cat]?.[name]
-      if (def) {
-        ctx.save()
-        const cx = px + cellSize / 2, cy = py + cellSize / 2
-        ctx.translate(cx, cy)
-        ctx.rotate((obj.rot || 0) * Math.PI / 2)
-        drawSprite(ctx, def, -cellSize / 2, -cellSize / 2, cellSize, 0)
-        ctx.restore()
-      } else {
-        ctx.fillStyle = '#f808'
-        ctx.fillRect(px + 2, py + 2, cellSize - 4, cellSize - 4)
-      }
-      // Rotation indicator: small triangle
-      if (obj.rot) {
-        ctx.save()
-        ctx.translate(px + cellSize / 2, py + cellSize / 2)
-        ctx.rotate((obj.rot || 0) * Math.PI / 2)
-        ctx.fillStyle = '#fff8'
-        ctx.beginPath()
-        ctx.moveTo(0, -cellSize / 2 + 1)
-        ctx.lineTo(-3, -cellSize / 2 + 5)
-        ctx.lineTo(3, -cellSize / 2 + 5)
-        ctx.closePath()
-        ctx.fill()
-        ctx.restore()
-      }
-      // Object highlight in objects mode
-      if (editMode === 'objects') {
-        ctx.strokeStyle = '#f808'
-        ctx.lineWidth = 1
-        ctx.strokeRect(px + 0.5, py + 0.5, cellSize - 1, cellSize - 1)
-      }
-    }
-    // Player start marker
-    if (activeLevel?.playerStart) {
-      const ps = activeLevel.playerStart
-      const px = ps.x * cellSize, py = ps.y * cellSize
-      ctx.strokeStyle = '#0f0'
-      ctx.lineWidth = 2
-      ctx.beginPath()
-      ctx.moveTo(px + cellSize / 2, py + 3)
-      ctx.lineTo(px + cellSize / 2, py + cellSize - 3)
-      ctx.moveTo(px + 3, py + cellSize / 2)
-      ctx.lineTo(px + cellSize - 3, py + cellSize / 2)
-      ctx.stroke()
-    }
-    // Sound overlay (in sounds mode)
-    if (editMode === 'sounds' && soundDefs?.ambient) {
-      // Build zone→soundNames and objType→soundNames maps
-      const zoneSounds = {}, objSounds = {}
-      for (const [name, def] of Object.entries(soundDefs.ambient)) {
-        const t = def.target || ''
-        if (t.startsWith('zone:')) {
-          const z = t.slice(5)
-          if (!zoneSounds[z]) zoneSounds[z] = []
-          zoneSounds[z].push(name)
-        } else if (t.startsWith('object:')) {
-          const o = t.slice(7)
-          if (!objSounds[o]) objSounds[o] = []
-          objSounds[o].push(name)
-        }
-      }
-      // Zone sound overlay
-      if (zoneGrid) {
-        const zoneNameMap = {}
-        for (const zd of zoneDefs) zoneNameMap[zd.key] = zd.name
-        ctx.font = `bold ${Math.max(7, cellSize * 0.35)}px ${T.mono}`
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
-        for (let y = 0; y < rows; y++) {
-          for (let x = 0; x < cols; x++) {
-            const zk = zoneGrid[y]?.[x]
-            if (!zk || zk === '.') continue
-            const zName = zoneNameMap[zk]
-            const sndNames = zoneSounds[zName]
-            if (!sndNames) continue
-            ctx.fillStyle = 'rgba(78,238,255,0.12)'
-            ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize)
-          }
-        }
-      }
-      // Object sound rings
-      for (const obj of objects) {
-        const sndNames = objSounds[obj.type]
-        if (!sndNames) continue
-        const cx = obj.x * cellSize + cellSize / 2, cy = obj.y * cellSize + cellSize / 2
-        const range = soundDefs.ambient[sndNames[0]]?.range || 8
-        ctx.strokeStyle = 'rgba(255,136,0,0.3)'
-        ctx.lineWidth = 1
-        ctx.beginPath()
-        ctx.arc(cx, cy, range * cellSize, 0, Math.PI * 2)
-        ctx.stroke()
-        ctx.fillStyle = '#f80'
-        ctx.font = `bold ${Math.max(6, cellSize * 0.3)}px ${T.mono}`
-        ctx.textAlign = 'center'; ctx.textBaseline = 'bottom'
-        ctx.fillText(sndNames[0], cx, obj.y * cellSize - 2)
-      }
-    }
-    // Hover
-    if (hoverPos && hoverPos.x >= 0 && hoverPos.x < cols && hoverPos.y >= 0 && hoverPos.y < rows) {
-      ctx.strokeStyle = '#fff'
-      ctx.lineWidth = 2
-      ctx.strokeRect(hoverPos.x * cellSize + 1, hoverPos.y * cellSize + 1, cellSize - 2, cellSize - 2)
-    }
-  }, [mapVersion, hoverPos, cellSize, cols, rows, showZones, zoneGrid, zoneDefs, objects, spriteDefs, editMode, activeLevel?.playerStart, soundDefs])
+  // Canvas rendering (extracted hook)
+  const cellSize = useMapCanvas({
+    canvasRef, containerRef, grid, frameGrid, tiles, cols, rows,
+    showZones, zoneGrid, zoneDefs, objects, spriteDefs,
+    editMode, playerStart: activeLevel?.playerStart, soundDefs, hoverPos,
+  })
 
   // Keyboard: 0-9 to select tile
   useEffect(() => {
@@ -552,23 +314,15 @@ export default function RotEditorPage({ user }) {
       const nextGrid = level.grid.map(row => [...row])
       const nextFg = fg.map(row => [...row])
       nextGrid[pos.y][pos.x] = activeTile
-      if (tiling === 'autotile') {
-        nextFg[pos.y][pos.x] = computeAutotileFrame(nextGrid, pos.x, pos.y, activeTile)
-      } else if (tiling === 'checker') {
-        nextFg[pos.y][pos.x] = (pos.x + pos.y) % (tileDef?.frames?.length || 1)
-      } else {
-        nextFg[pos.y][pos.x] = activeFrame
-      }
-      // Update neighbors for autotile (cardinal + diagonal for inner corners)
+      if (tiling === 'autotile') nextFg[pos.y][pos.x] = computeAutotileFrame(nextGrid, pos.x, pos.y, activeTile)
+      else if (tiling === 'checker') nextFg[pos.y][pos.x] = (pos.x + pos.y) % (tileDef?.frames?.length || 1)
+      else nextFg[pos.y][pos.x] = activeFrame
       for (const [dy, dx] of [[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[-1,1],[1,-1],[1,1]]) {
         const ny = pos.y + dy, nx = pos.x + dx
         if (ny < 0 || ny >= nextGrid.length || nx < 0 || nx >= (nextGrid[0]?.length || 0)) continue
         const nTid = nextGrid[ny][nx]
-        const nDef = tiles[nTid]?.def
-        const nTiling = resolveTiling(nDef)
-        if (nTiling === 'autotile') {
+        if (resolveTiling(tiles[nTid]?.def) === 'autotile')
           nextFg[ny][nx] = computeAutotileFrame(nextGrid, nx, ny, nTid)
-        }
       }
       return { grid: nextGrid, frameGrid: nextFg }
     })
@@ -592,8 +346,7 @@ export default function RotEditorPage({ user }) {
       const objs = [...(level.objects || [])]
       const idx = objs.findIndex(o => o.x === pos.x && o.y === pos.y)
       const newObj = { x: pos.x, y: pos.y, type: objectBrush.type || objectBrush.sprite.split('/')[1], sprite: objectBrush.sprite, rot: objectBrush.rot }
-      if (idx >= 0) objs[idx] = newObj
-      else objs.push(newObj)
+      if (idx >= 0) objs[idx] = newObj; else objs.push(newObj)
       return { objects: objs }
     })
   }, [objectBrush, updateLevel])
@@ -611,14 +364,11 @@ export default function RotEditorPage({ user }) {
     e.preventDefault()
     if (editMode === 'objects') {
       const pos = getGridPos(e)
-      if (e.button === 2) removeObjectAt(pos)
-      else placeObjectAt(pos)
+      if (e.button === 2) removeObjectAt(pos); else placeObjectAt(pos)
     } else if (editMode === 'zones') {
-      setIsPainting(true)
-      paintZoneAt(getGridPos(e), e.button === 2)
+      setIsPainting(true); paintZoneAt(getGridPos(e), e.button === 2)
     } else {
-      setIsPainting(true)
-      paintAt(getGridPos(e))
+      setIsPainting(true); paintAt(getGridPos(e))
     }
   }
   const handleMouseMove = (e) => {
@@ -627,17 +377,39 @@ export default function RotEditorPage({ user }) {
     if (isPainting) {
       if (editMode === 'zones') paintZoneAt(pos, e.buttons === 2)
       else if (editMode === 'tiles') paintAt(pos)
-      // No drag for objects
     }
   }
-  const handleMouseLeave = () => setHoverPos(null)
 
-  // Object at hover position (for status bar)
   const hoverObj = hoverPos ? objects.find(o => o.x === hoverPos.x && o.y === hoverPos.y) : null
+
+  // Shared chip button style
+  const chipStyle = (active) => ({
+    background: active ? T.accentColor : 'transparent',
+    color: active ? '#000' : T.text,
+    border: `1px solid ${active ? T.accentColor : T.border}`,
+    borderRadius: T.radius.sm, padding: '2px 6px',
+    fontSize: 9, fontFamily: T.mono, cursor: 'pointer',
+    textTransform: 'uppercase', letterSpacing: '0.03em',
+  })
+
+  // Shared sprite grid item style
+  const gridItemStyle = (active) => ({
+    cursor: 'pointer',
+    background: active ? T.elevated : '#111',
+    outline: active ? `2px solid ${T.accentColor}` : 'none',
+    outlineOffset: -2, overflow: 'hidden',
+    display: 'flex', flexDirection: 'column', alignItems: 'center',
+  })
+
+  const gridItemLabel = (active) => ({
+    fontSize: 7, fontFamily: T.mono, color: active ? T.textBright : T.muted,
+    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+    width: '100%', textAlign: 'center', padding: '1px 2px',
+  })
 
   return (
     <div style={{ display: 'flex', height: '100%', gap: 0 }}>
-      {/* Left Panel: Tiles/Zones/Objects + Sprite Editor */}
+      {/* Left Panel */}
       <div style={{
         width: 260, borderRight: `1px solid ${T.border}`,
         padding: T.sp[4], display: 'flex', flexDirection: 'column', gap: T.sp[1],
@@ -646,18 +418,8 @@ export default function RotEditorPage({ user }) {
         {/* Mode toggle */}
         <div style={{ display: 'flex', gap: T.sp[1], marginBottom: T.sp[3] }}>
           {['tiles', 'zones', 'objects', 'sounds'].map(mode => (
-            <button
-              key={mode}
-              onClick={() => setEditMode(mode)}
-              style={{
-                flex: 1, background: editMode === mode ? T.accentColor : 'transparent',
-                color: editMode === mode ? '#000' : T.text,
-                border: `1px solid ${editMode === mode ? T.accentColor : T.border}`,
-                borderRadius: T.radius.sm, padding: '4px 0',
-                fontSize: 10, fontFamily: T.mono, cursor: 'pointer',
-                textTransform: 'uppercase', letterSpacing: '0.05em',
-              }}
-            >
+            <button key={mode} onClick={() => setEditMode(mode)}
+              style={{ ...chipStyle(editMode === mode), flex: 1, padding: '4px 0', letterSpacing: '0.05em', fontSize: 10 }}>
               {mode === 'objects' ? 'obj' : mode === 'sounds' ? 'snd' : mode}
             </button>
           ))}
@@ -665,41 +427,18 @@ export default function RotEditorPage({ user }) {
 
         {editMode === 'tiles' ? (<>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: T.sp[2] }}>
-            <span style={{ fontSize: T.fontSize.xs, color: T.text, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              tiles
-            </span>
+            <span style={{ fontSize: T.fontSize.xs, color: T.text, textTransform: 'uppercase', letterSpacing: '0.05em' }}>tiles</span>
             {hasLocalEdits && (
-              <button
-                onClick={resetToPublished}
-                style={{
-                  background: 'transparent', border: 'none', cursor: 'pointer',
-                  fontSize: 9, fontFamily: T.mono, color: T.warning ?? '#ffb74d',
-                  textTransform: 'uppercase', letterSpacing: '0.03em',
-                  padding: '1px 4px', borderRadius: T.radius.sm,
-                }}
-                title="Discard local edits and reload published sprites"
-              >
-                local edits · reset
-              </button>
+              <button onClick={resetToPublished}
+                style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 9, fontFamily: T.mono, color: T.warning ?? '#ffb74d', textTransform: 'uppercase', letterSpacing: '0.03em', padding: '1px 4px', borderRadius: T.radius.sm }}
+                title="Discard local edits and reload published sprites">local edits · reset</button>
             )}
           </div>
           {tileSets.length > 1 && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: T.sp[1], marginBottom: T.sp[3] }}>
               {tileSets.map(s => (
-                <button
-                  key={s.key}
-                  onClick={() => { setActiveSet(s.key); setActiveTile(0); setActiveFrame(0) }}
-                  style={{
-                    background: activeSet === s.key ? T.accentColor : 'transparent',
-                    color: activeSet === s.key ? '#000' : T.text,
-                    border: `1px solid ${activeSet === s.key ? T.accentColor : T.border}`,
-                    borderRadius: T.radius.sm, padding: '2px 6px',
-                    fontSize: 9, fontFamily: T.mono, cursor: 'pointer',
-                    textTransform: 'uppercase', letterSpacing: '0.03em',
-                  }}
-                >
-                  {s.key}
-                </button>
+                <button key={s.key} onClick={() => { setActiveSet(s.key); setActiveTile(0); setActiveFrame(0) }}
+                  style={chipStyle(activeSet === s.key)}>{s.key}</button>
               ))}
             </div>
           )}
@@ -707,281 +446,86 @@ export default function RotEditorPage({ user }) {
             {visibleTileIndices.map(idx => {
               const tile = tiles[idx]
               return (
-              <div
-                key={tile.name}
-                onClick={() => { setActiveTile(idx); setActiveFrame(0) }}
-                title={tile.label}
-                style={{
-                  cursor: 'pointer',
-                  background: activeTile === idx ? T.elevated : '#111',
-                  outline: activeTile === idx ? `2px solid ${T.accentColor}` : 'none',
-                  outlineOffset: -2, overflow: 'hidden',
-                  display: 'flex', flexDirection: 'column', alignItems: 'center',
-                }}
-              >
-                <div style={{ aspectRatio: '1', width: '100%', overflow: 'hidden' }}>
-                  {tile.thumb && (
-                    <img src={tile.thumb} alt="" width="100%" height="100%" style={{ display: 'block', imageRendering: 'pixelated' }} />
-                  )}
+                <div key={tile.name} onClick={() => { setActiveTile(idx); setActiveFrame(0) }} title={tile.label} style={gridItemStyle(activeTile === idx)}>
+                  <div style={{ aspectRatio: '1', width: '100%', overflow: 'hidden' }}>
+                    {tile.thumb && <img src={tile.thumb} alt="" width="100%" height="100%" style={{ display: 'block', imageRendering: 'pixelated' }} />}
+                  </div>
+                  <div style={gridItemLabel(activeTile === idx)}>{tile.label}</div>
                 </div>
-                <div style={{ fontSize: 7, fontFamily: T.mono, color: activeTile === idx ? T.textBright : T.muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%', textAlign: 'center', padding: '1px 2px' }}>
-                  {tile.label}
-                </div>
-              </div>
               )
             })}
           </div>
-          {visibleTileIndices.length === 0 && (
-            <div style={{ fontSize: T.fontSize.xs, color: T.muted, padding: T.sp[3] }}>No sprites in this category</div>
-          )}
+          {visibleTileIndices.length === 0 && <div style={{ fontSize: T.fontSize.xs, color: T.muted, padding: T.sp[3] }}>No sprites in this category</div>}
           {tiles[activeTile] && (
             <div style={{ borderTop: `1px solid ${T.border}`, marginTop: T.sp[3], paddingTop: T.sp[3] }}>
-              <SpriteEditor
-                sprites={spriteDefs}
-                activeCat={activeCategory}
-                activeName={tiles[activeTile].name}
-                onUpdate={handleSpriteUpdate}
-              />
+              <SpriteEditor sprites={spriteDefs} activeCat={activeCategory} activeName={tiles[activeTile].name} onUpdate={handleSpriteUpdate} />
             </div>
           )}
         </>) : editMode === 'zones' ? (<>
-          {/* Zone definitions panel */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: T.sp[2] }}>
             <div style={{ fontSize: T.fontSize.xs, color: T.text, textTransform: 'uppercase' }}>Zones</div>
-            <button
-              onClick={() => {
-                const usedKeys = new Set(zoneDefs.map(z => z.key))
-                const key = 'abcdefghijklmnopqrstuvwxyz'.split('').find(c => !usedKeys.has(c))
-                if (!key) return
-                setZoneDefs(prev => [...prev, { key, name: 'zone_' + key, color: ZONE_COLORS[prev.length % ZONE_COLORS.length] }])
-                setActiveZone(zoneDefs.length)
-              }}
-              style={{
-                background: 'none', border: `1px solid ${T.border}`, borderRadius: T.radius.sm,
-                color: T.accentColor, fontSize: T.fontSize.xs, padding: '2px 8px', cursor: 'pointer',
-              }}
-            >+</button>
+            <button onClick={() => {
+              const usedKeys = new Set(zoneDefs.map(z => z.key))
+              const key = 'abcdefghijklmnopqrstuvwxyz'.split('').find(c => !usedKeys.has(c))
+              if (!key) return
+              setZoneDefs(prev => [...prev, { key, name: 'zone_' + key, color: ZONE_COLORS[prev.length % ZONE_COLORS.length] }])
+              setActiveZone(zoneDefs.length)
+            }} style={{ background: 'none', border: `1px solid ${T.border}`, borderRadius: T.radius.sm, color: T.accentColor, fontSize: T.fontSize.xs, padding: '2px 8px', cursor: 'pointer' }}>+</button>
           </div>
           {zoneDefs.map((zone, idx) => (
-            <div
-              key={zone.key}
-              onClick={() => setActiveZone(idx)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: T.sp[2],
-                padding: `${T.sp[1]}px ${T.sp[2]}px`,
-                borderRadius: T.radius.sm, cursor: 'pointer',
-                background: activeZone === idx ? T.elevated : 'transparent',
-                border: activeZone === idx ? `1px solid ${zone.color}` : '1px solid transparent',
-              }}
-            >
-              <div style={{
-                width: 16, height: 16, borderRadius: 3, flexShrink: 0,
-                background: zone.color + '80',
-                border: `1px solid ${zone.color}`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 9, fontFamily: T.mono, color: '#fff', fontWeight: 'bold',
-              }}>{zone.key}</div>
-              <input
-                value={zone.name}
-                onChange={e => setZoneDefs(prev => prev.map((z, i) => i === idx ? { ...z, name: e.target.value } : z))}
-                onClick={e => e.stopPropagation()}
-                style={{
-                  flex: 1, background: 'transparent', border: 'none', color: activeZone === idx ? T.textBright : T.text,
-                  fontFamily: T.mono, fontSize: T.fontSize.xs, padding: 0, outline: 'none',
-                }}
-              />
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  const key = zone.key
-                  setZoneDefs(prev => prev.filter((_, i) => i !== idx))
-                  if (activeZone >= zoneDefs.length - 1) setActiveZone(Math.max(0, zoneDefs.length - 2))
-                  setLevels(prev => prev.map(l => {
-                    if (!l.zoneGrid) return l
-                    const hasZone = l.zoneGrid.some(row => row.includes(key))
-                    if (!hasZone) return l
-                    return { ...l, zoneGrid: l.zoneGrid.map(row => row.map(c => c === key ? '.' : c)) }
-                  }))
-                }}
-                style={{ background: 'none', border: 'none', color: T.danger, cursor: 'pointer', fontSize: 11, padding: '0 2px' }}
-              >x</button>
+            <div key={zone.key} onClick={() => setActiveZone(idx)} style={{
+              display: 'flex', alignItems: 'center', gap: T.sp[2],
+              padding: `${T.sp[1]}px ${T.sp[2]}px`, borderRadius: T.radius.sm, cursor: 'pointer',
+              background: activeZone === idx ? T.elevated : 'transparent',
+              border: activeZone === idx ? `1px solid ${zone.color}` : '1px solid transparent',
+            }}>
+              <div style={{ width: 16, height: 16, borderRadius: 3, flexShrink: 0, background: zone.color + '80', border: `1px solid ${zone.color}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontFamily: T.mono, color: '#fff', fontWeight: 'bold' }}>{zone.key}</div>
+              <input value={zone.name} onChange={e => setZoneDefs(prev => prev.map((z, i) => i === idx ? { ...z, name: e.target.value } : z))} onClick={e => e.stopPropagation()}
+                style={{ flex: 1, background: 'transparent', border: 'none', color: activeZone === idx ? T.textBright : T.text, fontFamily: T.mono, fontSize: T.fontSize.xs, padding: 0, outline: 'none' }} />
+              <button onClick={(e) => {
+                e.stopPropagation()
+                const k = zone.key
+                setZoneDefs(prev => prev.filter((_, i) => i !== idx))
+                if (activeZone >= zoneDefs.length - 1) setActiveZone(Math.max(0, zoneDefs.length - 2))
+                setLevels(prev => prev.map(l => {
+                  if (!l.zoneGrid) return l
+                  if (!l.zoneGrid.some(row => row.includes(k))) return l
+                  return { ...l, zoneGrid: l.zoneGrid.map(row => row.map(c => c === k ? '.' : c)) }
+                }))
+              }} style={{ background: 'none', border: 'none', color: T.danger, cursor: 'pointer', fontSize: 11, padding: '0 2px' }}>x</button>
             </div>
           ))}
-          {zoneDefs.length === 0 && (
-            <div style={{ fontSize: T.fontSize.xs, color: T.muted, padding: T.sp[3] }}>No zones defined. Click + to add.</div>
-          )}
-          <div style={{ fontSize: T.fontSize.xs, color: T.muted, marginTop: T.sp[3], lineHeight: 1.6 }}>
-            Right-click to erase zone.
-          </div>
-        </>) : (<>
-          {/* Objects panel */}
+          {zoneDefs.length === 0 && <div style={{ fontSize: T.fontSize.xs, color: T.muted, padding: T.sp[3] }}>No zones defined. Click + to add.</div>}
+          <div style={{ fontSize: T.fontSize.xs, color: T.muted, marginTop: T.sp[3], lineHeight: 1.6 }}>Right-click to erase zone.</div>
+        </>) : editMode === 'objects' ? (<>
           {objCategories.length > 1 && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: T.sp[1], marginBottom: T.sp[3] }}>
-              {objCategories.map(cat => (
-                <button
-                  key={cat}
-                  onClick={() => setObjCategory(cat)}
-                  style={{
-                    background: objCategory === cat ? T.accentColor : 'transparent',
-                    color: objCategory === cat ? '#000' : T.text,
-                    border: `1px solid ${objCategory === cat ? T.accentColor : T.border}`,
-                    borderRadius: T.radius.sm, padding: '2px 6px',
-                    fontSize: 9, fontFamily: T.mono, cursor: 'pointer',
-                    textTransform: 'uppercase', letterSpacing: '0.03em',
-                  }}
-                >
-                  {cat}
-                </button>
-              ))}
+              {objCategories.map(cat => <button key={cat} onClick={() => setObjCategory(cat)} style={chipStyle(objCategory === cat)}>{cat}</button>)}
             </div>
           )}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 1, background: T.border, borderRadius: T.radius.sm, overflow: 'hidden' }}>
             {objSprites.map(s => (
-              <div
-                key={s.sprite}
-                onClick={() => setObjectBrush(prev => ({ ...prev, sprite: s.sprite, type: s.name }))}
-                title={s.label}
-                style={{
-                  cursor: 'pointer',
-                  background: objectBrush.sprite === s.sprite ? T.elevated : '#111',
-                  outline: objectBrush.sprite === s.sprite ? `2px solid ${T.accentColor}` : 'none',
-                  outlineOffset: -2, overflow: 'hidden',
-                  display: 'flex', flexDirection: 'column', alignItems: 'center',
-                }}
-              >
+              <div key={s.sprite} onClick={() => setObjectBrush(prev => ({ ...prev, sprite: s.sprite, type: s.name }))} title={s.label} style={gridItemStyle(objectBrush.sprite === s.sprite)}>
                 <div style={{ aspectRatio: '1', width: '100%', overflow: 'hidden' }}>
-                  {s.thumb && (
-                    <img src={s.thumb} alt="" width="100%" height="100%" style={{ display: 'block', imageRendering: 'pixelated' }} />
-                  )}
+                  {s.thumb && <img src={s.thumb} alt="" width="100%" height="100%" style={{ display: 'block', imageRendering: 'pixelated' }} />}
                 </div>
-                <div style={{ fontSize: 7, fontFamily: T.mono, color: objectBrush.sprite === s.sprite ? T.textBright : T.muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%', textAlign: 'center', padding: '1px 2px' }}>
-                  {s.label}
-                </div>
+                <div style={gridItemLabel(objectBrush.sprite === s.sprite)}>{s.label}</div>
               </div>
             ))}
           </div>
-          {objSprites.length === 0 && (
-            <div style={{ fontSize: T.fontSize.xs, color: T.muted, padding: T.sp[3] }}>No sprites available</div>
-          )}
-          {/* Object count */}
-          <div style={{ fontSize: T.fontSize.xs, color: T.muted, marginTop: T.sp[3] }}>
-            {objects.length} object{objects.length !== 1 ? 's' : ''} on this level
-          </div>
-          <div style={{ fontSize: T.fontSize.xs, color: T.muted, lineHeight: 1.6 }}>
-            Click to place. Right-click to remove.
-          </div>
+          {objSprites.length === 0 && <div style={{ fontSize: T.fontSize.xs, color: T.muted, padding: T.sp[3] }}>No sprites available</div>}
+          <div style={{ fontSize: T.fontSize.xs, color: T.muted, marginTop: T.sp[3] }}>{objects.length} object{objects.length !== 1 ? 's' : ''} on this level</div>
+          <div style={{ fontSize: T.fontSize.xs, color: T.muted, lineHeight: 1.6 }}>Click to place. Right-click to remove.</div>
           {objectBrush.sprite && (() => {
             const parts = objectBrush.sprite.split('/')
             return parts.length >= 2 && spriteDefs?.[parts[0]]?.[parts[1]] ? (
               <div style={{ borderTop: `1px solid ${T.border}`, marginTop: T.sp[3], paddingTop: T.sp[3] }}>
-                <SpriteEditor
-                  sprites={spriteDefs}
-                  activeCat={parts[0]}
-                  activeName={parts[1]}
-                  onUpdate={handleObjSpriteUpdate}
-                />
+                <SpriteEditor sprites={spriteDefs} activeCat={parts[0]} activeName={parts[1]} onUpdate={handleObjSpriteUpdate} />
               </div>
             ) : null
           })()}
-        </>)}
-        {editMode === 'sounds' && (<>
-          {soundDefs ? (<>
-            <div style={{ fontSize: T.fontSize.xs, color: T.text, textTransform: 'uppercase', marginBottom: T.sp[2] }}>
-              One-shot sounds
-            </div>
-            {soundDefs.oneshot && Object.entries(soundDefs.oneshot).map(([key, def]) => (
-              <div key={key} style={{
-                display: 'flex', alignItems: 'center', gap: T.sp[2],
-                padding: `${T.sp[1]}px ${T.sp[2]}px`, borderRadius: T.radius.sm,
-                background: playingSound === key ? T.elevated : 'transparent',
-                border: `1px solid ${playingSound === key ? T.accentColor : 'transparent'}`,
-                marginBottom: 2,
-              }}>
-                <button
-                  onClick={() => {
-                    if (!audioCtxRef.current) audioCtxRef.current = new AudioContext()
-                    const ctx = audioCtxRef.current
-                    const t = ctx.currentTime
-                    const v = def.vol || 0.03, a = def.attack || 0.01, r = def.release || 0.2
-                    const playTone = (freq) => {
-                      const o = ctx.createOscillator(), g = ctx.createGain()
-                      o.type = 'sine'; o.frequency.value = freq
-                      g.gain.setValueAtTime(0, t)
-                      g.gain.linearRampToValueAtTime(v, t + a)
-                      g.gain.linearRampToValueAtTime(0, t + a + r)
-                      o.connect(g); g.connect(ctx.destination)
-                      o.start(t); o.stop(t + a + r + 0.05)
-                    }
-                    if (def.chord) def.chord.forEach(f => playTone(f))
-                    else if (def.freqStart) {
-                      const o = ctx.createOscillator(), g = ctx.createGain()
-                      o.type = 'sine'
-                      o.frequency.setValueAtTime(def.freqStart, t)
-                      o.frequency.linearRampToValueAtTime(def.freqEnd, t + a + r * 0.8)
-                      g.gain.setValueAtTime(0, t)
-                      g.gain.linearRampToValueAtTime(v, t + a)
-                      g.gain.linearRampToValueAtTime(0, t + a + r)
-                      o.connect(g); g.connect(ctx.destination)
-                      o.start(t); o.stop(t + a + r + 0.05)
-                    } else {
-                      playTone(def.freq || 300)
-                      if (def.freq2) playTone(def.freq2)
-                    }
-                    setPlayingSound(key)
-                    setTimeout(() => setPlayingSound(p => p === key ? null : p), (a + r) * 1000 + 100)
-                  }}
-                  style={{
-                    background: 'none', border: `1px solid ${T.border}`, borderRadius: T.radius.sm,
-                    color: T.accentColor, cursor: 'pointer', padding: '1px 6px',
-                    fontSize: 10, fontFamily: T.mono, flexShrink: 0,
-                  }}
-                >&#9654;</button>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 10, fontFamily: T.mono, color: T.textBright, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {key}
-                  </div>
-                  <div style={{ fontSize: 8, fontFamily: T.mono, color: T.muted }}>
-                    {def.label} · {def.trigger}
-                  </div>
-                </div>
-                <div style={{ fontSize: 8, fontFamily: T.mono, color: T.muted, flexShrink: 0 }}>
-                  {def.freq || def.freqStart || (def.chord && def.chord[0]) || '?'}Hz
-                </div>
-              </div>
-            ))}
-
-            <div style={{ fontSize: T.fontSize.xs, color: T.text, textTransform: 'uppercase', marginTop: T.sp[4], marginBottom: T.sp[2] }}>
-              Ambient sounds
-            </div>
-            {soundDefs.ambient && Object.entries(soundDefs.ambient).map(([key, def]) => (
-              <div key={key} style={{
-                display: 'flex', alignItems: 'center', gap: T.sp[2],
-                padding: `${T.sp[1]}px ${T.sp[2]}px`, borderRadius: T.radius.sm,
-                marginBottom: 2,
-              }}>
-                <div style={{
-                  width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
-                  background: def.target?.startsWith('zone:') ? '#4ef' : '#f80',
-                }} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 10, fontFamily: T.mono, color: T.textBright, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {key}
-                  </div>
-                  <div style={{ fontSize: 8, fontFamily: T.mono, color: T.muted }}>
-                    {def.label} · {def.target}
-                  </div>
-                </div>
-                <div style={{ fontSize: 8, fontFamily: T.mono, color: T.muted, flexShrink: 0 }}>
-                  {def.type === 'noise' ? 'noise' : `${def.freq}Hz`}
-                </div>
-              </div>
-            ))}
-          </>) : (
-            <div style={{ fontSize: T.fontSize.xs, color: T.muted, padding: T.sp[3] }}>
-              No sound data. Add "sounds" section to _narrative.json.
-            </div>
-          )}
-        </>)}
+        </>) : null}
+        {editMode === 'sounds' && <SoundPanel soundDefs={soundDefs} />}
         <div style={{ marginTop: 'auto', paddingTop: T.sp[4] }}>
           {hoverPos && (
             <div style={{ fontSize: T.fontSize.xs, fontFamily: T.mono, color: T.muted }}>
@@ -1006,9 +550,7 @@ export default function RotEditorPage({ user }) {
                 const zoneName = zoneDefs.find(z => z.key === zKey)?.name
                 if (!zoneName) return null
                 const matches = Object.entries(soundDefs.ambient).filter(([, d]) => d.target === 'zone:' + zoneName)
-                return matches.length > 0
-                  ? <span style={{ color: '#4ef', marginLeft: 6 }}>{matches.map(m => m[0]).join(', ')}</span>
-                  : null
+                return matches.length > 0 ? <span style={{ color: '#4ef', marginLeft: 6 }}>{matches.map(m => m[0]).join(', ')}</span> : null
               })()}
             </div>
           )}
@@ -1016,44 +558,20 @@ export default function RotEditorPage({ user }) {
       </div>
 
       {/* Center: Canvas */}
-      <div
-        ref={containerRef}
-        style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', background: '#000' }}
-      >
-        <canvas
-          ref={canvasRef}
-          style={{ cursor: 'crosshair', imageRendering: 'pixelated' }}
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseLeave={handleMouseLeave}
-          onContextMenu={(e) => e.preventDefault()}
-        />
+      <div ref={containerRef} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', background: '#000' }}>
+        <canvas ref={canvasRef} style={{ cursor: 'crosshair', imageRendering: 'pixelated' }}
+          onMouseDown={handleMouseDown} onMouseMove={handleMouseMove}
+          onMouseLeave={() => setHoverPos(null)} onContextMenu={(e) => e.preventDefault()} />
       </div>
 
       {/* Right: Controls */}
-      <RightPanel
-        slug={slug}
-        user={user}
-        levels={levels}
-        setLevels={setLevels}
-        activeId={activeId}
-        setActiveId={setActiveId}
-        activeLevel={activeLevel}
-        grid={grid}
-        zoneGrid={zoneGrid}
-        zoneDefs={zoneDefs}
-        setZoneDefs={setZoneDefs}
-        cols={cols}
-        rows={rows}
-        updateLevel={updateLevel}
-        tiles={tiles}
-        spriteDefs={spriteDefs}
-        setSpriteDefs={setSpriteDefs}
-        showZones={showZones}
-        setShowZones={setShowZones}
-        hasLocalMapEdits={hasLocalMapEdits}
-        resetMaps={resetMaps}
-      />
+      <RightPanel slug={slug} user={user} levels={levels} setLevels={setLevels}
+        activeId={activeId} setActiveId={setActiveId} activeLevel={activeLevel}
+        grid={grid} zoneGrid={zoneGrid} zoneDefs={zoneDefs} setZoneDefs={setZoneDefs}
+        cols={cols} rows={rows} updateLevel={updateLevel} tiles={tiles}
+        spriteDefs={spriteDefs} setSpriteDefs={setSpriteDefs}
+        showZones={showZones} setShowZones={setShowZones}
+        hasLocalMapEdits={hasLocalMapEdits} resetMaps={resetMaps} />
     </div>
   )
 }
