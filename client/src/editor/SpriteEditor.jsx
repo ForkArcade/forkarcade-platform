@@ -1,14 +1,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
-import { T } from '../theme'
+import { T, smallBtn } from '../theme'
 import { spriteToDataUrl, nextPaletteKey, setPixel } from '../utils/sprite'
 import { Trash2, Plus, Copy, ArrowLeft } from 'lucide-react'
-
-const smallBtn = {
-  display: 'inline-flex', alignItems: 'center', gap: 4,
-  background: 'none', border: `1px solid ${T.border}`,
-  borderRadius: T.radius.sm, color: T.text, cursor: 'pointer',
-  fontSize: 10, padding: '2px 6px', height: 22,
-}
 
 export default function SpriteEditor({ sprites, activeCat, activeName, onUpdate, onClose }) {
   const def = sprites?.[activeCat]?.[activeName]
@@ -56,6 +49,16 @@ export default function SpriteEditor({ sprites, activeCat, activeName, onUpdate,
     }
     for (let col = 0; col <= def.w; col++) {
       ctx.beginPath(); ctx.moveTo(col * cellSize, 0); ctx.lineTo(col * cellSize, gridH); ctx.stroke()
+    }
+    // Offset line — shows tile boundary (origin.y)
+    const oy = def.origin?.[1] || 0
+    if (oy > 0 && oy < def.h) {
+      const ly = oy * cellSize
+      ctx.strokeStyle = '#f80'
+      ctx.lineWidth = 2
+      ctx.setLineDash([4, 3])
+      ctx.beginPath(); ctx.moveTo(0, ly); ctx.lineTo(gridW, ly); ctx.stroke()
+      ctx.setLineDash([])
     }
   }, [def, frame, cellSize, gridW, gridH])
 

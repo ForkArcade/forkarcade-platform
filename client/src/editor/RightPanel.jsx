@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from 'react'
-import { T, formInput } from '../theme'
+import { T, formInput, numInput } from '../theme'
 import { Button } from '../components/ui'
 import { apiFetch } from '../api'
 import {
@@ -7,13 +7,6 @@ import {
   bakeAllAutotiles, DEFAULT_W, DEFAULT_H,
   levelsToMapDefs, mapDefsToLevels, mergeZoneDefs,
 } from './mapUtils'
-
-const numInput = {
-  width: 50, padding: T.sp[2],
-  background: T.surface, border: `1px solid ${T.border}`,
-  borderRadius: T.radius.sm, color: T.textBright,
-  fontFamily: T.mono, fontSize: T.fontSize.xs,
-}
 
 export default function RightPanel({
   slug, user, levels, setLevels, activeId, setActiveId,

@@ -35,6 +35,20 @@ export const T = {
   },
 }
 
+export const smallBtn = {
+  display: 'inline-flex', alignItems: 'center', gap: 4,
+  background: 'none', border: `1px solid ${T.border}`,
+  borderRadius: T.radius.sm, color: T.text, cursor: 'pointer',
+  fontSize: 10, padding: '2px 6px', height: 22,
+}
+
+export const numInput = {
+  width: 50, padding: T.sp[2],
+  background: T.surface, border: `1px solid ${T.border}`,
+  borderRadius: T.radius.sm, color: T.textBright,
+  fontFamily: T.mono, fontSize: T.fontSize.xs,
+}
+
 export const formInput = {
   width: '100%',
   padding: `${T.sp[2]}px ${T.sp[3]}px`,
