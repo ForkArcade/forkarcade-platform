@@ -6,6 +6,22 @@ import { GITHUB_ORG, ghHeaders } from './github.js'
 const router = Router()
 const EVOLVE_VOTE_THRESHOLD = 3
 const NEW_GAME_VOTE_THRESHOLD = 10
+const PLATFORM_REPO = `${GITHUB_ORG}/forkarcade-platform`
+const NEW_GAME_SLUG = '_platform'
+
+async function ghPost(url, body) {
+  const r = await fetch(url, {
+    method: 'POST',
+    headers: { ...ghHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  if (!r.ok) {
+    const text = await r.text()
+    console.error('GitHub API error:', url, text)
+    return null
+  }
+  return r.json()
+}
 
 // GET /api/wallet — current user's balance
 router.get('/api/wallet', auth, async (req, res) => {
@@ -36,22 +52,10 @@ router.post('/api/games/:slug/evolve-issues', auth, async (req, res) => {
     if (scores.rows.length === 0) return res.status(403).json({ error: 'must_play_first' })
 
     // Create GitHub issue with [EVOLVE] prefix
-    const labels = category ? [category] : []
-    const ghRes = await fetch(`https://api.github.com/repos/${GITHUB_ORG}/${slug}/issues`, {
-      method: 'POST',
-      headers: { ...ghHeaders(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        title: `[EVOLVE] ${title}`,
-        body: body || '',
-        labels,
-      }),
+    const issue = await ghPost(`https://api.github.com/repos/${GITHUB_ORG}/${slug}/issues`, {
+      title: `[EVOLVE] ${title}`, body: body || '', labels: category ? [category] : [],
     })
-    if (!ghRes.ok) {
-      const err = await ghRes.text()
-      console.error('GitHub issue creation failed:', err)
-      return res.status(502).json({ error: 'github_error' })
-    }
-    const issue = await ghRes.json()
+    if (!issue) return res.status(502).json({ error: 'github_error' })
     res.json({ ok: true, issue_number: issue.number, html_url: issue.html_url })
   } catch (err) {
     console.error('Evolve issue error:', err)
@@ -147,17 +151,8 @@ router.post('/api/games/:slug/evolve-trigger', auth, async (req, res) => {
     }
 
     // Add evolve label via GitHub API
-    const ghRes = await fetch(`https://api.github.com/repos/${GITHUB_ORG}/${slug}/issues/${issue_number}/labels`, {
-      method: 'POST',
-      headers: { ...ghHeaders(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ labels: ['evolve'] }),
-    })
-    if (!ghRes.ok) {
-      const err = await ghRes.text()
-      console.error('GitHub label add failed:', err)
-      return res.status(502).json({ error: 'github_error' })
-    }
-
+    const result = await ghPost(`https://api.github.com/repos/${GITHUB_ORG}/${slug}/issues/${issue_number}/labels`, { labels: ['evolve'] })
+    if (!result) return res.status(502).json({ error: 'github_error' })
     res.json({ ok: true })
   } catch (err) {
     console.error('Evolve trigger error:', err)
@@ -167,9 +162,6 @@ router.post('/api/games/:slug/evolve-trigger', auth, async (req, res) => {
 
 // --- New Game Proposals ---
 
-const PLATFORM_REPO = `${GITHUB_ORG}/forkarcade-platform`
-const NEW_GAME_SLUG = '_platform' // sentinel value in votes table
-
 // POST /api/new-game/issues — create [NEW-GAME] issue on platform repo
 router.post('/api/new-game/issues', auth, async (req, res) => {
   const { title, body, template } = req.body
@@ -178,21 +170,10 @@ router.post('/api/new-game/issues', auth, async (req, res) => {
   try {
     const labels = ['new-game']
     if (template) labels.push(template)
-    const ghRes = await fetch(`https://api.github.com/repos/${PLATFORM_REPO}/issues`, {
-      method: 'POST',
-      headers: { ...ghHeaders(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        title: `[NEW-GAME] ${title}`,
-        body: body || '',
-        labels,
-      }),
+    const issue = await ghPost(`https://api.github.com/repos/${PLATFORM_REPO}/issues`, {
+      title: `[NEW-GAME] ${title}`, body: body || '', labels,
     })
-    if (!ghRes.ok) {
-      const err = await ghRes.text()
-      console.error('GitHub issue creation failed:', err)
-      return res.status(502).json({ error: 'github_error' })
-    }
-    const issue = await ghRes.json()
+    if (!issue) return res.status(502).json({ error: 'github_error' })
     res.json({ ok: true, issue_number: issue.number, html_url: issue.html_url })
   } catch (err) {
     console.error('New game issue error:', err)
@@ -271,17 +252,8 @@ router.post('/api/new-game/trigger', auth, async (req, res) => {
       return res.status(400).json({ error: 'not_enough_voters', required: NEW_GAME_VOTE_THRESHOLD, current: uniqueVoters })
     }
 
-    const ghRes = await fetch(`https://api.github.com/repos/${PLATFORM_REPO}/issues/${issue_number}/labels`, {
-      method: 'POST',
-      headers: { ...ghHeaders(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ labels: ['approved'] }),
-    })
-    if (!ghRes.ok) {
-      const err = await ghRes.text()
-      console.error('GitHub label add failed:', err)
-      return res.status(502).json({ error: 'github_error' })
-    }
-
+    const result = await ghPost(`https://api.github.com/repos/${PLATFORM_REPO}/issues/${issue_number}/labels`, { labels: ['approved'] })
+    if (!result) return res.status(502).json({ error: 'github_error' })
     res.json({ ok: true })
   } catch (err) {
     console.error('New game trigger error:', err)
