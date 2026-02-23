@@ -32,7 +32,7 @@ router.get('/api/wallet', auth, async (req, res) => {
     })
     res.json({ balance: result.rows[0]?.balance ?? 0 })
   } catch (err) {
-    console.error('Wallet fetch error:', err)
+    console.error('Wallet fetch error:', { user: req.user.sub }, err)
     res.status(500).json({ error: 'db_error' })
   }
 })
@@ -58,7 +58,7 @@ router.post('/api/games/:slug/evolve-issues', auth, async (req, res) => {
     if (!issue) return res.status(502).json({ error: 'github_error' })
     res.json({ ok: true, issue_number: issue.number, html_url: issue.html_url })
   } catch (err) {
-    console.error('Evolve issue error:', err)
+    console.error('Evolve issue error:', { user: req.user.sub, slug }, err)
     res.status(500).json({ error: 'server_error' })
   }
 })
@@ -96,7 +96,7 @@ router.post('/api/games/:slug/vote', auth, async (req, res) => {
       throw insertErr
     }
   } catch (err) {
-    console.error('Vote error:', err)
+    console.error('Vote error:', { user: req.user.sub, slug, issue_number, coins }, err)
     res.status(500).json({ error: 'db_error' })
   }
 })
@@ -116,7 +116,7 @@ router.get('/api/games/:slug/votes', async (req, res) => {
     }
     res.json(totals.rows.map(r => ({ ...r, voter_ids: voterMap[r.issue_number] || [] })))
   } catch (err) {
-    console.error('Votes fetch error:', err)
+    console.error('Votes fetch error:', { slug: req.params.slug }, err)
     res.status(500).json({ error: 'db_error' })
   }
 })
@@ -155,7 +155,7 @@ router.post('/api/games/:slug/evolve-trigger', auth, async (req, res) => {
     if (!result) return res.status(502).json({ error: 'github_error' })
     res.json({ ok: true })
   } catch (err) {
-    console.error('Evolve trigger error:', err)
+    console.error('Evolve trigger error:', { user: req.user.sub, slug, issue_number }, err)
     res.status(500).json({ error: 'server_error' })
   }
 })
@@ -176,7 +176,7 @@ router.post('/api/new-game/issues', auth, async (req, res) => {
     if (!issue) return res.status(502).json({ error: 'github_error' })
     res.json({ ok: true, issue_number: issue.number, html_url: issue.html_url })
   } catch (err) {
-    console.error('New game issue error:', err)
+    console.error('New game issue error:', { user: req.user.sub }, err)
     res.status(500).json({ error: 'server_error' })
   }
 })
@@ -213,7 +213,7 @@ router.post('/api/new-game/vote', auth, async (req, res) => {
       throw insertErr
     }
   } catch (err) {
-    console.error('New game vote error:', err)
+    console.error('New game vote error:', { user: req.user.sub, issue_number, coins }, err)
     res.status(500).json({ error: 'db_error' })
   }
 })
@@ -256,7 +256,7 @@ router.post('/api/new-game/trigger', auth, async (req, res) => {
     if (!result) return res.status(502).json({ error: 'github_error' })
     res.json({ ok: true })
   } catch (err) {
-    console.error('New game trigger error:', err)
+    console.error('New game trigger error:', { user: req.user.sub, issue_number }, err)
     res.status(500).json({ error: 'server_error' })
   }
 })
@@ -280,7 +280,7 @@ router.delete('/api/games/:slug/data', async (req, res) => {
       deleted_votes: results[1].rowsAffected,
     })
   } catch (err) {
-    console.error('Delete game data error:', err)
+    console.error('Delete game data error:', { slug }, err)
     res.status(500).json({ error: 'db_error' })
   }
 })

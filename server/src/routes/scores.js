@@ -47,7 +47,7 @@ router.post('/api/games/:slug/score', auth, scoreLimiter, async (req, res) => {
 
     res.json({ ok: true, coins, isPersonalRecord })
   } catch (err) {
-    console.error('Score insert error:', err)
+    console.error('Score insert error:', { user: req.user.sub, slug: req.params.slug, score }, err)
     res.status(500).json({ error: 'db_error' })
   }
 })
@@ -66,7 +66,7 @@ router.get('/api/games/:slug/leaderboard', async (req, res) => {
     const result = await db.execute({ sql, args })
     res.json(result.rows)
   } catch (err) {
-    console.error('Leaderboard error:', err)
+    console.error('Leaderboard error:', { slug: req.params.slug }, err)
     res.status(500).json({ error: 'db_error' })
   }
 })
@@ -81,7 +81,7 @@ router.get('/api/me', auth, async (req, res) => {
     if (!user) return res.status(404).json({ error: 'user_not_found' })
     res.json({ user })
   } catch (err) {
-    console.error('Me error:', err)
+    console.error('Me error:', { user: req.user.sub }, err)
     res.status(500).json({ error: 'db_error' })
   }
 })
