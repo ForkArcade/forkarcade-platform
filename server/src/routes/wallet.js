@@ -87,7 +87,8 @@ router.post('/api/games/:slug/vote', auth, async (req, res) => {
       res.json({ ok: true, newBalance: results[1].rows[0]?.balance ?? 0 })
     } catch (insertErr) {
       // Rollback: refund coins if vote insert fails
-      await db.execute({ sql: 'UPDATE wallets SET balance = balance + ? WHERE github_user_id = ?', args: [coins, req.user.sub] }).catch(() => {})
+      await db.execute({ sql: 'UPDATE wallets SET balance = balance + ? WHERE github_user_id = ?', args: [coins, req.user.sub] })
+        .catch(rollbackErr => console.error('CRITICAL: coin rollback failed for user', req.user.sub, coins, 'coins lost:', rollbackErr))
       throw insertErr
     }
   } catch (err) {
@@ -210,14 +211,26 @@ router.post('/api/new-game/vote', auth, async (req, res) => {
   }
 
   try {
-    // Atomic: deduct coins + insert vote + read balance in one batch
-    const results = await db.batch([
-      { sql: 'UPDATE wallets SET balance = balance - ? WHERE github_user_id = ? AND balance >= ?', args: [coins, req.user.sub, coins] },
-      { sql: 'INSERT INTO votes (github_user_id, game_slug, issue_number, coins_spent, created_at) VALUES (?, ?, ?, ?, ?)', args: [req.user.sub, NEW_GAME_SLUG, issue_number, coins, new Date().toISOString()] },
-      { sql: 'SELECT balance FROM wallets WHERE github_user_id = ?', args: [req.user.sub] },
-    ])
-    if (results[0].rowsAffected === 0) return res.status(400).json({ error: 'insufficient_coins' })
-    res.json({ ok: true, newBalance: results[2].rows[0]?.balance ?? 0 })
+    // Step 1: deduct coins (WHERE balance >= coins ensures sufficient funds)
+    const deduct = await db.execute({
+      sql: 'UPDATE wallets SET balance = balance - ? WHERE github_user_id = ? AND balance >= ?',
+      args: [coins, req.user.sub, coins],
+    })
+    if (deduct.rowsAffected === 0) return res.status(400).json({ error: 'insufficient_coins' })
+
+    // Step 2: insert vote + read new balance (coins already deducted)
+    try {
+      const results = await db.batch([
+        { sql: 'INSERT INTO votes (github_user_id, game_slug, issue_number, coins_spent, created_at) VALUES (?, ?, ?, ?, ?)', args: [req.user.sub, NEW_GAME_SLUG, issue_number, coins, new Date().toISOString()] },
+        { sql: 'SELECT balance FROM wallets WHERE github_user_id = ?', args: [req.user.sub] },
+      ])
+      res.json({ ok: true, newBalance: results[1].rows[0]?.balance ?? 0 })
+    } catch (insertErr) {
+      // Rollback: refund coins if vote insert fails
+      await db.execute({ sql: 'UPDATE wallets SET balance = balance + ? WHERE github_user_id = ?', args: [coins, req.user.sub] })
+        .catch(rollbackErr => console.error('CRITICAL: coin rollback failed for user', req.user.sub, coins, 'coins lost:', rollbackErr))
+      throw insertErr
+    }
   } catch (err) {
     console.error('New game vote error:', err)
     res.status(500).json({ error: 'db_error' })
