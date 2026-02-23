@@ -1,3 +1,6 @@
+// Frame index → single char encoding for compact frameGrid storage in _maps.json
+export const FRAME_CHARS = '0123456789abcdefghij'
+
 export const DEFAULT_W = 40
 export const DEFAULT_H = 25
 export const ZONE_COLORS = ['#4fc3f7','#81c784','#e57373','#ffb74d','#ba68c8','#4db6ac','#fff176','#f06292']
@@ -66,6 +69,11 @@ function levelToMapDef(level, zoneDefs) {
     const usedKeys = new Set(level.zoneGrid.flat().filter(c => c !== '.'))
     def.zoneDefs = Object.fromEntries(zoneDefs.filter(z => usedKeys.has(z.key)).map(z => [z.key, z.name]))
   }
+  if (level.frameGrid) {
+    def.frameGrid = level.frameGrid.map(row =>
+      row.map(f => FRAME_CHARS[f] || '0').join('')
+    )
+  }
   if (level.objects?.length > 0) {
     def.objects = level.objects
   }
@@ -92,10 +100,14 @@ export function mapDefsToLevels(data) {
         }
       }
     }
+    const frameGrid = mapDef.frameGrid
+      ? mapDef.frameGrid.map(s => [...s].map(c => FRAME_CHARS.indexOf(c)))
+      : null
     levels.push({
       id: `map-${name}`,
       name,
       grid,
+      frameGrid,
       zoneGrid,
       objects: mapDef.objects || [],
       playerStart: mapDef.playerStart || null,
@@ -115,18 +127,27 @@ export function levelsToMapDefs(levels, zoneDefs) {
   return result
 }
 
-// Autotile: compute frame index from neighbors for 16-frame wall sprites
-// Frame layout: left(+8) + right(+4) + bottom(+2) + top-only(+1)
+// Autotile: compute frame index from neighbors for 20-frame wall sprites
+// Frames 0-15: cardinal bitmask — left(+8) + right(+4) + bottom(+2) + top-only(+1)
+// Frames 16-19: inner corners (SE, SW, NE, NW) when all cardinals are same tile
 export function computeAutotileFrame(grid, x, y, tid) {
   const rows = grid.length, cols = grid[0]?.length || 0
-  const isEdge = (dy, dx) => {
+  const isSame = (dy, dx) => {
     const ny = y + dy, nx = x + dx
-    if (ny < 0 || ny >= rows || nx < 0 || nx >= cols) return false
-    return grid[ny]?.[nx] !== tid
+    if (ny < 0 || ny >= rows || nx < 0 || nx >= cols) return true
+    return grid[ny]?.[nx] === tid
   }
-  const top = isEdge(-1, 0), bottom = isEdge(1, 0)
-  const left = isEdge(0, -1), right = isEdge(0, 1)
-  return (left ? 8 : 0) + (right ? 4 : 0) + (bottom ? 2 : 0) + (!bottom && top ? 1 : 0)
+  const n = isSame(-1, 0), s = isSame(1, 0)
+  const w = isSame(0, -1), e = isSame(0, 1)
+  const mask = (w ? 0 : 8) + (e ? 0 : 4) + (s ? 0 : 2) + (n ? 0 : 1)
+  // Inner corners: only when all 4 cardinal neighbors are the same tile
+  if (mask === 0) {
+    if (s && e && !isSame(1, 1)) return 16  // SE
+    if (s && w && !isSame(1, -1)) return 17 // SW
+    if (n && e && !isSame(-1, 1)) return 18 // NE
+    if (n && w && !isSame(-1, -1)) return 19 // NW
+  }
+  return mask
 }
 
 // Resolve tiling mode: explicit > legacy fallback by frame count

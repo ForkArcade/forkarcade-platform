@@ -36,5 +36,14 @@ def generate_maps_js(data):
         "  })",
         "}",
         "",
+        "function getMapFrameGrid(name) {",
+        "  var m = FA.assets.mapDefs[name]",
+        "  if (!m || !m.frameGrid) return null",
+        "  var C = '0123456789abcdefghij'",
+        "  return m.frameGrid.map(function(row) {",
+        "    return row.split('').map(function(c) { return C.indexOf(c) })",
+        "  })",
+        "}",
+        "",
     ]
     return "\n".join(lines)

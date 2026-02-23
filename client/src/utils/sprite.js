@@ -14,21 +14,37 @@ export function setPixel(frame, row, col, ch) {
   return line.substring(0, col) + ch + line.substring(col + 1)
 }
 
-export function renderSpriteToCanvas(ctx, def, frame, px, py, size) {
-  if (!def?.frames) return
-  const f = def.frames[frame % def.frames.length]
+// drawSprite — THE canonical sprite rendering function.
+// Same logic as engine fa-renderer.js drawSprite.
+// Tiles (def.tiling set): crop to tile area (below origin), fill size×size at (x,y).
+// Objects/characters: render full sprite with origin offset for overlap.
+export function drawSprite(ctx, def, x, y, size, frame) {
+  if (!def?.frames?.length) return
+  frame = (frame || 0) % def.frames.length
+  const sw = def.w || size, sh = def.h || size
+  const origin = def.origin || [0, 0]
+  const oy = origin[1] || 0
+  const isTile = !!def.tiling
+  const srcY = isTile ? oy : 0
+  const srcH = isTile ? (sh - oy) : sh
+  const scaleW = size / sw
+  const scaleH = isTile ? (size / srcH) : (size / sw)
+  const dw = Math.ceil(sw * scaleW)
+  const dh = Math.ceil(srcH * scaleH)
+  const drawX = isTile ? x : x - (origin[0] || 0) * scaleW
+  const drawY = isTile ? y : y - oy * (size / sw)
+  const f = def.frames[frame]
   if (!f) return
-  const pw = size / def.w, ph = size / def.h
-  for (let r = 0; r < def.h; r++) {
+  for (let r = srcY; r < sh; r++) {
     const line = f[r]
     if (!line) continue
-    for (let c = 0; c < def.w; c++) {
+    for (let c = 0; c < sw; c++) {
       const ch = line[c]
       if (ch === '.') continue
-      const color = def.palette[ch]
+      const color = def.palette?.[ch]
       if (!color) continue
       ctx.fillStyle = color
-      ctx.fillRect(px + c * pw, py + r * ph, Math.ceil(pw), Math.ceil(ph))
+      ctx.fillRect(drawX + c * scaleW, drawY + (r - srcY) * scaleH, Math.ceil(scaleW), Math.ceil(scaleH))
     }
   }
 }
@@ -64,10 +80,12 @@ export function hydrateSpriteDefs(atlas, sheetImg) {
       const colorMap = new Map() // 'r,g,b' → hex
       const framePixels = [] // array of ImageData per frame
 
+      const ew = entry.w || frameW, eh = entry.h || frameH
+
       for (const idx of entry.frames) {
         const sx = (idx % cols) * frameW
         const sy = Math.floor(idx / cols) * frameH
-        const imgData = ctx.getImageData(sx, sy, frameW, frameH)
+        const imgData = ctx.getImageData(sx, sy, ew, eh)
         framePixels.push(imgData)
         for (let i = 0; i < imgData.data.length; i += 4) {
           if (imgData.data[i + 3] < 128) continue
@@ -82,7 +100,7 @@ export function hydrateSpriteDefs(atlas, sheetImg) {
       let ki = 0
       for (const [rgb, hex] of colorMap) {
         const pk = PALETTE_KEYS[ki++]
-        if (!pk) break
+        if (!pk) { console.warn(`[sprite] ${cat}/${name}: ${colorMap.size} colors exceed palette limit (${PALETTE_KEYS.length})`); break }
         palette[pk] = hex
         colorToKey.set(rgb, pk)
       }
@@ -90,10 +108,10 @@ export function hydrateSpriteDefs(atlas, sheetImg) {
       // Convert frames to character grids
       const frames = framePixels.map(imgData => {
         const lines = []
-        for (let r = 0; r < frameH; r++) {
+        for (let r = 0; r < eh; r++) {
           let line = ''
-          for (let c = 0; c < frameW; c++) {
-            const i = (r * frameW + c) * 4
+          for (let c = 0; c < ew; c++) {
+            const i = (r * ew + c) * 4
             if (imgData.data[i + 3] < 128) { line += '.'; continue }
             const rgb = `${imgData.data[i]},${imgData.data[i + 1]},${imgData.data[i + 2]}`
             line += colorToKey.get(rgb) || '.'
@@ -103,11 +121,8 @@ export function hydrateSpriteDefs(atlas, sheetImg) {
         return lines
       })
 
-      defs[cat][name] = {
-        w: entry.w, h: entry.h,
-        origin: entry.origin || [0, 0],
-        palette, frames
-      }
+      // Spread all atlas fields (w, h, origin, tiling, etc), override with hydrated data
+      defs[cat][name] = { ...entry, palette, frames }
     }
   }
   return defs
@@ -121,19 +136,21 @@ export function hydrateSpriteDefs(atlas, sheetImg) {
  */
 export function dehydrateToSheet(spriteDefs, atlas) {
   const { cols, frameW, frameH } = atlas.sheet
-  // Count total frames to determine canvas size
+  // Count total frames and find max sprite height to determine canvas size
   let maxIdx = 0
+  let maxH = frameH
   for (const cat of Object.keys(atlas)) {
     if (cat === 'sheet') continue
     for (const entry of Object.values(atlas[cat])) {
       for (const idx of entry.frames) if (idx > maxIdx) maxIdx = idx
+      if (entry.h > maxH) maxH = entry.h
     }
   }
   const totalFrames = maxIdx + 1
   const rows = Math.ceil(totalFrames / cols)
   const cv = document.createElement('canvas')
   cv.width = cols * frameW
-  cv.height = rows * frameH
+  cv.height = rows * maxH
   const ctx = cv.getContext('2d')
 
   for (const cat of Object.keys(atlas)) {
@@ -172,22 +189,7 @@ export function spriteToDataUrl(def, size, frameIdx = 0) {
     canvas.width = size
     canvas.height = size
     const ctx = canvas.getContext('2d')
-    const pw = size / def.w
-    const ph = size / def.h
-    const pixels = def.frames[frameIdx]
-    if (!pixels) return null
-    for (let row = 0; row < def.h; row++) {
-      const line = pixels[row]
-      if (!line) continue
-      for (let col = 0; col < def.w; col++) {
-        const ch = line[col]
-        if (ch === '.') continue
-        const color = def.palette[ch]
-        if (!color) continue
-        ctx.fillStyle = color
-        ctx.fillRect(col * pw, row * ph, Math.ceil(pw), Math.ceil(ph))
-      }
-    }
+    drawSprite(ctx, def, 0, 0, size, frameIdx)
     return canvas.toDataURL()
   } catch { return null }
 }
