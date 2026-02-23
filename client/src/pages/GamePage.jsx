@@ -206,7 +206,7 @@ export default function GamePage({ user, balance, onBalanceChange }) {
       cancelled = true
       if (cleanupFn) cleanupFn()
     }
-  }, [gameBaseUrl, slug, onBalanceChange, !!game])
+  }, [gameBaseUrl, slug, onBalanceChange])
 
 
 
@@ -244,8 +244,6 @@ export default function GamePage({ user, balance, onBalanceChange }) {
 
   // Cleanup narrative throttle timer
   useEffect(() => () => clearTimeout(narrativeFlushTimer.current), [])
-
-  if (!game) return <EmptyState>Loading...</EmptyState>
 
   const iconTabs = ['info', 'leaderboard', 'narrative', 'evolve', 'editors', versions.length > 0 && 'changelog']
     .filter(Boolean).map(k => ({ key: k, ...TAB_ICONS[k] }))
@@ -292,9 +290,9 @@ export default function GamePage({ user, balance, onBalanceChange }) {
         <div style={{ flex: 1, overflow: 'auto', padding: T.sp[5] }}>
             {tab === 'info' && (
               <div>
-                <div style={{ fontSize: T.fontSize.base, fontWeight: T.weight.semibold, color: T.textBright, marginBottom: T.sp[4] }}>{game.title}</div>
-                {game.description && <div style={{ fontSize: T.fontSize.xs, color: T.text, lineHeight: T.leading.relaxed, marginBottom: T.sp[5] }}>{game.description}</div>}
-                {(() => { const tags = game.topics.filter(t => t !== GAME_TOPIC); return tags.length > 0 && <div style={{ display: 'flex', flexWrap: 'wrap', gap: T.sp[2], marginBottom: T.sp[5] }}>{tags.map(t => <Badge key={t}>{t}</Badge>)}</div> })()}
+                <div style={{ fontSize: T.fontSize.base, fontWeight: T.weight.semibold, color: T.textBright, marginBottom: T.sp[4] }}>{game?.title || formatSlug(slug)}</div>
+                {game?.description && <div style={{ fontSize: T.fontSize.xs, color: T.text, lineHeight: T.leading.relaxed, marginBottom: T.sp[5] }}>{game.description}</div>}
+                {(() => { const tags = (game?.topics || []).filter(t => t !== GAME_TOPIC); return tags.length > 0 && <div style={{ display: 'flex', flexWrap: 'wrap', gap: T.sp[2], marginBottom: T.sp[5] }}>{tags.map(t => <Badge key={t}>{t}</Badge>)}</div> })()}
                 {claudeMd && (
                   <button onClick={() => setClaudeMdPopup(true)} style={{ display: 'flex', alignItems: 'center', gap: T.sp[3], padding: `${T.sp[3]}px ${T.sp[4]}px`, background: T.elevated, border: `1px solid ${T.border}`, borderRadius: T.radius.md, color: T.text, fontSize: T.fontSize.xs, fontFamily: T.mono, cursor: 'pointer', width: '100%' }}>
                     <FileText size={14} /> CLAUDE.md
