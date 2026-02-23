@@ -68,8 +68,8 @@ export async function loadGame(container, gameBaseUrl, callbacks) {
       const url = /^https?:\/\//.test(src) ? src : gameBaseUrl + src
       await loadScript(url, container)
 
-      if (src === 'sprites.js' && window.SPRITESHEET) {
-        window.SPRITESHEET.src = gameBaseUrl + '_spritesheet.png'
+      if (src === 'sprites.js' && window.FA?.assets?.spritesheet) {
+        window.FA.assets.spritesheet.src = gameBaseUrl + '_spritesheet.png'
       }
     }
 
@@ -81,6 +81,7 @@ export async function loadGame(container, gameBaseUrl, callbacks) {
   return function cleanup() {
     if (resizeObserver) resizeObserver.disconnect()
     if (window.FA?.stop) window.FA.stop()
+    if (window.FA?.assets) window.FA.assets = { spriteDefs: null, spritesheet: null, sheetCols: 16, mapDefs: null }
     for (const ctx of audioContexts) { try { ctx.close() } catch {} }
     for (const el of container.querySelectorAll('script')) el.remove()
     for (const key of Object.keys(window)) {

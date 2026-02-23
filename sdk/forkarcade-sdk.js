@@ -73,27 +73,20 @@
     }
 
     if (data.type === 'FA_SPRITES_UPDATE' && data.sprites) {
-      if (typeof window.SPRITE_DEFS !== 'undefined') {
-        window.SPRITE_DEFS = data.sprites;
-        var cats = Object.keys(SPRITE_DEFS);
-        for (var ci = 0; ci < cats.length; ci++) {
-          var names = Object.keys(SPRITE_DEFS[cats[ci]]);
-          for (var ni = 0; ni < names.length; ni++) {
-            if (SPRITE_DEFS[cats[ci]][names[ni]]._c) delete SPRITE_DEFS[cats[ci]][names[ni]]._c;
-          }
+      var sprites = data.sprites;
+      var cats = Object.keys(sprites);
+      for (var ci = 0; ci < cats.length; ci++) {
+        var names = Object.keys(sprites[cats[ci]]);
+        for (var ni = 0; ni < names.length; ni++) {
+          if (sprites[cats[ci]][names[ni]]._c) delete sprites[cats[ci]][names[ni]]._c;
         }
       }
+      window.FA.assets.spriteDefs = sprites;
       return;
     }
 
     if (data.type === 'FA_MAP_UPDATE' && data.maps) {
-      window.FA_MAP_DATA = data.maps;
-      if (typeof MAP_DEFS !== 'undefined') {
-        var oldKeys = Object.keys(MAP_DEFS);
-        for (var oi = 0; oi < oldKeys.length; oi++) delete MAP_DEFS[oldKeys[oi]];
-        var newKeys = Object.keys(data.maps);
-        for (var mi = 0; mi < newKeys.length; mi++) MAP_DEFS[newKeys[mi]] = data.maps[newKeys[mi]];
-      }
+      window.FA.assets.mapDefs = data.maps;
       var evt = new CustomEvent('fa-map-update', { detail: data.maps });
       window.dispatchEvent(evt);
       return;

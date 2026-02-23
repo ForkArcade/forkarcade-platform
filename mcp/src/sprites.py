@@ -18,7 +18,7 @@ def generate_sprites_js(data):
         "// Generated from _sprites.json by create_sprite tool",
         "// Runtime (drawSprite, getSprite, spriteFrames) lives in fa-renderer.js",
         "",
-        "var SPRITE_DEFS = " + json.dumps(data, indent=2),
+        "FA.assets.spriteDefs = " + json.dumps(data, indent=2),
         "",
     ]
     return "\n".join(lines)

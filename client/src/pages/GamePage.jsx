@@ -17,18 +17,17 @@ const isDev = window.location.hostname === 'localhost'
 const GITHUB_PAGES_BASE = `https://${GITHUB_ORG.toLowerCase()}.github.io`
 
 function applySpritesDirect(raw) {
+  if (!window.FA?.assets) return
   try {
     const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw
     if (parsed._format === 'png-hydrated' && parsed._atlas) {
       const { _format, _atlas, ...defs } = parsed
       const sheetDataUrl = dehydrateToSheet(defs, _atlas)
-      if (window.SPRITESHEET) window.SPRITESHEET.src = sheetDataUrl
-      if (typeof window.SPRITE_DEFS !== 'undefined') {
-        window.SPRITE_DEFS = _atlas
-        window.SPRITE_SHEET_COLS = _atlas.sheet?.cols || window.SPRITE_SHEET_COLS
-      }
-    } else if (typeof window.SPRITE_DEFS !== 'undefined') {
-      window.SPRITE_DEFS = parsed
+      if (window.FA.assets.spritesheet) window.FA.assets.spritesheet.src = sheetDataUrl
+      window.FA.assets.spriteDefs = _atlas
+      if (_atlas.sheet?.cols) window.FA.assets.sheetCols = _atlas.sheet.cols
+    } else {
+      // Clear sprite render caches
       const cats = Object.keys(parsed)
       for (let ci = 0; ci < cats.length; ci++) {
         const names = Object.keys(parsed[cats[ci]])
@@ -36,6 +35,7 @@ function applySpritesDirect(raw) {
           if (parsed[cats[ci]][names[ni]]._c) delete parsed[cats[ci]][names[ni]]._c
         }
       }
+      window.FA.assets.spriteDefs = parsed
     }
   } catch {}
 }
