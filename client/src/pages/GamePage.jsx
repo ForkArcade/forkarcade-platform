@@ -27,14 +27,7 @@ function applySpritesDirect(raw) {
       window.FA.assets.spriteDefs = _atlas
       if (_atlas.sheet?.cols) window.FA.assets.sheetCols = _atlas.sheet.cols
     } else {
-      // Clear sprite render caches
-      const cats = Object.keys(parsed)
-      for (let ci = 0; ci < cats.length; ci++) {
-        const names = Object.keys(parsed[cats[ci]])
-        for (let ni = 0; ni < names.length; ni++) {
-          if (parsed[cats[ci]][names[ni]]._c) delete parsed[cats[ci]][names[ni]]._c
-        }
-      }
+      window.FA.clearSpriteCache(parsed)
       window.FA.assets.spriteDefs = parsed
     }
   } catch {}
